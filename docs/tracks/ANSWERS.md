@@ -88,3 +88,22 @@ Real AMI meetings played into Granola. 30 list questions (DEV 6 + TEST 24) on 5 
 - **Chat answers were recorded once,** on another day. L reads the full transcript of one meeting, while Chat chose what to read.
 
 Cost: $7.83 in total (pilot $0.37, map $2.23, merge $0.44, check + judge $4.78), under the $11.00 cap.
+
+## E2: was it agreed? (designed; pilot run)
+
+**Question.** E1's extra items, shown as a "+N more said in the meeting" line under Chat's answer, were ~7.6 per question and ~66% right. The wrong ones were over-inclusion ("proposed but not decided", "not assigned"). Does asking "was this agreed / assigned?" instead of "was it said?" cut the extras to 2–3 per question, keep them right, and keep most of E1's recall gain?
+
+| Step | What happens |
+|---|---|
+| **Items** | E1's listed items and quotes, reused from E1's run (no new listing calls) |
+| **Classify** | One call per item (`agreed_check.v3`): the question, the item, its quote and ±8 Granola transcript lines around the cited lines. Output: a status (agreed decision, assigned action, problem raised, proposed only, mentioned only, other topic), whether it answers the question as asked, a 0–100 confidence, a one-line reason |
+| **Keep** | Status matches the question's kind (decision, action, problem) and it answers the question |
+| **Dedupe** | Drop items Chat's answer already has, by E1's judge mapping (the item states gold items, all of them covered by Chat). An oracle a product lacks; it is how E1's extras were counted, so the comparison isolates the classifier |
+| **Cap** | Top K by confidence (ties: transcript order); K = 2, 3 and uncapped |
+
+- **Baselines.** Chat alone; Chat + every E1 extra; Chat + the extras E1's checker confirmed (the "+N more" line).
+- **Metrics,** per question then mean with 95% bootstrap CIs: recall of Chat + extras; extras per question; precision of the extras (lenient: E1's judge marked it gold or true per the reference transcript; strict: gold); gold items the filter drops that the unfiltered extras had. Sign tests of each K against both baselines.
+- **No new judge calls.** Every extra is an E1 item, so E1's item verdicts score it.
+- **Split.** Prompt changes only on the 6 DEV questions; TEST (24) reported separately.
+- **Known limits.** The lenient judge accepts true items of the wrong kind, so it can hide the filter's gain; the strict column shows it. Items that misname a person pass the filter (it checks agreement, not names). DEV has 1 gold item Chat missed, so DEV says almost nothing about recall.
+- **Status.** Pilot on DEV run; full run not run. Code: `tenor ami agreed-check` ([`agreed_check.py`](../../packages/tenor/evals/agreed_check.py)).

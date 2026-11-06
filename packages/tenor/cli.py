@@ -6,6 +6,7 @@ import logging
 import os
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -3782,6 +3783,61 @@ def ami_deletion_sim(
 # -- E1: list then check (docs/tracks/ANSWERS.md, "E1") -----------------------------------
 
 
+@dataclass
+class _E1Inputs:
+    """What E1 and E2 read: Granola / Wispr notes, Chat's recorded answers (cleaned as stage 3
+    judged them), the list questions and one :class:`~tenor.evals.list_check.Context` each."""
+
+    notes: dict[str, list[Any]]
+    chat_text: dict[str, str]
+    n_usable: int
+    skipped: Any
+    full: list[Any]
+    contexts: list[Any]
+
+
+def _e1_inputs(
+    questions_file: Path, answers: Path, granola_db: Path, wispr_db: Path, overrides: Path
+) -> _E1Inputs:
+    """The deletion run's question filter (meetings recorded by Granola and Wispr, answered by
+    Chat), narrowed to list questions, each with Granola's transcript, AMI's reference and gold."""
+    from tenor.ami.corpus import load_meeting, meeting_note
+    from tenor.ami.questions import load_questions
+    from tenor.core.store import read_notes
+    from tenor.evals import deletion_ami as DA
+    from tenor.evals import list_check as E
+    from tenor.evals.wrong_facts import clean_answer, load_answers, roster
+
+    recs = DA.load_recordings({"granola": granola_db, "wispr": wispr_db}, overrides, read_notes)
+    notes = {p: DA.reader_notes(r, p) for p, r in recs.items()}
+    chat = {a.question_id: a.answer for a in load_answers(answers) if a.product == "granola"}
+    chat_text = {qid: clean_answer(a) for qid, a in chat.items()}  # as stage 3 judged it
+    picked, skipped = DA.select_questions(
+        load_questions(questions_file), {p: list(r) for p, r in recs.items()}, chat, DA.CONDITIONS
+    )
+    full = E.list_questions(picked)
+    by_title = {n.title: n for n in notes.get("granola", [])}
+    ami: dict[str, Any] = {}
+
+    def context(q: Any) -> Any:
+        (mid,) = q.meetings  # list questions are single-meeting
+        if mid not in ami:
+            ami[mid] = load_meeting(mid)
+        m = ami[mid]
+        ref_note = meeting_note(m)
+        return E.Context(
+            qid=q.id,
+            question=q.question,
+            category=q.type,
+            split=q.split,
+            transcript=E.transcript_lines(by_title[f"AMI {mid}"]),
+            reference=E.merge_turns(E.transcript_lines(ref_note, lambda u: u.speaker_name or "?")),
+            gold=E.gold_for(q, {s.sentence_id: s.text for s in m.sentences}, roster(q.meetings)),
+        )
+
+    return _E1Inputs(notes, chat_text, len(picked), skipped, full, [context(q) for q in full])
+
+
 @ami_app.command("list-check")
 def ami_list_check(
     conditions: Annotated[
@@ -3843,15 +3899,11 @@ def ami_list_check(
     from datetime import UTC, datetime
 
     from tenor.agents.baselines import Answer
-    from tenor.ami.corpus import load_meeting, meeting_note
-    from tenor.ami.questions import load_questions
     from tenor.blackbox.kit import check_committable
-    from tenor.core.store import read_notes
     from tenor.evals import deletion_ami as DA
     from tenor.evals import deletion_sim as D
     from tenor.evals import list_check as E
     from tenor.evals.runner import _git
-    from tenor.evals.wrong_facts import clean_answer, load_answers, roster
     from tenor.llm.client import (
         BudgetExceeded,
         Ledger,
@@ -3865,15 +3917,8 @@ def ami_list_check(
         raise typer.BadParameter(f"unknown conditions {unknown}; choose from {E.CONDITIONS}")
     if pilot and quote_only:
         raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
-    recs = DA.load_recordings({"granola": granola_db, "wispr": wispr_db}, overrides, read_notes)
-    notes = {p: DA.reader_notes(r, p) for p, r in recs.items()}
-    chat = {a.question_id: a.answer for a in load_answers(answers) if a.product == "granola"}
-    chat_text = {qid: clean_answer(a) for qid, a in chat.items()}  # as stage 3 judged it
-    # The deletion run's filter: meetings recorded by Granola and Wispr, answered by Chat.
-    picked, skipped = DA.select_questions(
-        load_questions(questions_file), {p: list(r) for p, r in recs.items()}, chat, DA.CONDITIONS
-    )
-    full = E.list_questions(picked)
+    inp = _e1_inputs(questions_file, answers, granola_db, wispr_db, overrides)
+    notes, chat_text, full, full_ctx = inp.notes, inp.chat_text, inp.full, inp.contexts
     pilot_qs = E.pilot_questions(full, pilot_n, seed)
     if only:
         wanted = {x.strip() for x in only.split(",") if x.strip()}
@@ -3884,31 +3929,11 @@ def ami_list_check(
     as_of = DA.as_of_day(n for ns in notes.values() for n in ns)  # as the deletion run
     reader = reader_model or DA.original_reader_model()
     typer.echo(
-        f"{len(full)} list questions ({n_dev} DEV) of {len(picked)} usable (skipped "
-        f"{skipped or 'none'}); pilot "
+        f"{len(full)} list questions ({n_dev} DEV) of {inp.n_usable} usable (skipped "
+        f"{inp.skipped or 'none'}); pilot "
         f"{len(pilot_qs)}: {', '.join(q.id for q in pilot_qs)}; reader {reader}, judge "
         f"{judge_model}"
     )
-    by_title = {n.title: n for n in notes.get("granola", [])}
-    ami: dict[str, Any] = {}
-
-    def context(q: Any) -> Any:
-        (mid,) = q.meetings  # list questions are single-meeting
-        if mid not in ami:
-            ami[mid] = load_meeting(mid)
-        m = ami[mid]
-        ref_note = meeting_note(m)
-        return E.Context(
-            qid=q.id,
-            question=q.question,
-            category=q.type,
-            split=q.split,
-            transcript=E.transcript_lines(by_title[f"AMI {mid}"]),
-            reference=E.merge_turns(E.transcript_lines(ref_note, lambda u: u.speaker_name or "?")),
-            gold=E.gold_for(q, {s.sentence_id: s.text for s in m.sentences}, roster(q.meetings)),
-        )
-
-    full_ctx = [context(q) for q in full]
     pilot_ctx = [c for c in full_ctx if c.qid in {q.id for q in pilot_qs}]
     cap = max_usd if max_usd is not None else (E.PILOT_MAX_USD if pilot else None)
     if cap is None and not quote_only:
@@ -4095,6 +4120,168 @@ def _json_scores(rec: dict[str, Any]) -> str:
     return ", ".join(
         f"{c} R={f(s['recall'])} P={f(s['precision_any'])}" for c, s in rec["scores"].items()
     )
+
+
+# -- E2: was it agreed? (docs/tracks/ANSWERS.md, "E2") ------------------------------------
+
+
+def _latest_e1(folder: Path) -> Path:
+    """The newest full (non-pilot) E1 result in ``folder``."""
+    runs = sorted(
+        p for p in folder.glob("*.json") if not p.name.endswith((".pilot.json", ".aggregate.json"))
+    )
+    if not runs:
+        raise typer.BadParameter(f"no E1 result in {folder}; run `tenor ami list-check` first")
+    return runs[-1]
+
+
+@ami_app.command("agreed-check")
+def ami_agreed_check(
+    e1: Annotated[
+        Path | None,
+        typer.Option(help="E1 result (default: the newest full run in data/ami/results/e1)."),
+    ] = None,
+    quote_only: Annotated[
+        bool, typer.Option("--quote", help="Price the full run and the pilot; spends nothing.")
+    ] = False,
+    pilot: Annotated[bool, typer.Option(help="Sandbox: the DEV questions only.")] = False,
+    max_usd: Annotated[
+        float | None,
+        typer.Option(help="Hard spend cap (the approved amount); a pilot defaults to $0.50."),
+    ] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    model: Annotated[
+        str | None, typer.Option(help="Classifier; default: E1's reader (the model that listed).")
+    ] = None,
+    batch: Annotated[
+        bool, typer.Option(help="Message Batches (half price, minutes of latency).")
+    ] = False,
+    seed: Annotated[int, typer.Option()] = 42,
+    answers: Annotated[Path, typer.Option(help="Granola Chat answers (question filter).")] = Path(
+        "data/ami/results/facts/answers_granola.clean.jsonl"
+    ),
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+    questions_file: Annotated[Path, typer.Option("--questions")] = Path(
+        "data/ami_questions/questions.jsonl"
+    ),
+    out_dir: OutDirOpt = AMI_RESULTS / "e2",
+) -> None:
+    """E2: classify each E1 listed item as agreed / assigned / raised (or only proposed,
+    mentioned, off topic); keep matching extras under Chat's answer, capped at K. Reuses E1's
+    items and judge verdicts. Start with --quote, then --pilot."""
+    import functools
+    import json as _json
+    from datetime import UTC, datetime
+
+    from tenor.evals import agreed_check as A
+    from tenor.evals import list_check as E
+    from tenor.evals.runner import _git
+    from tenor.llm.client import BudgetExceeded, Ledger, count_tokens, prefetch_structured
+
+    if pilot and quote_only:
+        raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
+    src = e1 or _latest_e1(AMI_RESULTS / "e1")
+    e1_run = _json.loads(src.read_text())
+    reader = model or str(e1_run["meta"]["reader_model"])  # default: the model that listed
+    inp = _e1_inputs(questions_file, answers, granola_db, wispr_db, overrides)
+    ctx_by = {c.qid: c for c in inp.contexts}
+    if missing := [r["qid"] for r in e1_run["records"] if r["qid"] not in ctx_by]:
+        raise typer.BadParameter(f"E1 questions without a context: {missing}")
+    full = [(r, ctx_by[r["qid"]]) for r in e1_run["records"]]
+    pilot_pairs = [(r, c) for r, c in full if r["split"] == "dev"]
+    cap = max_usd if max_usd is not None else (A.PILOT_MAX_USD if pilot else None)
+    if cap is None and not quote_only:
+        raise typer.BadParameter("paid runs need --max-usd (the approved amount); --pilot first")
+    ledger = Ledger()
+    reader_c = LLMClient(model=reader, ledger=ledger, max_usd=cap, offline=quote_only)
+    counter = functools.partial(count_tokens, model=reader, cache_dir=reader_c.cache_dir)
+    fq = A.quote(full, reader_c, counter, batch=batch)
+    pq = A.quote(pilot_pairs, reader_c, counter, batch=batch)
+    for label, n, q in (("full", len(full), fq), ("pilot (DEV)", len(pilot_pairs), pq)):
+        typer.echo(
+            f"{label}: {n} questions, {q.calls} classifier calls ({q.cached} cached), "
+            f"{q.input_tokens:,} input tokens (exact) -> ${q.usd_expected:.3f} expected, "
+            f"${q.usd_high:.3f} high ({reader}{', batch' if batch else ''}; "
+            f"output ASSUMED {A.ASSUMED_OUT})"
+        )
+    if quote_only:
+        typer.echo(f"source: {src}. No money spent (token counting is free).")
+        return
+    assert cap is not None
+    run = pilot_pairs if pilot else full
+    high = pq.usd_high if pilot else fq.usd_high
+    if high > cap:
+        typer.echo(f"high estimate ${high:.2f} exceeds the cap ${cap:.2f}", err=True)
+        raise typer.Exit(1)
+    if not yes:
+        typer.confirm(
+            f"{'PILOT: ' if pilot else ''}Classify the items of {len(run)} questions "
+            f"(hard cap ${cap:.2f}, quoted high ${high:.2f})?",
+            abort=True,
+        )
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    records: list[dict[str, Any]] = []
+    stopped = None
+    try:
+        if batch:  # results land in the cache; the loop below replays them
+            reqs = [
+                A.agreed_request(c.question, it, c.transcript)
+                for r, c in run
+                for it in A.e1_items(r)
+            ]
+            br = prefetch_structured(reader_c, reqs)
+            typer.echo(f"batch: {br.succeeded} of {br.submitted} cached, fallback {br.fallback}")
+        for rec, ctx in run:
+            records.append(A.run_question(rec, ctx, reader_c))
+            v = records[-1]["variants"]
+            typer.echo(
+                f"{rec['qid']}: "
+                + ", ".join(f"{k} R={v[k]['recall']:.2f} x{v[k]['n_extras']}" for k in A.VARIANTS)
+                + f" (spent ${ledger.spent_usd():.4f})"
+            )
+    except BudgetExceeded as e:
+        stopped = str(e)
+    after = A.quote(full, LLMClient(model=reader, offline=True), counter, batch=batch)
+    result = {
+        "meta": {
+            "date": stamp,
+            "git": _git(),
+            "seed": seed,
+            "classifier_model": reader,
+            "batch": batch,
+            "prompt": A.PROMPT,
+            "window_lines": A.WINDOW,
+            "caps": dict(A.CAPS),
+            "dedupe": "gold mapping (E1 judge): oracle, as E1's extras were counted",
+            "pilot": pilot,
+            "max_usd": cap,
+            "e1_source": str(src),
+            "e1_git": e1_run["meta"].get("git"),
+            "questions": [r["qid"] for r in records],
+            "stopped_early": stopped,
+            "spent_usd": ledger.spent_usd(),
+            "ledger_by_stage": ledger.by_stage(),
+        },
+        "summary": A.summarize(records, seed),
+        "reprice": A.reprice(ledger.to_json(), sum(after.per_question.values())) if pilot else None,
+        "records": records,
+        "ledger": ledger.to_json(),
+    }
+    path = out_dir / f"{stamp}{'.pilot' if pilot else ''}.json"
+    E.write_json(path, result)
+    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}) · {path}")
+    if stopped:
+        typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
+        raise typer.Exit(1)
+    if pilot and isinstance(result["reprice"], dict):
+        r = result["reprice"]
+        typer.echo(
+            f"full run re-priced from the pilot ledger: {r['full_uncached_calls']} calls x "
+            f"${r['usd_per_call']:.4f} = ${r['full_usd']:.2f}; ${r['full_usd_with_margin']:.2f} "
+            f"with x{A.MARGIN} margin. Ask before any run over $2."
+        )
 
 
 # -- MCP contract check (packages/tenor/sources/contract.py) -----------------------------
