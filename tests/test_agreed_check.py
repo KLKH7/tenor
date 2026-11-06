@@ -98,6 +98,9 @@ def test_agreed_extras_filter_rank_cap() -> None:
     assert A.agreed_extras(items, verdicts, "decision", None) == ["I3", "I2", "I4"]
     assert A.agreed_extras(items, verdicts, "decision", 2) == ["I3", "I2"]
     assert A.agreed_extras(items, verdicts, "action_what", None) == []
+    # E1's checker verdict ranks first: unconfirmed I5, even at confidence 99, comes last.
+    verdicts["I5"] = _v("agreed_decision", conf=99)
+    assert A.agreed_extras(items, verdicts, "decision", None) == ["I3", "I2", "I4", "I5"]
 
 
 def test_window_is_cited_lines_plus_k_each_side() -> None:
@@ -189,7 +192,13 @@ def test_summarize_splits_pairs_and_diagnostics(tmp_path: Path) -> None:
     assert d["statuses"]["agreed_decision"] == 4 and d["statuses"]["proposed_only"] == 6
     # Gold items: I1 and I2 on each question; only I2 is kept. q1's I1 is redundant.
     assert d["gold_items_kept"] == {"all": "2 / 4", "non_redundant": "2 / 3"}
+    assert set(s["all"]["by_category"]) == {"decision"}
     assert s == A.summarize(recs, seed=1)  # deterministic
+    agg = A.aggregate({"meta": {"questions": ["q1", "q2"], "ledger_by_stage": {}}, "summary": s})
+    assert agg["meta"]["n_questions"] == 2 and "questions" not in agg["meta"]
+    from tenor.blackbox.kit import check_committable
+
+    check_committable(agg, A.private_texts(recs, ["What was decided in that meeting?"]))
 
 
 def test_quote_counts_uncached_and_reprice(tmp_path: Path) -> None:

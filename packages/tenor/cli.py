@@ -4167,6 +4167,10 @@ def ami_agreed_check(
         "data/ami_questions/questions.jsonl"
     ),
     out_dir: OutDirOpt = AMI_RESULTS / "e2",
+    commit_to: Annotated[
+        Path | None,
+        typer.Option(help="Also write the numbers-only aggregate here (checked). Not a pilot."),
+    ] = None,
 ) -> None:
     """E2: classify each E1 listed item as agreed / assigned / raised (or only proposed,
     mentioned, off topic); keep matching extras under Chat's answer, capped at K. Reuses E1's
@@ -4175,6 +4179,7 @@ def ami_agreed_check(
     import json as _json
     from datetime import UTC, datetime
 
+    from tenor.blackbox.kit import check_committable
     from tenor.evals import agreed_check as A
     from tenor.evals import list_check as E
     from tenor.evals.runner import _git
@@ -4272,6 +4277,12 @@ def ami_agreed_check(
     path = out_dir / f"{stamp}{'.pilot' if pilot else ''}.json"
     E.write_json(path, result)
     typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}) · {path}")
+    agg = A.aggregate(result)
+    check_committable(agg, A.private_texts(records, [c.question for _r, c in run]))
+    E.write_json(out_dir / f"{stamp}{'.pilot' if pilot else ''}.aggregate.json", agg)
+    if commit_to is not None and not pilot and not stopped:
+        E.write_json(commit_to, agg)
+        typer.echo(f"aggregate (numbers only): {commit_to}")
     if stopped:
         typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
         raise typer.Exit(1)

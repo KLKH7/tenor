@@ -18,7 +18,9 @@ Per question, from E1's cached record (no new listing or judge calls):
    states at least one gold item and every gold item it states is one Chat's answer covers.
    This is an oracle (a product has no gold); it is also exactly how E1's extras were counted,
    so the comparison isolates the classifier. A product needs its own dedupe step instead.
-4. **Cap** at K, ranked by confidence (ties: transcript order). K = 2, 3 and uncapped.
+4. **Cap** at K. Rank: E1's checker verdict first (confirmed before unconfirmed), then the
+   classifier's confidence, then E1's list order (deterministic). K = 2, 3 and uncapped.
+   (Confidence alone tied often and lost a gold decision at K = 2 on DEV.)
 
 Scoring reuses E1's per-item judge verdicts: an extra is right (lenient) if the judge mapped it
 to a gold item or marked it true per AMI's reference transcript; strictly right if it maps to
@@ -220,9 +222,10 @@ def keeps(category: str, v: Verdict) -> bool:
 def agreed_extras(
     items: Sequence[E1Item], verdicts: Mapping[str, Verdict], category: str, k: int | None
 ) -> list[str]:
-    """Non-redundant items the classifier keeps, by confidence (ties: E1 order), top ``k``."""
+    """Non-redundant items the classifier keeps, top ``k``: E1-confirmed first, then by the
+    classifier's confidence, then E1 order."""
     kept = [it for it in items if not it.redundant and keeps(category, verdicts[it.id])]
-    kept.sort(key=lambda it: (-verdicts[it.id].confidence, it.order))
+    kept.sort(key=lambda it: (not it.confirmed, -verdicts[it.id].confidence, it.order))
     return [it.id for it in (kept if k is None else kept[:k])]
 
 
@@ -344,7 +347,7 @@ def diagnostics(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     non-redundant ones (the candidates for extras); and the status counts."""
     statuses: dict[str, int] = dict.fromkeys(STATUSES, 0)
     cells = {
-        scope: {k: {"items": 0, "right": 0, "gold": 0} for k in ("kept", "dropped")}
+        scope: {k: {"items": 0, "right": 0, "gold_items": 0} for k in ("kept", "dropped")}
         for scope in ("all", "non_redundant")
     }
     for r in records:
@@ -359,9 +362,9 @@ def diagnostics(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 c = cells[scope][kept]
                 c["items"] += 1
                 c["right"] += int(right)
-                c["gold"] += int(bool(it["gold"]))
-    gold_kept = {s: cells[s]["kept"]["gold"] for s in cells}
-    gold_all = {s: cells[s]["kept"]["gold"] + cells[s]["dropped"]["gold"] for s in cells}
+                c["gold_items"] += int(bool(it["gold"]))
+    gold_kept = {s: cells[s]["kept"]["gold_items"] for s in cells}
+    gold_all = {s: gold_kept[s] + cells[s]["dropped"]["gold_items"] for s in cells}
     return {
         "statuses": statuses,
         "keep_vs_judge": cells,
@@ -371,8 +374,8 @@ def diagnostics(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]:
     """Per split (dev, test, all): each variant's means with 95% bootstrap CIs over questions,
-    micro precision with a Wilson CI, gold items dropped; paired sign tests (:data:`PAIRS`);
-    classifier diagnostics."""
+    micro precision with a Wilson CI, gold items dropped, the same per category; paired sign
+    tests (:data:`PAIRS`); classifier diagnostics."""
     out: dict[str, Any] = {}
     for split in ("dev", "test", "all"):
         rs = [r for r in records if split == "all" or r["split"] == split]
@@ -389,7 +392,37 @@ def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str,
             }
             for a, b in PAIRS
         }
-        out[split] = {"variants": per, "paired": paired, "diagnostics": diagnostics(rs)}
+        by_cat = {
+            cat: {
+                v: _variant_summary([r["variants"][v] for r in rs if r["category"] == cat], seed)
+                for v in VARIANTS
+            }
+            for cat in sorted({r["category"] for r in rs})
+        }
+        out[split] = {
+            "variants": per,
+            "by_category": by_cat,
+            "paired": paired,
+            "diagnostics": diagnostics(rs),
+        }
+    return out
+
+
+def aggregate(result: Mapping[str, Any]) -> dict[str, Any]:
+    """Numbers only, safe to commit: the run's meta (no question IDs, no ledger) and summary."""
+    meta = dict(result["meta"])
+    meta["n_questions"] = len(meta.pop("questions", []))
+    meta.pop("ledger_by_stage", None)
+    meta["labels"] = dict(LABELS)
+    return {"meta": meta, "summary": result["summary"]}
+
+
+def private_texts(records: Sequence[Mapping[str, Any]], questions: Iterable[str]) -> list[str]:
+    """Strings a committed aggregate must not contain: questions, items, quotes, reasons."""
+    out = list(questions)
+    for r in records:
+        out += [it["text"] for it in r["items"]] + [it["quote"] for it in r["items"]]
+        out += [v["reason"] for v in r["verdicts"].values()]
     return out
 
 

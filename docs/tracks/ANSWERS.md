@@ -99,11 +99,46 @@ Cost: $7.83 in total (pilot $0.37, map $2.23, merge $0.44, check + judge $4.78),
 | **Classify** | One call per item (`agreed_check.v3`): the question, the item, its quote and ±8 Granola transcript lines around the cited lines. Output: a status (agreed decision, assigned action, problem raised, proposed only, mentioned only, other topic), whether it answers the question as asked, a 0–100 confidence, a one-line reason |
 | **Keep** | Status matches the question's kind (decision, action, problem) and it answers the question |
 | **Dedupe** | Drop items Chat's answer already has, by E1's judge mapping (the item states gold items, all of them covered by Chat). An oracle a product lacks; it is how E1's extras were counted, so the comparison isolates the classifier |
-| **Cap** | Top K by confidence (ties: transcript order); K = 2, 3 and uncapped |
+| **Cap** | Top K: E1's checker verdict first (confirmed before unconfirmed), then the classifier's confidence, then E1's list order; K = 2, 3 and uncapped (changed on DEV: confidence alone tied often) |
 
 - **Baselines.** Chat alone; Chat + every E1 extra; Chat + the extras E1's checker confirmed (the "+N more" line).
 - **Metrics,** per question then mean with 95% bootstrap CIs: recall of Chat + extras; extras per question; precision of the extras (lenient: E1's judge marked it gold or true per the reference transcript; strict: gold); gold items the filter drops that the unfiltered extras had. Sign tests of each K against both baselines.
 - **No new judge calls.** Every extra is an E1 item, so E1's item verdicts score it.
 - **Split.** Prompt changes only on the 6 DEV questions; TEST (24) reported separately.
 - **Known limits.** The lenient judge accepts true items of the wrong kind, so it can hide the filter's gain; the strict column shows it. Items that misname a person pass the filter (it checks agreement, not names). DEV has 1 gold item Chat missed, so DEV says almost nothing about recall.
-- **Status.** Pilot on DEV run; full run not run. Code: `tenor ami agreed-check` ([`agreed_check.py`](../../packages/tenor/evals/agreed_check.py)).
+- **Classifier.** Claude Haiku 5.5: cheap enough to iterate on DEV, and a different model from the lister (Opus) and the judge (Sonnet). An Opus pilot on DEV was stricter, not better (it kept 6 of 9 gold items; Haiku 8–9).
+- **Status.** Full run done (results below). Code: `tenor ami agreed-check` ([`agreed_check.py`](../../packages/tenor/evals/agreed_check.py)).
+
+### E2 results (Preliminary)
+
+Real AMI meetings played into Granola. **TEST, 24 list questions** (DEV, 6, used to fix the prompt and the ranking). Haiku 5.5, `agreed_check.v3`. Mean per question, 95% bootstrap CI; precision of the extras is E1's lenient judge verdict, micro (all extras pooled) with a Wilson CI. Numbers: [`evals/reports/ami/agreed_check.json`](../../evals/reports/ami/agreed_check.json).
+
+| Under Chat's answer | Recall | Extras / question | Extras right (micro) |
+|---|---|---|---|
+| Nothing (Chat alone) | 0.72 [0.56, 0.87] | 0 | – |
+| Every E1 extra | 0.89 [0.77, 0.99] | 10.3 [8.3, 12.3] | 54% [47, 60] |
+| **E1-checked extras (the "+N more" line)** | 0.85 [0.71, 0.97] | 8.0 [6.0, 9.9] | 63% [56, 69] |
+| Agreed extras, uncapped | 0.80 [0.65, 0.92] | 4.2 [2.5, 6.2] | **78%** [69, 85] |
+| Agreed extras, top 3 | 0.74 [0.57, 0.88] | 2.0 [1.5, 2.4] | 70% [56, 81] |
+| Agreed extras, top 2 | 0.74 [0.57, 0.88] | 1.5 [1.1, 1.8] | 69% [52, 81] |
+
+| Sign test vs the "+N more" line (n = 24) | Fewer extras: wins / losses | Precision: wins / losses | Recall: wins / losses |
+|---|---|---|---|
+| Agreed, uncapped | **22 / 1, p < 0.001** | 11 / 4, p = 0.12 (not significant) | 0 / 3, p = 0.25 (not significant) |
+| Agreed, top 3 | **23 / 0, p < 0.001** | 11 / 4, p = 0.12 (not significant) | 0 / 5, p = 0.06 (not significant) |
+| Agreed, top 2 | **23 / 0, p < 0.001** | 11 / 4, p = 0.12 (not significant) | 0 / 5, p = 0.06 (not significant) |
+
+- **The check cuts the extras by half to three quarters, and the extras it keeps are more often right.** Uncapped: 4.2 per question instead of 8.0, 78% right instead of 63% (pooled CIs overlap only slightly; per-question precision is not significant).
+- **It gives back recall.** On TEST, the unfiltered extras add 10 gold items Chat missed. The filter drops 4 of them uncapped and 6 at top 3 or top 2. At top 3, recall (0.74) is back to Chat's own (0.72): the cap keeps almost none of E1's recall gain.
+- **The classifier separates right from wrong items.** Of the 248 candidate extras, the ones it kept were right 78% of the time (79 / 101), the ones it dropped 37% (54 / 147). But it kept only 6 of the 10 gold items among them.
+- **The ranking is the weak link.** The gold items it keeps are often not in the top 2–3. A better ranking, not a better filter, is what K = 2–3 needs.
+- **By category** (TEST): decisions (n = 9) recall 0.63 Chat, 0.85 "+N more", 0.74 uncapped, 0.63 top 3; extras right 64% → 76%. Actions (n = 12): 0.76, 0.82, 0.80, 0.80; extras right 33% → 46–53%. Problems (n = 3): every extra was already judged right, so the filter only removes items.
+
+**Threats to validity**
+- **Oracle dedupe.** Items Chat already has are removed with the judge's gold mapping. A product has no gold; a real dedupe step would add its own errors.
+- **Run-to-run variance.** Two Haiku runs of the same prompt disagreed on 3 of 50 keep / drop calls (DEV).
+- **Wrong names pass the filter.** It checks whether something was agreed, not who it was assigned to, so an item that names the wrong person can be kept.
+- **Small n.** 24 TEST questions, 10 gold items the extras could add, 3 problem questions; 19 of the 24 TEST questions come from 3 meetings of one series.
+- **One product's transcripts.** Granola's transcripts only, all lines labelled "Them". E1's lenient judge, not a human, decides "right".
+
+Cost: $0.36 in total (DEV pilots $0.28, of which an Opus comparison $0.23; TEST run $0.08), under the $0.50 caps.

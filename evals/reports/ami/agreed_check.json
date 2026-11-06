@@ -1,0 +1,3028 @@
+{
+ "meta": {
+  "batch": false,
+  "caps": {
+   "A": null,
+   "A2": 2,
+   "A3": 3
+  },
+  "classifier_model": "claude-haiku-5-5",
+  "date": "20261106T022822Z",
+  "dedupe": "gold mapping (E1 judge): oracle, as E1's extras were counted",
+  "e1_git": {
+   "dirty": true,
+   "sha": "db0ad38"
+  },
+  "e1_source": "data/ami/results/e1/20261106T002704Z.json",
+  "git": {
+   "dirty": true,
+   "sha": "f38922e"
+  },
+  "labels": {
+   "A": "Chat + agreed extras, uncapped",
+   "A2": "Chat + agreed extras, top 2",
+   "A3": "Chat + agreed extras, top 3",
+   "C": "Chat alone",
+   "U": "Chat + every E1 extra (unfiltered)",
+   "V": "Chat + E1-checked extras (the '+N more' line)"
+  },
+  "max_usd": 0.5,
+  "n_questions": 30,
+  "pilot": false,
+  "prompt": "agreed_check.v3",
+  "seed": 42,
+  "spent_usd": 0.0778761,
+  "stopped_early": null,
+  "window_lines": 8
+ },
+ "summary": {
+  "all": {
+   "by_category": {
+    "action_what": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.3125
+      ],
+      "ci_micro_precision_any": [
+       0.3933,
+       0.7183
+      ],
+      "ci_n_extras": [
+       1.375,
+       2.625
+      ],
+      "ci_precision_any": [
+       0.375,
+       0.8214
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.2143
+      ],
+      "ci_recall": [
+       0.6625,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.125,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.6071428571428571,
+      "mean_precision_gold": 0.07142857142857142,
+      "mean_recall": 0.85,
+      "micro_extras": 32,
+      "micro_precision_any": 0.5625,
+      "n_questions": 16
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       0.3125
+      ],
+      "ci_micro_precision_any": [
+       0.4452,
+       0.7975
+      ],
+      "ci_n_extras": [
+       1.1875,
+       1.875
+      ],
+      "ci_precision_any": [
+       0.3929,
+       0.8571
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.2143
+      ],
+      "ci_recall": [
+       0.6625,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.125,
+      "mean_n_extras": 1.5625,
+      "mean_precision_any": 0.6428571428571429,
+      "mean_precision_gold": 0.07142857142857142,
+      "mean_recall": 0.85,
+      "micro_extras": 25,
+      "micro_precision_any": 0.64,
+      "n_questions": 16
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.3125
+      ],
+      "ci_micro_precision_any": [
+       0.44,
+       0.7731
+      ],
+      "ci_n_extras": [
+       1.3125,
+       2.25
+      ],
+      "ci_precision_any": [
+       0.381,
+       0.8571
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.2143
+      ],
+      "ci_recall": [
+       0.6625,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.125,
+      "mean_n_extras": 1.8125,
+      "mean_precision_any": 0.630952380952381,
+      "mean_precision_gold": 0.07142857142857142,
+      "mean_recall": 0.85,
+      "micro_extras": 29,
+      "micro_precision_any": 0.6206896551724138,
+      "n_questions": 16
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       0.375
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.6312,
+       0.9688
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.1875,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.81875,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 16
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.2549,
+       0.4289
+      ],
+      "ci_n_extras": [
+       5.1875,
+       8.8125
+      ],
+      "ci_precision_any": [
+       0.2173,
+       0.5243
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.042
+      ],
+      "ci_recall": [
+       0.7875,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 6.875,
+      "mean_precision_any": 0.3623941163003663,
+      "mean_precision_gold": 0.018944597069597068,
+      "mean_recall": 0.925,
+      "micro_extras": 110,
+      "micro_precision_any": 0.33636363636363636,
+      "n_questions": 16
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.1875
+      ],
+      "ci_micro_precision_any": [
+       0.2966,
+       0.5131
+      ],
+      "ci_n_extras": [
+       3.3125,
+       6.0625
+      ],
+      "ci_precision_any": [
+       0.2593,
+       0.5829
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0815
+      ],
+      "ci_recall": [
+       0.675,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.0625,
+      "mean_n_extras": 4.6875,
+      "mean_precision_any": 0.4099470899470899,
+      "mean_precision_gold": 0.029629629629629627,
+      "mean_recall": 0.8625,
+      "micro_extras": 75,
+      "micro_precision_any": 0.4,
+      "n_questions": 16
+     }
+    },
+    "decision": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.5
+      ],
+      "ci_micro_precision_any": [
+       0.6066,
+       0.8618
+      ],
+      "ci_n_extras": [
+       2.0,
+       6.4
+      ],
+      "ci_precision_any": [
+       0.5942,
+       0.8511
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.1396
+      ],
+      "ci_recall": [
+       0.5167,
+       0.9
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.2,
+      "mean_n_extras": 4.1,
+      "mean_precision_any": 0.7252628324056895,
+      "mean_precision_gold": 0.06168831168831169,
+      "mean_recall": 0.7166666666666667,
+      "micro_extras": 41,
+      "micro_precision_any": 0.7560975609756098,
+      "n_questions": 10
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.1,
+       0.7
+      ],
+      "ci_micro_precision_any": [
+       0.4535,
+       0.8828
+      ],
+      "ci_n_extras": [
+       0.8,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.5714,
+       0.8571
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.3,
+       0.8167
+      ],
+      "gold_dropped_total": 4,
+      "mean_gold_dropped": 0.4,
+      "mean_n_extras": 1.4,
+      "mean_precision_any": 0.7142857142857143,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.5666666666666667,
+      "micro_extras": 14,
+      "micro_precision_any": 0.7142857142857143,
+      "n_questions": 10
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.6
+      ],
+      "ci_micro_precision_any": [
+       0.5313,
+       0.8881
+      ],
+      "ci_n_extras": [
+       1.1,
+       2.8
+      ],
+      "ci_precision_any": [
+       0.619,
+       0.8571
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.1429
+      ],
+      "ci_recall": [
+       0.3833,
+       0.8333
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.3,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.738095238095238,
+      "mean_precision_gold": 0.047619047619047616,
+      "mean_recall": 0.6166666666666667,
+      "micro_extras": 20,
+      "micro_precision_any": 0.75,
+      "n_questions": 10
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.1,
+       0.7
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.3,
+       0.8167
+      ],
+      "gold_dropped_total": 4,
+      "mean_gold_dropped": 0.4,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.5666666666666667,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 10
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.4912,
+       0.6686
+      ],
+      "ci_n_extras": [
+       9.2,
+       14.2
+      ],
+      "ci_precision_any": [
+       0.3873,
+       0.7146
+      ],
+      "ci_precision_gold": [
+       0.0083,
+       0.0724
+      ],
+      "ci_recall": [
+       0.6,
+       0.9667
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 11.5,
+      "mean_precision_any": 0.5586405261405261,
+      "mean_precision_gold": 0.03705128205128205,
+      "mean_recall": 0.8166666666666667,
+      "micro_extras": 115,
+      "micro_precision_any": 0.5826086956521739,
+      "n_questions": 10
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5659,
+       0.7542
+      ],
+      "ci_n_extras": [
+       7.0,
+       11.6
+      ],
+      "ci_precision_any": [
+       0.4625,
+       0.8025
+      ],
+      "ci_precision_gold": [
+       0.0083,
+       0.0792
+      ],
+      "ci_recall": [
+       0.6,
+       0.9667
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 9.3,
+      "mean_precision_any": 0.638888888888889,
+      "mean_precision_gold": 0.041249999999999995,
+      "mean_recall": 0.8166666666666667,
+      "micro_extras": 93,
+      "micro_precision_any": 0.6666666666666666,
+      "n_questions": 10
+     }
+    },
+    "problem": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.897,
+       0.9965
+      ],
+      "ci_n_extras": [
+       10.0,
+       15.5
+      ],
+      "ci_precision_any": [
+       0.9318,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.25
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 12.75,
+      "mean_precision_any": 0.9772727272727273,
+      "mean_precision_gold": 0.08333333333333333,
+      "mean_recall": 1.0,
+      "micro_extras": 51,
+      "micro_precision_any": 0.9803921568627451,
+      "n_questions": 4
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       0.75
+      ],
+      "ci_micro_precision_any": [
+       0.5291,
+       0.9776
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.625,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.625,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.25,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.875,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.875,
+      "micro_extras": 8,
+      "micro_precision_any": 0.875,
+      "n_questions": 4
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.75
+      ],
+      "ci_micro_precision_any": [
+       0.6461,
+       0.9851
+      ],
+      "ci_n_extras": [
+       3.0,
+       3.0
+      ],
+      "ci_precision_any": [
+       0.75,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.625,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.25,
+      "mean_n_extras": 3.0,
+      "mean_precision_any": 0.9166666666666666,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.875,
+      "micro_extras": 12,
+      "micro_precision_any": 0.9166666666666666,
+      "n_questions": 4
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       0.75
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.625,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.25,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.875,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 4
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.8729,
+       0.9842
+      ],
+      "ci_n_extras": [
+       13.0,
+       19.5
+      ],
+      "ci_precision_any": [
+       0.8846,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.1731
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 16.25,
+      "mean_precision_any": 0.9423076923076923,
+      "mean_precision_gold": 0.057692307692307696,
+      "mean_recall": 1.0,
+      "micro_extras": 65,
+      "micro_precision_any": 0.9538461538461539,
+      "n_questions": 4
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.8651,
+       0.9831
+      ],
+      "ci_n_extras": [
+       12.5,
+       18.25
+      ],
+      "ci_precision_any": [
+       0.8814,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.125
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 15.25,
+      "mean_precision_any": 0.9407051282051282,
+      "mean_precision_gold": 0.041666666666666664,
+      "mean_recall": 1.0,
+      "micro_extras": 61,
+      "micro_precision_any": 0.9508196721311475,
+      "n_questions": 4
+     }
+    }
+   },
+   "diagnostics": {
+    "gold_items_kept": {
+     "all": "54 / 78",
+     "non_redundant": "7 / 11"
+    },
+    "keep_vs_judge": {
+     "all": {
+      "dropped": {
+       "gold_items": 24,
+       "items": 186,
+       "right": 87
+      },
+      "kept": {
+       "gold_items": 54,
+       "items": 171,
+       "right": 146
+      }
+     },
+     "non_redundant": {
+      "dropped": {
+       "gold_items": 4,
+       "items": 166,
+       "right": 67
+      },
+      "kept": {
+       "gold_items": 7,
+       "items": 124,
+       "right": 99
+      }
+     }
+    },
+    "statuses": {
+     "agreed_decision": 79,
+     "assigned_action": 96,
+     "mentioned_only": 15,
+     "other_topic": 0,
+     "problem_raised": 74,
+     "proposed_only": 93
+    }
+   },
+   "paired": {
+    "A vs U": {
+     "n_extras": {
+      "losses": 30,
+      "n": 30,
+      "sign_p": 1.862645149230957e-09,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 5,
+      "n": 25,
+      "sign_p": 0.02660369873046875,
+      "ties": 4,
+      "wins": 16
+     },
+     "recall": {
+      "losses": 4,
+      "n": 30,
+      "sign_p": 0.125,
+      "ties": 26,
+      "wins": 0
+     }
+    },
+    "A vs V": {
+     "n_extras": {
+      "losses": 28,
+      "n": 30,
+      "sign_p": 1.1175870895385742e-07,
+      "ties": 1,
+      "wins": 1
+     },
+     "precision_any": {
+      "losses": 5,
+      "n": 25,
+      "sign_p": 0.063568115234375,
+      "ties": 6,
+      "wins": 14
+     },
+     "recall": {
+      "losses": 3,
+      "n": 30,
+      "sign_p": 0.25,
+      "ties": 27,
+      "wins": 0
+     }
+    },
+    "A2 vs U": {
+     "n_extras": {
+      "losses": 30,
+      "n": 30,
+      "sign_p": 1.862645149230957e-09,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 7,
+      "n": 25,
+      "sign_p": 0.18924713134765625,
+      "ties": 4,
+      "wins": 14
+     },
+     "recall": {
+      "losses": 7,
+      "n": 30,
+      "sign_p": 0.015625,
+      "ties": 23,
+      "wins": 0
+     }
+    },
+    "A2 vs V": {
+     "n_extras": {
+      "losses": 29,
+      "n": 30,
+      "sign_p": 3.725290298461914e-09,
+      "ties": 1,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 6,
+      "n": 25,
+      "sign_p": 0.1670684814453125,
+      "ties": 6,
+      "wins": 13
+     },
+     "recall": {
+      "losses": 6,
+      "n": 30,
+      "sign_p": 0.03125,
+      "ties": 24,
+      "wins": 0
+     }
+    },
+    "A3 vs U": {
+     "n_extras": {
+      "losses": 30,
+      "n": 30,
+      "sign_p": 1.862645149230957e-09,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 7,
+      "n": 25,
+      "sign_p": 0.18924713134765625,
+      "ties": 4,
+      "wins": 14
+     },
+     "recall": {
+      "losses": 6,
+      "n": 30,
+      "sign_p": 0.03125,
+      "ties": 24,
+      "wins": 0
+     }
+    },
+    "A3 vs V": {
+     "n_extras": {
+      "losses": 29,
+      "n": 30,
+      "sign_p": 3.725290298461914e-09,
+      "ties": 1,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 6,
+      "n": 25,
+      "sign_p": 0.1670684814453125,
+      "ties": 6,
+      "wins": 13
+     },
+     "recall": {
+      "losses": 5,
+      "n": 30,
+      "sign_p": 0.0625,
+      "ties": 25,
+      "wins": 0
+     }
+    }
+   },
+   "variants": {
+    "A": {
+     "ci_gold_dropped": [
+      0.0333,
+      0.2667
+     ],
+     "ci_micro_precision_any": [
+      0.7193,
+      0.8595
+     ],
+     "ci_n_extras": [
+      2.7,
+      5.6667
+     ],
+     "ci_precision_any": [
+      0.5473,
+      0.8316
+     ],
+     "ci_precision_gold": [
+      0.0073,
+      0.1606
+     ],
+     "ci_recall": [
+      0.7044,
+      0.9333
+     ],
+     "gold_dropped_total": 4,
+     "mean_gold_dropped": 0.13333333333333333,
+     "mean_n_extras": 4.133333333333334,
+     "mean_precision_any": 0.6994372294372294,
+     "mean_precision_gold": 0.0706060606060606,
+     "mean_recall": 0.8255555555555555,
+     "micro_extras": 124,
+     "micro_precision_any": 0.7983870967741935,
+     "n_questions": 30
+    },
+    "A2": {
+     "ci_gold_dropped": [
+      0.1,
+      0.4
+     ],
+     "ci_micro_precision_any": [
+      0.5602,
+      0.8135
+     ],
+     "ci_n_extras": [
+      1.2667,
+      1.8
+     ],
+     "ci_precision_any": [
+      0.54,
+      0.84
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.12
+     ],
+     "ci_recall": [
+      0.62,
+      0.8889
+     ],
+     "gold_dropped_total": 7,
+     "mean_gold_dropped": 0.23333333333333334,
+     "mean_n_extras": 1.5666666666666667,
+     "mean_precision_any": 0.7,
+     "mean_precision_gold": 0.04,
+     "mean_recall": 0.7588888888888888,
+     "micro_extras": 47,
+     "micro_precision_any": 0.7021276595744681,
+     "n_questions": 30
+    },
+    "A3": {
+     "ci_gold_dropped": [
+      0.0667,
+      0.3333
+     ],
+     "ci_micro_precision_any": [
+      0.5983,
+      0.8181
+     ],
+     "ci_n_extras": [
+      1.6333,
+      2.4333
+     ],
+     "ci_precision_any": [
+      0.5533,
+      0.84
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.1467
+     ],
+     "ci_recall": [
+      0.6422,
+      0.8978
+     ],
+     "gold_dropped_total": 6,
+     "mean_gold_dropped": 0.2,
+     "mean_n_extras": 2.033333333333333,
+     "mean_precision_any": 0.7066666666666667,
+     "mean_precision_gold": 0.05333333333333333,
+     "mean_recall": 0.7755555555555556,
+     "micro_extras": 61,
+     "micro_precision_any": 0.7213114754098361,
+     "n_questions": 30
+    },
+    "C": {
+     "ci_gold_dropped": [
+      0.1,
+      0.4333
+     ],
+     "ci_micro_precision_any": null,
+     "ci_n_extras": [
+      0.0,
+      0.0
+     ],
+     "ci_precision_any": null,
+     "ci_precision_gold": null,
+     "ci_recall": [
+      0.6056,
+      0.8733
+     ],
+     "gold_dropped_total": 8,
+     "mean_gold_dropped": 0.26666666666666666,
+     "mean_n_extras": 0.0,
+     "mean_precision_any": null,
+     "mean_precision_gold": null,
+     "mean_recall": 0.7422222222222222,
+     "micro_extras": 0,
+     "micro_precision_any": null,
+     "n_questions": 30
+    },
+    "U": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.5149,
+      0.628
+     ],
+     "ci_n_extras": [
+      7.9,
+      11.5667
+     ],
+     "ci_precision_any": [
+      0.3816,
+      0.6243
+     ],
+     "ci_precision_gold": [
+      0.0105,
+      0.0513
+     ],
+     "ci_recall": [
+      0.7933,
+      0.9833
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 9.666666666666666,
+     "mean_precision_any": 0.5051313963813964,
+     "mean_precision_gold": 0.030146520146520146,
+     "mean_recall": 0.8988888888888888,
+     "micro_extras": 290,
+     "micro_precision_any": 0.5724137931034483,
+     "n_questions": 30
+    },
+    "V": {
+     "ci_gold_dropped": [
+      0.0,
+      0.1
+     ],
+     "ci_micro_precision_any": [
+      0.5914,
+      0.7136
+     ],
+     "ci_n_extras": [
+      5.9,
+      9.3333
+     ],
+     "ci_precision_any": [
+      0.437,
+      0.6908
+     ],
+     "ci_precision_gold": [
+      0.0115,
+      0.0671
+     ],
+     "ci_recall": [
+      0.7444,
+      0.9667
+     ],
+     "gold_dropped_total": 1,
+     "mean_gold_dropped": 0.03333333333333333,
+     "mean_n_extras": 7.633333333333334,
+     "mean_precision_any": 0.562100543135026,
+     "mean_precision_gold": 0.03529693486590038,
+     "mean_recall": 0.8655555555555555,
+     "micro_extras": 229,
+     "micro_precision_any": 0.6550218340611353,
+     "n_questions": 30
+    }
+   }
+  },
+  "dev": {
+   "by_category": {
+    "action_what": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5291,
+       0.9776
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.625,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.875,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 8,
+      "micro_precision_any": 0.875,
+      "n_questions": 4
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5291,
+       0.9776
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.625,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.875,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 8,
+      "micro_precision_any": 0.875,
+      "n_questions": 4
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5291,
+       0.9776
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.625,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.875,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 8,
+      "micro_precision_any": 0.875,
+      "n_questions": 4
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 1.0,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 4
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.4687,
+       0.8672
+      ],
+      "ci_n_extras": [
+       4.0,
+       4.75
+      ],
+      "ci_precision_any": [
+       0.425,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 4.25,
+      "mean_precision_any": 0.7125,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 17,
+      "micro_precision_any": 0.7058823529411765,
+      "n_questions": 4
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.4171,
+       0.8482
+      ],
+      "ci_n_extras": [
+       3.25,
+       4.0
+      ],
+      "ci_precision_any": [
+       0.2917,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 3.75,
+      "mean_precision_any": 0.6458333333333334,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 15,
+      "micro_precision_any": 0.6666666666666666,
+      "n_questions": 4
+     }
+    },
+    "decision": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.3006,
+       0.9544
+      ],
+      "ci_n_extras": [
+       4.0,
+       4.0
+      ],
+      "ci_precision_any": [
+       0.75,
+       0.75
+      ],
+      "ci_precision_gold": [
+       0.25,
+       0.25
+      ],
+      "ci_recall": [
+       0.5,
+       0.5
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 4.0,
+      "mean_precision_any": 0.75,
+      "mean_precision_gold": 0.25,
+      "mean_recall": 0.5,
+      "micro_extras": 4,
+      "micro_precision_any": 0.75,
+      "n_questions": 1
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       1.0,
+       1.0
+      ],
+      "ci_micro_precision_any": [
+       0.0945,
+       0.9055
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.5,
+       0.5
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.0,
+       0.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 1.0,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.5,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.0,
+      "micro_extras": 2,
+      "micro_precision_any": 0.5,
+      "n_questions": 1
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.2077,
+       0.9385
+      ],
+      "ci_n_extras": [
+       3.0,
+       3.0
+      ],
+      "ci_precision_any": [
+       0.6667,
+       0.6667
+      ],
+      "ci_precision_gold": [
+       0.3333,
+       0.3333
+      ],
+      "ci_recall": [
+       0.5,
+       0.5
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 3.0,
+      "mean_precision_any": 0.6666666666666666,
+      "mean_precision_gold": 0.3333333333333333,
+      "mean_recall": 0.5,
+      "micro_extras": 3,
+      "micro_precision_any": 0.6666666666666666,
+      "n_questions": 1
+     },
+     "C": {
+      "ci_gold_dropped": [
+       1.0,
+       1.0
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.0,
+       0.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 1.0,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.0,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 1
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.552,
+       0.953
+      ],
+      "ci_n_extras": [
+       12.0,
+       12.0
+      ],
+      "ci_precision_any": [
+       0.8333,
+       0.8333
+      ],
+      "ci_precision_gold": [
+       0.0833,
+       0.0833
+      ],
+      "ci_recall": [
+       0.5,
+       0.5
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 12.0,
+      "mean_precision_any": 0.8333333333333334,
+      "mean_precision_gold": 0.08333333333333333,
+      "mean_recall": 0.5,
+      "micro_extras": 12,
+      "micro_precision_any": 0.8333333333333334,
+      "n_questions": 1
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5958,
+       0.9821
+      ],
+      "ci_n_extras": [
+       10.0,
+       10.0
+      ],
+      "ci_precision_any": [
+       0.9,
+       0.9
+      ],
+      "ci_precision_gold": [
+       0.1,
+       0.1
+      ],
+      "ci_recall": [
+       0.5,
+       0.5
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 10.0,
+      "mean_precision_any": 0.9,
+      "mean_precision_gold": 0.1,
+      "mean_recall": 0.5,
+      "micro_extras": 10,
+      "micro_precision_any": 0.9,
+      "n_questions": 1
+     }
+    },
+    "problem": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.6226,
+       0.9838
+      ],
+      "ci_n_extras": [
+       11.0,
+       11.0
+      ],
+      "ci_precision_any": [
+       0.9091,
+       0.9091
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 11.0,
+      "mean_precision_any": 0.9090909090909091,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 11,
+      "micro_precision_any": 0.9090909090909091,
+      "n_questions": 1
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.0945,
+       0.9055
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.5,
+       0.5
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.5,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 2,
+      "micro_precision_any": 0.5,
+      "n_questions": 1
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.2077,
+       0.9385
+      ],
+      "ci_n_extras": [
+       3.0,
+       3.0
+      ],
+      "ci_precision_any": [
+       0.6667,
+       0.6667
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 3.0,
+      "mean_precision_any": 0.6666666666666666,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 3,
+      "micro_precision_any": 0.6666666666666666,
+      "n_questions": 1
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 1.0,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 1
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5776,
+       0.9567
+      ],
+      "ci_n_extras": [
+       13.0,
+       13.0
+      ],
+      "ci_precision_any": [
+       0.8462,
+       0.8462
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 13.0,
+      "mean_precision_any": 0.8461538461538461,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 13,
+      "micro_precision_any": 0.8461538461538461,
+      "n_questions": 1
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5776,
+       0.9567
+      ],
+      "ci_n_extras": [
+       13.0,
+       13.0
+      ],
+      "ci_precision_any": [
+       0.8462,
+       0.8462
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 13.0,
+      "mean_precision_any": 0.8461538461538461,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 1.0,
+      "micro_extras": 13,
+      "micro_precision_any": 0.8461538461538461,
+      "n_questions": 1
+     }
+    }
+   },
+   "diagnostics": {
+    "gold_items_kept": {
+     "all": "8 / 9",
+     "non_redundant": "1 / 1"
+    },
+    "keep_vs_judge": {
+     "all": {
+      "dropped": {
+       "gold_items": 1,
+       "items": 20,
+       "right": 14
+      },
+      "kept": {
+       "gold_items": 8,
+       "items": 30,
+       "right": 27
+      }
+     },
+     "non_redundant": {
+      "dropped": {
+       "gold_items": 0,
+       "items": 19,
+       "right": 13
+      },
+      "kept": {
+       "gold_items": 1,
+       "items": 23,
+       "right": 20
+      }
+     }
+    },
+    "statuses": {
+     "agreed_decision": 7,
+     "assigned_action": 22,
+     "mentioned_only": 2,
+     "other_topic": 0,
+     "problem_raised": 13,
+     "proposed_only": 6
+    }
+   },
+   "paired": {
+    "A vs U": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 1,
+      "n": 6,
+      "sign_p": 0.625,
+      "ties": 2,
+      "wins": 3
+     },
+     "recall": {
+      "losses": 0,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 6,
+      "wins": 0
+     }
+    },
+    "A vs V": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 1,
+      "n": 6,
+      "sign_p": 0.625,
+      "ties": 2,
+      "wins": 3
+     },
+     "recall": {
+      "losses": 0,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 6,
+      "wins": 0
+     }
+    },
+    "A2 vs U": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 2,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 2,
+      "wins": 2
+     },
+     "recall": {
+      "losses": 1,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 5,
+      "wins": 0
+     }
+    },
+    "A2 vs V": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 2,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 2,
+      "wins": 2
+     },
+     "recall": {
+      "losses": 1,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 5,
+      "wins": 0
+     }
+    },
+    "A3 vs U": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 2,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 2,
+      "wins": 2
+     },
+     "recall": {
+      "losses": 0,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 6,
+      "wins": 0
+     }
+    },
+    "A3 vs V": {
+     "n_extras": {
+      "losses": 6,
+      "n": 6,
+      "sign_p": 0.03125,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 2,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 2,
+      "wins": 2
+     },
+     "recall": {
+      "losses": 0,
+      "n": 6,
+      "sign_p": 1.0,
+      "ties": 6,
+      "wins": 0
+     }
+    }
+   },
+   "variants": {
+    "A": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.6787,
+      0.9546
+     ],
+     "ci_n_extras": [
+      2.0,
+      6.8333
+     ],
+     "ci_precision_any": [
+      0.7083,
+      0.9848
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.125
+     ],
+     "ci_recall": [
+      0.75,
+      1.0
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 3.8333333333333335,
+     "mean_precision_any": 0.8598484848484849,
+     "mean_precision_gold": 0.041666666666666664,
+     "mean_recall": 0.9166666666666666,
+     "micro_extras": 23,
+     "micro_precision_any": 0.8695652173913043,
+     "n_questions": 6
+    },
+    "A2": {
+     "ci_gold_dropped": [
+      0.0,
+      0.5
+     ],
+     "ci_micro_precision_any": [
+      0.4677,
+      0.9111
+     ],
+     "ci_n_extras": [
+      2.0,
+      2.0
+     ],
+     "ci_precision_any": [
+      0.5833,
+      0.9167
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.0
+     ],
+     "ci_recall": [
+      0.5,
+      1.0
+     ],
+     "gold_dropped_total": 1,
+     "mean_gold_dropped": 0.16666666666666666,
+     "mean_n_extras": 2.0,
+     "mean_precision_any": 0.75,
+     "mean_precision_gold": 0.0,
+     "mean_recall": 0.8333333333333334,
+     "micro_extras": 12,
+     "micro_precision_any": 0.75,
+     "n_questions": 6
+    },
+    "A3": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.5241,
+      0.9243
+     ],
+     "ci_n_extras": [
+      2.0,
+      2.6667
+     ],
+     "ci_precision_any": [
+      0.6389,
+      0.9444
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.1667
+     ],
+     "ci_recall": [
+      0.75,
+      1.0
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 2.3333333333333335,
+     "mean_precision_any": 0.8055555555555555,
+     "mean_precision_gold": 0.05555555555555555,
+     "mean_recall": 0.9166666666666666,
+     "micro_extras": 14,
+     "micro_precision_any": 0.7857142857142857,
+     "n_questions": 6
+    },
+    "C": {
+     "ci_gold_dropped": [
+      0.0,
+      0.5
+     ],
+     "ci_micro_precision_any": null,
+     "ci_n_extras": [
+      0.0,
+      0.0
+     ],
+     "ci_precision_any": null,
+     "ci_precision_gold": null,
+     "ci_recall": [
+      0.5,
+      1.0
+     ],
+     "gold_dropped_total": 1,
+     "mean_gold_dropped": 0.16666666666666666,
+     "mean_n_extras": 0.0,
+     "mean_precision_any": null,
+     "mean_precision_gold": null,
+     "mean_recall": 0.8333333333333334,
+     "micro_extras": 0,
+     "micro_precision_any": null,
+     "n_questions": 6
+    },
+    "U": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.6406,
+      0.8829
+     ],
+     "ci_n_extras": [
+      4.1667,
+      10.0
+     ],
+     "ci_precision_any": [
+      0.5222,
+      0.9231
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.0417
+     ],
+     "ci_recall": [
+      0.75,
+      1.0
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 7.0,
+     "mean_precision_any": 0.7549145299145299,
+     "mean_precision_gold": 0.013888888888888888,
+     "mean_recall": 0.9166666666666666,
+     "micro_extras": 42,
+     "micro_precision_any": 0.7857142857142857,
+     "n_questions": 6
+    },
+    "V": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.6365,
+      0.8893
+     ],
+     "ci_n_extras": [
+      3.6667,
+      9.5
+     ],
+     "ci_precision_any": [
+      0.4306,
+      0.941
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.05
+     ],
+     "ci_recall": [
+      0.75,
+      1.0
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 6.333333333333333,
+     "mean_precision_any": 0.7215811965811966,
+     "mean_precision_gold": 0.016666666666666666,
+     "mean_recall": 0.9166666666666666,
+     "micro_extras": 38,
+     "micro_precision_any": 0.7894736842105263,
+     "n_questions": 6
+    }
+   }
+  },
+  "test": {
+   "by_category": {
+    "action_what": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.4167
+      ],
+      "ci_micro_precision_any": [
+       0.2789,
+       0.6493
+      ],
+      "ci_n_extras": [
+       1.25,
+       2.8333
+      ],
+      "ci_precision_any": [
+       0.2,
+       0.775
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.3
+      ],
+      "ci_recall": [
+       0.55,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.16666666666666666,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 0.5,
+      "mean_precision_gold": 0.1,
+      "mean_recall": 0.7999999999999999,
+      "micro_extras": 24,
+      "micro_precision_any": 0.4583333333333333,
+      "n_questions": 12
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       0.4167
+      ],
+      "ci_micro_precision_any": [
+       0.3096,
+       0.7384
+      ],
+      "ci_n_extras": [
+       1.0,
+       1.8333
+      ],
+      "ci_precision_any": [
+       0.25,
+       0.8
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.3
+      ],
+      "ci_recall": [
+       0.55,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.16666666666666666,
+      "mean_n_extras": 1.4166666666666667,
+      "mean_precision_any": 0.55,
+      "mean_precision_gold": 0.1,
+      "mean_recall": 0.7999999999999999,
+      "micro_extras": 17,
+      "micro_precision_any": 0.5294117647058824,
+      "n_questions": 12
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       0.4167
+      ],
+      "ci_micro_precision_any": [
+       0.3237,
+       0.7166
+      ],
+      "ci_n_extras": [
+       1.1667,
+       2.3333
+      ],
+      "ci_precision_any": [
+       0.2333,
+       0.8
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.3
+      ],
+      "ci_recall": [
+       0.55,
+       1.0
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.16666666666666666,
+      "mean_n_extras": 1.75,
+      "mean_precision_any": 0.5333333333333333,
+      "mean_precision_gold": 0.1,
+      "mean_recall": 0.7999999999999999,
+      "micro_extras": 21,
+      "micro_precision_any": 0.5238095238095238,
+      "n_questions": 12
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       0.5
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.5167,
+       0.9583
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.25,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.7583333333333333,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 12
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.1892,
+       0.3668
+      ],
+      "ci_n_extras": [
+       5.6667,
+       10.0833
+      ],
+      "ci_precision_any": [
+       0.1382,
+       0.3897
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0546
+      ],
+      "ci_recall": [
+       0.7167,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 7.75,
+      "mean_precision_any": 0.24569215506715505,
+      "mean_precision_gold": 0.025259462759462756,
+      "mean_recall": 0.9,
+      "micro_extras": 93,
+      "micro_precision_any": 0.26881720430107525,
+      "n_questions": 12
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.25
+      ],
+      "ci_micro_precision_any": [
+       0.2273,
+       0.4594
+      ],
+      "ci_n_extras": [
+       3.25,
+       6.8333
+      ],
+      "ci_precision_any": [
+       0.1782,
+       0.4948
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.1111
+      ],
+      "ci_recall": [
+       0.5833,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.08333333333333333,
+      "mean_n_extras": 5.0,
+      "mean_precision_any": 0.32417027417027416,
+      "mean_precision_gold": 0.0404040404040404,
+      "mean_recall": 0.8166666666666668,
+      "micro_extras": 60,
+      "micro_precision_any": 0.3333333333333333,
+      "n_questions": 12
+     }
+    },
+    "decision": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.5556
+      ],
+      "ci_micro_precision_any": [
+       0.5988,
+       0.8664
+      ],
+      "ci_n_extras": [
+       1.7778,
+       6.6667
+      ],
+      "ci_precision_any": [
+       0.5783,
+       0.8651
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0909
+      ],
+      "ci_recall": [
+       0.5,
+       0.9444
+      ],
+      "gold_dropped_total": 2,
+      "mean_gold_dropped": 0.2222222222222222,
+      "mean_n_extras": 4.111111111111111,
+      "mean_precision_any": 0.7211399711399711,
+      "mean_precision_gold": 0.030303030303030304,
+      "mean_recall": 0.7407407407407408,
+      "micro_extras": 37,
+      "micro_precision_any": 0.7567567567567568,
+      "n_questions": 9
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.1111,
+       0.6667
+      ],
+      "ci_micro_precision_any": [
+       0.4677,
+       0.9111
+      ],
+      "ci_n_extras": [
+       0.6667,
+       2.0
+      ],
+      "ci_precision_any": [
+       0.5833,
+       0.9167
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.3519,
+       0.8519
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 1.3333333333333333,
+      "mean_precision_any": 0.75,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.6296296296296297,
+      "micro_extras": 12,
+      "micro_precision_any": 0.75,
+      "n_questions": 9
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.1111,
+       0.6667
+      ],
+      "ci_micro_precision_any": [
+       0.5274,
+       0.9045
+      ],
+      "ci_n_extras": [
+       1.0,
+       2.7778
+      ],
+      "ci_precision_any": [
+       0.6111,
+       0.8889
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.3519,
+       0.8519
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 1.8888888888888888,
+      "mean_precision_any": 0.75,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.6296296296296297,
+      "micro_extras": 17,
+      "micro_precision_any": 0.7647058823529411,
+      "n_questions": 9
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.1111,
+       0.6667
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.3519,
+       0.8519
+      ],
+      "gold_dropped_total": 3,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.6296296296296297,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 9
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.4572,
+       0.6458
+      ],
+      "ci_n_extras": [
+       8.8889,
+       14.3333
+      ],
+      "ci_precision_any": [
+       0.3552,
+       0.6948
+      ],
+      "ci_precision_gold": [
+       0.0056,
+       0.0717
+      ],
+      "ci_recall": [
+       0.6296,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 11.444444444444445,
+      "mean_precision_any": 0.5281191031191032,
+      "mean_precision_gold": 0.031908831908831904,
+      "mean_recall": 0.8518518518518519,
+      "micro_extras": 103,
+      "micro_precision_any": 0.5533980582524272,
+      "n_questions": 9
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.5312,
+       0.7337
+      ],
+      "ci_n_extras": [
+       6.7778,
+       11.7778
+      ],
+      "ci_precision_any": [
+       0.4278,
+       0.784
+      ],
+      "ci_precision_gold": [
+       0.0069,
+       0.0787
+      ],
+      "ci_recall": [
+       0.6296,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 9.222222222222221,
+      "mean_precision_any": 0.6098765432098765,
+      "mean_precision_gold": 0.034722222222222224,
+      "mean_recall": 0.8518518518518519,
+      "micro_extras": 83,
+      "micro_precision_any": 0.6385542168674698,
+      "n_questions": 9
+     }
+    },
+    "problem": {
+     "A": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.9124,
+       1.0
+      ],
+      "ci_n_extras": [
+       9.0,
+       17.0
+      ],
+      "ci_precision_any": [
+       1.0,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.3333
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 13.333333333333334,
+      "mean_precision_any": 1.0,
+      "mean_precision_gold": 0.1111111111111111,
+      "mean_recall": 1.0,
+      "micro_extras": 40,
+      "micro_precision_any": 1.0,
+      "n_questions": 3
+     },
+     "A2": {
+      "ci_gold_dropped": [
+       0.0,
+       1.0
+      ],
+      "ci_micro_precision_any": [
+       0.6097,
+       1.0
+      ],
+      "ci_n_extras": [
+       2.0,
+       2.0
+      ],
+      "ci_precision_any": [
+       1.0,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.5,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 2.0,
+      "mean_precision_any": 1.0,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.8333333333333334,
+      "micro_extras": 6,
+      "micro_precision_any": 1.0,
+      "n_questions": 3
+     },
+     "A3": {
+      "ci_gold_dropped": [
+       0.0,
+       1.0
+      ],
+      "ci_micro_precision_any": [
+       0.7008,
+       1.0
+      ],
+      "ci_n_extras": [
+       3.0,
+       3.0
+      ],
+      "ci_precision_any": [
+       1.0,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.0
+      ],
+      "ci_recall": [
+       0.5,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 3.0,
+      "mean_precision_any": 1.0,
+      "mean_precision_gold": 0.0,
+      "mean_recall": 0.8333333333333334,
+      "micro_extras": 9,
+      "micro_precision_any": 1.0,
+      "n_questions": 3
+     },
+     "C": {
+      "ci_gold_dropped": [
+       0.0,
+       1.0
+      ],
+      "ci_micro_precision_any": null,
+      "ci_n_extras": [
+       0.0,
+       0.0
+      ],
+      "ci_precision_any": null,
+      "ci_precision_gold": null,
+      "ci_recall": [
+       0.5,
+       1.0
+      ],
+      "gold_dropped_total": 1,
+      "mean_gold_dropped": 0.3333333333333333,
+      "mean_n_extras": 0.0,
+      "mean_precision_any": null,
+      "mean_precision_gold": null,
+      "mean_recall": 0.8333333333333334,
+      "micro_extras": 0,
+      "micro_precision_any": null,
+      "n_questions": 3
+     },
+     "U": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.8988,
+       0.9966
+      ],
+      "ci_n_extras": [
+       13.0,
+       20.0
+      ],
+      "ci_precision_any": [
+       0.9231,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.2308
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 17.333333333333332,
+      "mean_precision_any": 0.9743589743589745,
+      "mean_precision_gold": 0.07692307692307693,
+      "mean_recall": 1.0,
+      "micro_extras": 52,
+      "micro_precision_any": 0.9807692307692307,
+      "n_questions": 3
+     },
+     "V": {
+      "ci_gold_dropped": [
+       0.0,
+       0.0
+      ],
+      "ci_micro_precision_any": [
+       0.891,
+       0.9963
+      ],
+      "ci_n_extras": [
+       12.0,
+       20.0
+      ],
+      "ci_precision_any": [
+       0.9167,
+       1.0
+      ],
+      "ci_precision_gold": [
+       0.0,
+       0.1667
+      ],
+      "ci_recall": [
+       1.0,
+       1.0
+      ],
+      "gold_dropped_total": 0,
+      "mean_gold_dropped": 0.0,
+      "mean_n_extras": 16.0,
+      "mean_precision_any": 0.9722222222222222,
+      "mean_precision_gold": 0.05555555555555555,
+      "mean_recall": 1.0,
+      "micro_extras": 48,
+      "micro_precision_any": 0.9791666666666666,
+      "n_questions": 3
+     }
+    }
+   },
+   "diagnostics": {
+    "gold_items_kept": {
+     "all": "46 / 69",
+     "non_redundant": "6 / 10"
+    },
+    "keep_vs_judge": {
+     "all": {
+      "dropped": {
+       "gold_items": 23,
+       "items": 166,
+       "right": 73
+      },
+      "kept": {
+       "gold_items": 46,
+       "items": 141,
+       "right": 119
+      }
+     },
+     "non_redundant": {
+      "dropped": {
+       "gold_items": 4,
+       "items": 147,
+       "right": 54
+      },
+      "kept": {
+       "gold_items": 6,
+       "items": 101,
+       "right": 79
+      }
+     }
+    },
+    "statuses": {
+     "agreed_decision": 72,
+     "assigned_action": 74,
+     "mentioned_only": 13,
+     "other_topic": 0,
+     "problem_raised": 61,
+     "proposed_only": 87
+    }
+   },
+   "paired": {
+    "A vs U": {
+     "n_extras": {
+      "losses": 24,
+      "n": 24,
+      "sign_p": 1.1920928955078125e-07,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 4,
+      "n": 19,
+      "sign_p": 0.049041748046875,
+      "ties": 2,
+      "wins": 13
+     },
+     "recall": {
+      "losses": 4,
+      "n": 24,
+      "sign_p": 0.125,
+      "ties": 20,
+      "wins": 0
+     }
+    },
+    "A vs V": {
+     "n_extras": {
+      "losses": 22,
+      "n": 24,
+      "sign_p": 5.7220458984375e-06,
+      "ties": 1,
+      "wins": 1
+     },
+     "precision_any": {
+      "losses": 4,
+      "n": 19,
+      "sign_p": 0.11846923828125,
+      "ties": 4,
+      "wins": 11
+     },
+     "recall": {
+      "losses": 3,
+      "n": 24,
+      "sign_p": 0.25,
+      "ties": 21,
+      "wins": 0
+     }
+    },
+    "A2 vs U": {
+     "n_extras": {
+      "losses": 24,
+      "n": 24,
+      "sign_p": 1.1920928955078125e-07,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 5,
+      "n": 19,
+      "sign_p": 0.143463134765625,
+      "ties": 2,
+      "wins": 12
+     },
+     "recall": {
+      "losses": 6,
+      "n": 24,
+      "sign_p": 0.03125,
+      "ties": 18,
+      "wins": 0
+     }
+    },
+    "A2 vs V": {
+     "n_extras": {
+      "losses": 23,
+      "n": 24,
+      "sign_p": 2.384185791015625e-07,
+      "ties": 1,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 4,
+      "n": 19,
+      "sign_p": 0.11846923828125,
+      "ties": 4,
+      "wins": 11
+     },
+     "recall": {
+      "losses": 5,
+      "n": 24,
+      "sign_p": 0.0625,
+      "ties": 19,
+      "wins": 0
+     }
+    },
+    "A3 vs U": {
+     "n_extras": {
+      "losses": 24,
+      "n": 24,
+      "sign_p": 1.1920928955078125e-07,
+      "ties": 0,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 5,
+      "n": 19,
+      "sign_p": 0.143463134765625,
+      "ties": 2,
+      "wins": 12
+     },
+     "recall": {
+      "losses": 6,
+      "n": 24,
+      "sign_p": 0.03125,
+      "ties": 18,
+      "wins": 0
+     }
+    },
+    "A3 vs V": {
+     "n_extras": {
+      "losses": 23,
+      "n": 24,
+      "sign_p": 2.384185791015625e-07,
+      "ties": 1,
+      "wins": 0
+     },
+     "precision_any": {
+      "losses": 4,
+      "n": 19,
+      "sign_p": 0.11846923828125,
+      "ties": 4,
+      "wins": 11
+     },
+     "recall": {
+      "losses": 5,
+      "n": 24,
+      "sign_p": 0.0625,
+      "ties": 19,
+      "wins": 0
+     }
+    }
+   },
+   "variants": {
+    "A": {
+     "ci_gold_dropped": [
+      0.0417,
+      0.3333
+     ],
+     "ci_micro_precision_any": [
+      0.6922,
+      0.8515
+     ],
+     "ci_n_extras": [
+      2.5417,
+      6.2083
+     ],
+     "ci_precision_any": [
+      0.4586,
+      0.8158
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.2026
+     ],
+     "ci_recall": [
+      0.6542,
+      0.9236
+     ],
+     "gold_dropped_total": 4,
+     "mean_gold_dropped": 0.16666666666666666,
+     "mean_n_extras": 4.208333333333333,
+     "mean_precision_any": 0.6487810435178856,
+     "mean_precision_gold": 0.07974481658692185,
+     "mean_recall": 0.8027777777777777,
+     "micro_extras": 101,
+     "micro_precision_any": 0.7821782178217822,
+     "n_questions": 24
+    },
+    "A2": {
+     "ci_gold_dropped": [
+      0.0833,
+      0.4167
+     ],
+     "ci_micro_precision_any": [
+      0.5202,
+      0.8145
+     ],
+     "ci_n_extras": [
+      1.125,
+      1.7917
+     ],
+     "ci_precision_any": [
+      0.5,
+      0.8421
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.1579
+     ],
+     "ci_recall": [
+      0.5736,
+      0.8819
+     ],
+     "gold_dropped_total": 6,
+     "mean_gold_dropped": 0.25,
+     "mean_n_extras": 1.4583333333333333,
+     "mean_precision_any": 0.6842105263157895,
+     "mean_precision_gold": 0.05263157894736842,
+     "mean_recall": 0.7402777777777777,
+     "micro_extras": 35,
+     "micro_precision_any": 0.6857142857142857,
+     "n_questions": 24
+    },
+    "A3": {
+     "ci_gold_dropped": [
+      0.0833,
+      0.4167
+     ],
+     "ci_micro_precision_any": [
+      0.5602,
+      0.8135
+     ],
+     "ci_n_extras": [
+      1.4583,
+      2.4167
+     ],
+     "ci_precision_any": [
+      0.4825,
+      0.8421
+     ],
+     "ci_precision_gold": [
+      0.0,
+      0.1579
+     ],
+     "ci_recall": [
+      0.5736,
+      0.8819
+     ],
+     "gold_dropped_total": 6,
+     "mean_gold_dropped": 0.25,
+     "mean_n_extras": 1.9583333333333333,
+     "mean_precision_any": 0.6754385964912281,
+     "mean_precision_gold": 0.05263157894736842,
+     "mean_recall": 0.7402777777777777,
+     "micro_extras": 47,
+     "micro_precision_any": 0.7021276595744681,
+     "n_questions": 24
+    },
+    "C": {
+     "ci_gold_dropped": [
+      0.125,
+      0.5
+     ],
+     "ci_micro_precision_any": null,
+     "ci_n_extras": [
+      0.0,
+      0.0
+     ],
+     "ci_precision_any": null,
+     "ci_precision_gold": null,
+     "ci_recall": [
+      0.5556,
+      0.8653
+     ],
+     "gold_dropped_total": 7,
+     "mean_gold_dropped": 0.2916666666666667,
+     "mean_n_extras": 0.0,
+     "mean_precision_any": null,
+     "mean_precision_gold": null,
+     "mean_recall": 0.7194444444444444,
+     "micro_extras": 0,
+     "micro_precision_any": null,
+     "n_questions": 24
+    },
+    "U": {
+     "ci_gold_dropped": [
+      0.0,
+      0.0
+     ],
+     "ci_micro_precision_any": [
+      0.4741,
+      0.5973
+     ],
+     "ci_n_extras": [
+      8.3333,
+      12.2917
+     ],
+     "ci_precision_any": [
+      0.3201,
+      0.5763
+     ],
+     "ci_precision_gold": [
+      0.012,
+      0.0613
+     ],
+     "ci_recall": [
+      0.7694,
+      0.9861
+     ],
+     "gold_dropped_total": 0,
+     "mean_gold_dropped": 0.0,
+     "mean_n_extras": 10.333333333333334,
+     "mean_precision_any": 0.442685612998113,
+     "mean_precision_gold": 0.03421092796092796,
+     "mean_recall": 0.8944444444444444,
+     "micro_extras": 248,
+     "micro_precision_any": 0.5362903225806451,
+     "n_questions": 24
+    },
+    "V": {
+     "ci_gold_dropped": [
+      0.0,
+      0.125
+     ],
+     "ci_micro_precision_any": [
+      0.5578,
+      0.6936
+     ],
+     "ci_n_extras": [
+      6.0417,
+      9.9167
+     ],
+     "ci_precision_any": [
+      0.3843,
+      0.6606
+     ],
+     "ci_precision_gold": [
+      0.0109,
+      0.0773
+     ],
+     "ci_recall": [
+      0.7056,
+      0.9694
+     ],
+     "gold_dropped_total": 1,
+     "mean_gold_dropped": 0.041666666666666664,
+     "mean_n_extras": 7.958333333333333,
+     "mean_precision_any": 0.5204968944099378,
+     "mean_precision_gold": 0.04015700483091787,
+     "mean_recall": 0.8527777777777777,
+     "micro_extras": 191,
+     "micro_precision_any": 0.6282722513089005,
+     "n_questions": 24
+    }
+   }
+  }
+ }
+}
