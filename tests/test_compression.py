@@ -361,6 +361,25 @@ def test_committed_question_set_matches_builder(tmp_path: Path) -> None:
     assert all(set(q.meetings) <= set(RECORDED) for q in recorded) and len(recorded) == 68
 
 
+@pytest.mark.skipif(not DEFAULT_ZIP.exists(), reason="AMI annotations zip not downloaded")
+def test_committed_extension_questions_match_builder(tmp_path: Path) -> None:
+    from tenor.ami.corpus import load_meeting
+    from tenor.ami.products import AMI_EXTENSION
+    from tenor.ami.questions import EXTENSION_FILE, build_extension_questions
+
+    qs = build_extension_questions([load_meeting(m) for m in AMI_EXTENSION], 42)
+    write_jsonl(qs, tmp_path / "q.jsonl")
+    committed = Path("data/ami_questions")
+    assert (tmp_path / "q.jsonl").read_bytes() == (committed / EXTENSION_FILE).read_bytes()
+    assert {q.subset for q in qs} == {"replay_extension"} and {q.split for q in qs} == {"test"}
+    # Meetings the main set already covers keep the same questions there (join on id).
+    main = {q.id: q for q in load_questions(committed / "questions.jsonl")}
+    shared = [q for q in qs if q.id in main]
+    assert shared and all(
+        main[q.id].model_copy(update={"subset": "replay_extension"}) == q for q in shared
+    )
+
+
 def test_series_order_seeded_and_site_balanced() -> None:
     cands = ["ES2002", "ES2003", "ES2004", "IS1000", "IS1001", "TS3003", "TS3004"]
     order = series_order(cands, 42)

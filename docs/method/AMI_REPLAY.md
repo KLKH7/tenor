@@ -234,3 +234,28 @@ One meeting, one recording each, personal dictionaries on, and one stray room li
 Code: `tenor.ami` (`corpus` parses the zip in place, `wer` scores, `products` matches notes tagged `AMI <ID>`). Tests use a hand-made NXT zip, not the corpus.
 
 **Parser finding:** NXT agent letters are per meeting. In IS1008 the same participant is agent B in sessions a and c and agent C in b and d, so cross-meeting questions must key on the participant code, not the letter.
+
+## 11. Replay extension: 7 more meetings (2026-11-05, $0)
+
+**Why:** 6 recorded meetings give 68 questions, too few for a tight interval. Kian approved 6–8 more files from the official mirror. Downloaded one at a time (25 s apart); checksums in [`MANIFEST.json`](../../data/ami/MANIFEST.json) (ES2006a, on disk since the stress track, was added there too); all verified as 16 kHz, 16-bit mono PCM.
+
+**Download result: 6 of 7.** The mirror dropped two connections mid-file (ES2006c twice) and returned one HTTP 403 (TS3006b). Both files then completed and verified. After the 403 we stopped, so **ES2007c is not downloaded**: it stays in the set and in the questions (15), and `ami status` shows it as "not downloaded". Fetch it later, one file, after a pause. The 6 on disk play for **217.8 min (3 h 38 min)**.
+
+**Rule, from the annotations zip (no LLM):** scenario meetings with an abstractive summary and summary links, 18–40 min, not already in the set; ranked by list questions (decision + action_what + problem, from `questions.py`), then all questions; **one meeting per team**, so no cross-meeting question skips a session; total ≤ 4.5 h. TS3009c was already on disk and counts as one of the seven.
+
+| Meeting | Min (WAV) | List Qs | All Qs | Why this one |
+|---|---|---|---|---|
+| TS3009c | 43.0 | 7 | 12 | Already downloaded. **Over the 40-min ceiling**; kept because it was on disk |
+| ES2015c | 35.6 | 13 | 20 | Most list questions of any eligible meeting |
+| ES2008b | 37.2 | 11 | 18 | 2nd. (The dropout listed for ES2008 is in session c, not b) |
+| ES2006c | 36.4 | 9 | 15 | 3rd. Same team as ES2006a (stress meeting), different session |
+| TS3006b | 39.2 | 9 | 15 | Tied 3rd; a second TS team |
+| ES2007c | 39.6 (listed size) | 8 | 15 | Next by all questions. **Not downloaded yet** |
+| IS1000a | 26.4 | 8 | 14 | Tied with ES2010b on both counts; IS breaks the tie (site balance) and is shorter |
+| **Total (all 7; 6 on disk = 217.8)** | **257.4 (4 h 17 min)** | **65** | **109** | |
+
+Skipped: ES2015a (same team as ES2015c), ES2011b (mirror answered HTTP 403 to a HEAD request; not retried).
+
+**Threats.** Five of seven are ES (Edinburgh) teams: the ranking favours ES annotators' fuller summaries. **None is in AMI's held-out dev/test partitions** (ASSUMED from the standard full-corpus partition; not re-read on datasets.shtml), so ASR contamination risk is higher than for IS1008 (§7): report WER on the extension separately from the original seven.
+
+**Wiring.** `products.AMI_SET` is unchanged (the original 7): every scored command still runs on it, so no published number moves. `AMI_EXTENSION` holds the new 7 and `AMI_EXTENDED` both; `tenor ami status` lists all 14 with audio and recording state. Questions: `tenor ami extension-questions --seed 42` writes `data/ami_questions/replay_extension.jsonl` (all TEST; see its [README](../../data/ami_questions/README.md)). Playback order, longest first, downloaded meetings only: `data/ami/overnight_order.txt` (local, gitignored).

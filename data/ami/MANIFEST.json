@@ -12,11 +12,51 @@
       "licence": "CC BY 4.0"
     },
     {
+      "path": "ES2006a/ES2006a.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/ES2006a/audio/ES2006a.Mix-Headset.wav",
+      "bytes": 41098968,
+      "sha256": "1b1a0b273f2f589abc8788b6f9a2ba5ae343c2aa71fc425f48c8b79ce1406eef",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
+    },
+    {
+      "path": "ES2006c/ES2006c.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/ES2006c/audio/ES2006c.Mix-Headset.wav",
+      "bytes": 69813976,
+      "sha256": "d7d9a3005908f8616938f3be6ed0fa0c4a629085aded85f4aa212a06449c6f04",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
+    },
+    {
+      "path": "ES2008b/ES2008b.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/ES2008b/audio/ES2008b.Mix-Headset.wav",
+      "bytes": 71413122,
+      "sha256": "8aa976aa242e895775857b028db2ca5c5f56a2a2d8a096adc81cc82a9c4b6ba4",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
+    },
+    {
+      "path": "ES2015c/ES2015c.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/ES2015c/audio/ES2015c.Mix-Headset.wav",
+      "bytes": 68348632,
+      "sha256": "50999075fa47769474ecb2b39629db674f0b2a33ca5368df6af07ea106253dcb",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
+    },
+    {
       "path": "IB4003/IB4003.Mix-Headset.wav",
       "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/IB4003/audio/IB4003.Mix-Headset.wav",
       "bytes": 64744152,
       "sha256": "a28e876a8dc3ed076ce38a167d8de4cc1d3ff8c0b5142c57d4c194ece7752fc2",
       "licence": "CC BY 4.0"
+    },
+    {
+      "path": "IS1000a/IS1000a.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/IS1000a/audio/IS1000a.Mix-Headset.wav",
+      "bytes": 50645452,
+      "sha256": "25c9a48237c1f23bc419702f89234467a1b9efedbac16d9673f52d6a8c1c6a57",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
     },
     {
       "path": "IS1008a/IS1008a.Mix-Headset.wav",
@@ -45,6 +85,22 @@
       "bytes": 47388093,
       "sha256": "22bc4c5ef7c033427426e84b168f71d162a42ed287ae4781aa2f6c06b67a6177",
       "licence": "CC BY 4.0"
+    },
+    {
+      "path": "TS3006b/TS3006b.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/TS3006b/audio/TS3006b.Mix-Headset.wav",
+      "bytes": 75324800,
+      "sha256": "65008347971a4da203260860cbf0266814dcd8db3ac63a5242628e21d06c88c0",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
+    },
+    {
+      "path": "TS3009c/TS3009c.Mix-Headset.wav",
+      "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/TS3009c/audio/TS3009c.Mix-Headset.wav",
+      "bytes": 82560044,
+      "sha256": "4fe7430b0edc2f414e888eeec32706f2ff67f76a44d88f3a9699fd045a58d465",
+      "licence": "CC BY 4.0",
+      "downloaded": "2026-11-05"
     },
     {
       "path": "annotations/ami_public_manual_1.6.2.zip",

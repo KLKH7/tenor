@@ -69,10 +69,14 @@ WHO_SAID_PER_MEETING = 3
 WHO_SAID_WORDS = (10, 40)
 AS_OF = date(2005, 1, 1)  # corpus.meeting_note's fixed synthetic date
 TEMPLATE_VERSION = "ami_questions.v2"
+EXTENSION_FILE = "replay_extension.jsonl"
+EXTENSION_CLOSED_BOOK_FILE = "replay_extension_closed_book.jsonl"
 
 QType = Literal["decision", "action_who", "action_what", "problem", "who_said", "what_changed"]
 EvidenceSource = Literal["summlink", "quoted_act", "none"]
-Subset = Literal["recorded", "annotation_only"]
+# replay_extension: the seven meetings added to the replay on 2026-11-05 (products.AMI_EXTENSION),
+# kept in their own file so the original set and its scores never change.
+Subset = Literal["recorded", "annotation_only", "replay_extension"]
 
 _AGENT_VERB = re.compile(r"\s+\b(will|decided|discussed|agreed)\b\s*")
 _PRONOUN = {"he", "she", "they"}
@@ -455,6 +459,15 @@ def build_questions(meetings: Sequence[AmiMeeting], seed: int) -> list[AmiQuesti
     return b.out
 
 
+def build_extension_questions(meetings: Sequence[AmiMeeting], seed: int) -> list[AmiQuestion]:
+    """Questions for the replay extension: the same templates, every question's ``subset``
+    set to ``replay_extension``. Questions about a meeting that the main set also covers keep
+    the same id, wording and gold, so the two files join on ``id``."""
+    return [
+        q.model_copy(update={"subset": "replay_extension"}) for q in build_questions(meetings, seed)
+    ]
+
+
 def series_of(meetings: Iterable[AmiMeeting]) -> dict[str, list[str]]:
     """Scenario meetings grouped by series ("IS1008" -> IS1008a..d), each in session order.
     A series is the same four people on one design task, so cross-meeting questions stay inside
@@ -625,5 +638,5 @@ def counts(qs: Sequence[AmiQuestion]) -> dict[str, dict[str, int]]:
     for q in qs:
         row = out.setdefault(q.type, {"dev": 0, "test": 0, "recorded": 0, "annotation_only": 0})
         row[q.split] += 1
-        row[q.subset] += 1
+        row[q.subset] = row.get(q.subset, 0) + 1
     return out

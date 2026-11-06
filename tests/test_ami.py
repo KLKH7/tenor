@@ -9,7 +9,17 @@ from pathlib import Path
 import pytest
 
 from tenor.ami.corpus import load_meeting
-from tenor.ami.products import ami_tag, match_notes, score_note, wer_report
+from tenor.ami.products import (
+    AMI_EXTENDED,
+    AMI_EXTENSION,
+    AMI_SET,
+    ami_tag,
+    audio_path,
+    match_notes,
+    replay_state,
+    score_note,
+    wer_report,
+)
 from tenor.ami.wer import content_recall, edit_distance, normalise, score, spell_number
 from tests.memory_helpers import make_note
 
@@ -154,3 +164,18 @@ def test_wer_report_pools_counts_not_ratios() -> None:
     assert out["pooled_content_recall"] == round(
         a.content_found / (a.content_words + b.content_words), 4
     )
+
+
+def test_replay_sets_keep_the_original_seven() -> None:
+    # Published scores run on AMI_SET: adding meetings must not change it.
+    assert AMI_SET == ("IS1008a", "IS1008b", "IS1008c", "IS1008d", "IB4003", "EN2002b", "ES2006a")
+    assert AMI_EXTENDED[: len(AMI_SET)] == AMI_SET and len(set(AMI_EXTENDED)) == 14
+    # One meeting per scenario team: no cross-meeting question can skip a session.
+    assert len({m[:-1] for m in AMI_EXTENSION}) == len(AMI_EXTENSION)
+
+
+def test_replay_state(tmp_path: Path) -> None:
+    assert audio_path("XX0001a", tmp_path) == tmp_path / "XX0001a" / "XX0001a.Mix-Headset.wav"
+    assert replay_state(True, []) == "downloaded, not recorded"
+    assert replay_state(False, []) == "not downloaded"
+    assert replay_state(True, ["wispr", "granola"]) == "recorded (granola, wispr)"

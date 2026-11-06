@@ -34,7 +34,14 @@ from tenor.core.models import Channel, MeetingNote
 
 log = logging.getLogger(__name__)
 
+# The original replay set. Every scored command (wer, coverage, detector, stress, wrong facts)
+# runs on exactly these seven, so published scores do not move when meetings are added.
 AMI_SET = ("IS1008a", "IS1008b", "IS1008c", "IS1008d", "IB4003", "EN2002b", "ES2006a")
+# Seven more meetings for the overnight replay (2026-11-05; docs/method/AMI_REPLAY.md §11).
+# One per scenario team, so no cross-meeting question skips a session.
+AMI_EXTENSION = ("TS3009c", "ES2015c", "ES2008b", "ES2006c", "TS3006b", "ES2007c", "IS1000a")
+AMI_EXTENDED = AMI_SET + AMI_EXTENSION
+AUDIO_DIR = Path("data/ami")
 _TAG = re.compile(r"\bAMI[\s_-]+([A-Z]{2}\d{4}[a-z]?)\b")
 # A stress-condition recording ("AMI ES2006a A1", docs/tracks/CAPTURE.md) is not a baseline one.
 _STRESS = re.compile(r"\bAMI[\s_-]+([A-Z]{2}\d{4}[a-z]?)[\s_-]+(A\d+[a-z]?)\b")
@@ -50,6 +57,19 @@ class MeetingWer(BaseModel):
     mic_utterances: int  # microphone turns dropped before scoring; > 0 = room leaked in
     owner_labelled: int  # turns attributed to the account holder, who never speaks in AMI
     reference_speakers: int
+
+
+def audio_path(meeting_id: str, audio_dir: Path = AUDIO_DIR) -> Path:
+    """Where a meeting's headset-mix WAV lives once downloaded (gitignored)."""
+    return audio_dir / meeting_id / f"{meeting_id}.Mix-Headset.wav"
+
+
+def replay_state(downloaded: bool, recorded_in: Iterable[str]) -> str:
+    """One status word for a meeting: recorded where, else downloaded or not."""
+    where = sorted(recorded_in)
+    if where:
+        return f"recorded ({', '.join(where)})"
+    return "downloaded, not recorded" if downloaded else "not downloaded"
 
 
 def stress_tag(note: MeetingNote) -> tuple[str, str] | None:

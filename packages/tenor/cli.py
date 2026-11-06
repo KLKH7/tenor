@@ -2718,24 +2718,36 @@ def ami_status(
         list[Path] | None, typer.Option(help="Synced AMI-account DB(s) to check for recordings.")
     ] = None,
 ) -> None:
-    """Show each AMI meeting's ground truth, and which synced DBs already hold a recording."""
+    """Show each AMI meeting's ground truth, whether its audio is downloaded, and which synced
+    DBs already hold a recording (default: data/ami_granola.db and data/ami_wispr.db, if present;
+    recording pins in data/ami/results/recording_ids.txt apply, as for `ami wer`)."""
     from tenor.ami.corpus import load_meeting
-    from tenor.ami.products import AMI_SET, match_notes
+    from tenor.ami.products import (
+        AMI_EXTENDED,
+        AMI_SET,
+        audio_path,
+        match_recordings,
+        read_overrides,
+        replay_state,
+    )
+    from tenor.core.store import read_notes
 
-    found: dict[Path, set[str]] = {}
-    for path in db or []:
-        store = NoteStore(path)
-        try:
-            found[path] = set(match_notes(store.iter_notes()))
-        finally:
-            store.close()
-    for mid in AMI_SET:
+    paths = db or [
+        p for p in (Path("data/ami_granola.db"), Path("data/ami_wispr.db")) if p.is_file()
+    ]
+    pins = read_overrides(AMI_RESULTS / "recording_ids.txt")
+    found: dict[str, set[str]] = {}
+    for path in paths:
+        product = path.stem.removeprefix("ami_")
+        found[product] = set(match_recordings(read_notes(path), pins.get(product)))
+    for mid in AMI_EXTENDED:
         m = load_meeting(mid)
         sections = " ".join(f"{k}={len(v)}" for k, v in m.summary.items()) or "no summary"
-        rec = " ".join(f"{p.stem}:{'yes' if mid in s else 'no'}" for p, s in found.items())
+        state = replay_state(audio_path(mid).is_file(), (p for p, s in found.items() if mid in s))
         typer.echo(
-            f"{mid}  {m.type:<11} {m.duration_s // 60:>2} min  speakers={len(m.speakers)}  "
-            f"words={len(m.spoken()):>5}  {sections}  {rec}".rstrip()
+            f"{mid:<7}  {'original' if mid in AMI_SET else 'extension':<9}  {m.type:<11} "
+            f"{m.duration_s // 60:>2} min  speakers={len(m.speakers)}  "
+            f"words={len(m.spoken()):>5}  {sections}  {state}"
         )
 
 
@@ -4335,6 +4347,39 @@ def ami_questions(
             f"  {t:<13} dev={c['dev']:>3} test={c['test']:>3} "
             f"recorded={c['recorded']:>3} annotation_only={c['annotation_only']:>3}"
         )
+
+
+@ami_app.command("extension-questions")
+def ami_extension_questions(
+    seed: Annotated[int, typer.Option()] = 42,
+    out: Annotated[Path, typer.Option(help="Output folder (committed: AMI is CC BY 4.0).")] = Path(
+        "data/ami_questions"
+    ),
+) -> None:
+    """Questions for the seven replay-extension meetings, in their own files so the original set
+    never changes (no LLM; same seed, byte-identical). DEV/TEST by the existing rule."""
+    from tenor.ami.corpus import load_meeting
+    from tenor.ami.products import AMI_EXTENSION
+    from tenor.ami.questions import (
+        EXTENSION_CLOSED_BOOK_FILE,
+        EXTENSION_FILE,
+        build_extension_questions,
+        closed_book_prompts,
+        counts,
+        write_jsonl,
+    )
+    from tenor.llm.client import load_prompt
+
+    qs = build_extension_questions([load_meeting(m) for m in AMI_EXTENSION], seed)
+    write_jsonl(qs, out / EXTENSION_FILE)
+    write_jsonl(
+        closed_book_prompts(qs, load_prompt("closed_book.v1")), out / EXTENSION_CLOSED_BOOK_FILE
+    )
+    typer.echo(f"{len(qs)} questions from {len(AMI_EXTENSION)} meetings -> {out}/{EXTENSION_FILE}")
+    for t, c in counts(qs).items():
+        typer.echo(f"  {t:<13} dev={c['dev']:>3} test={c['test']:>3}")
+    for mid in AMI_EXTENSION:
+        typer.echo(f"  {mid}  {sum(mid in q.meetings for q in qs)} questions")
 
 
 # -- evidence compression (thesis A) ------------------------------------------------------------

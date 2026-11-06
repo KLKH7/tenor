@@ -9,6 +9,8 @@
 | `questions.jsonl` | One question per line: `type`, `template`, `meetings`, `question`, `gold_answer`, `gold_evidence` (AMI dialogue-act IDs), `evidence_source`, `fact_group`, `notes_can_answer` (null for now), `split`, **`subset`**, `seed` |
 | `closed_book.jsonl` | The same questions exactly as the closed-book control sends them: no meeting at all |
 | `meetings.json` | Which meetings, the seeded rule that chose them, and the full candidate order |
+| `replay_extension.jsonl` | 109 questions about the 7 meetings added to the replay on 2026-11-05 (subset `replay_extension`); `uv run tenor ami extension-questions --seed 42` |
+| `replay_extension_closed_book.jsonl` | The same, as the closed-book control sends them |
 
 ## Two subsets: report them apart
 
@@ -27,6 +29,21 @@
 | problem | 1 | 28 | 4 | 25 | problem sentences, one list per meeting |
 | who_said | 3 | 81 | 12 | 72 | a seeded sample of summary-linked dialogue acts, quoted; gold is the role, by participant code |
 | what_changed | 0 | 23 | 11 | 12 | session k action item → what that role presented in session k+1; a decision and its closest decision next session |
+
+## Replay extension (2026-11-05): a separate file
+
+Seven more meetings are being played into the products ([AMI_REPLAY.md §11](../../docs/method/AMI_REPLAY.md)). Their questions live in `replay_extension.jsonl` so `questions.jsonl` and every score built on it stay unchanged. Same templates and seed; all TEST (the DEV rule is IS1008a only). One meeting per team, so there are no cross-meeting questions.
+
+| Type | TS3009c | ES2015c | ES2008b | ES2006c | TS3006b | ES2007c | IS1000a | Total |
+|---|---|---|---|---|---|---|---|---|
+| decision | 4 | 7 | 4 | 4 | 5 | 3 | 4 | 31 |
+| action_what | 2 | 5 | 6 | 4 | 3 | 4 | 3 | 27 |
+| problem | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 7 |
+| action_who | 2 | 4 | 4 | 3 | 3 | 4 | 3 | 23 |
+| who_said | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 21 |
+| **all** | 12 | 20 | 18 | 15 | 15 | 15 | 14 | **109** |
+
+**Overlap:** TS3009c and ES2006c are also in `questions.jsonl` (subset `annotation_only`). Their questions here have the same `id`, wording and gold; only `subset` differs. Join on `id`, and never pool the two files without deduplicating.
 
 **Limits, read before using.**
 - **DEV = questions about IS1008a only** (13). Everything else is TEST.
