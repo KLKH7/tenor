@@ -18,6 +18,8 @@ data/fixtures/large/
 # AMI corpus audio and annotations (CC BY 4.0, downloaded locally; only MANIFEST.json is committed)
 data/ami/*
 !data/ami/MANIFEST.json
+# Council-meeting pilot (city video segments and Legistar JSON; local only)
+data/council/*
 
 # Web build output
 web/node_modules/
