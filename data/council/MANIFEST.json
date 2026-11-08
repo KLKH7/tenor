@@ -1,0 +1,424 @@
+{
+  "corpus": "TENOR council-meeting pilot (Seattle City Council, Legistar outcomes)",
+  "licence": "City of Seattle public records; see data/private/COUNCIL_TERMS.md. Audio, video and transcripts are never redistributed; only this manifest is committed.",
+  "attribution": "Courtesy of the Seattle Channel and Seattle Municipal Archives; outcomes from the City of Seattle Legistar Web API (webapi.legistar.com/v1/seattle)",
+  "downloaded": "2026-11-07",
+  "files": [
+    {
+      "path": "seattle/6910/seattle_6910_126474_seg.wav",
+      "bytes": 17792078,
+      "sha256": "8b9463f7c04378866226729b8a9b0f5022030a2d7a63f0d989df9d57da6381d4",
+      "format": "WAV PCM s16le, 16 kHz, mono",
+      "duration_s": 556.0,
+      "city": "Seattle",
+      "body": "City Council",
+      "meeting_date": "2026-10-20",
+      "legistar_event_id": 6910,
+      "legistar_event_item_id": 126474,
+      "matter_file": "CB 121282",
+      "matter_type": "Ordinance (Ord)",
+      "title": "An ordinance relating to vehicle residency permitting and outreach; amending Ordinance 127362, which adopted the 2026 budget, including the 2026-2031 Capital Improvement Program (CIP); changing appropriations to various departments and budget control levels, and from various funds in the Budget; creating positions; modifying a proviso; and imposing a proviso.",
+      "outcome": {
+        "action": "passed",
+        "passed_flag": "Pass",
+        "action_text": "The Council Bill (CB) was passed by the following vote, and the President signed the Council Bill (CB):",
+        "mover": null,
+        "seconder": null,
+        "vote_counts": {
+          "Opposed": 3,
+          "In Favor": 6
+        },
+        "votes": [
+          {
+            "name": "Dionne Foster",
+            "vote": "Opposed"
+          },
+          {
+            "name": "Joy Hollingsworth",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Debora Juarez",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Robert Kettle",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Eddie Lin",
+            "vote": "Opposed"
+          },
+          {
+            "name": "Alexis Mercedes Rinck",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Maritza Rivera",
+            "vote": "Opposed"
+          },
+          {
+            "name": "Rob Saka",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Dan Strauss",
+            "vote": "In Favor"
+          }
+        ]
+      },
+      "source": {
+        "video_page": "https://seattlechannel.org/FullCouncil?videoid=x191564",
+        "video_url": "https://video.seattle.gov/media/council/council_102026_2022673.mp4",
+        "video_bytes": 2635864273,
+        "video_last_modified": "Wed, 21 Oct 2026 06:51:57 GMT",
+        "retrieval": "ranged read: ffmpeg -ss over HTTPS Range requests; full video not stored, so no video sha256",
+        "item_start_s": 10261,
+        "item_end_s": 10757,
+        "segment_start_s": 10231,
+        "segment_end_s": 10787,
+        "padding_s": 30,
+        "boundary_source": "Seattle Channel video index (data-seek chapter markers); end = next chapter start",
+        "next_chapter": "CB 121283: Ordinance relating to new per"
+      },
+      "legistar_urls": {
+        "event_item": "https://webapi.legistar.com/v1/seattle/events/6910/eventitems/126474?AgendaNote=1&MinutesNote=1&Attachments=1",
+        "votes": "https://webapi.legistar.com/v1/seattle/eventitems/126474/votes",
+        "fetched_utc": "2026-11-08T02:25:37+00:00"
+      },
+      "licence": "Seattle City public record (Seattle Channel). Seattle Municipal Archives: 'Moving image content created by the City of Seattle is public record and does not require permission for use'. Credit: Courtesy of the Seattle Municipal Archives / Seattle Channel. Not redistributed."
+    },
+    {
+      "path": "seattle/6749/seattle_6749_123656_seg.wav",
+      "bytes": 26432078,
+      "sha256": "647406215eb7a2180a51c55b2024c065f6a907e13eec4bec003cc888af087ffd",
+      "format": "WAV PCM s16le, 16 kHz, mono",
+      "duration_s": 826.0,
+      "city": "Seattle",
+      "body": "City Council",
+      "meeting_date": "2026-06-09",
+      "legistar_event_id": 6749,
+      "legistar_event_item_id": 123656,
+      "matter_file": "CB 121214",
+      "matter_type": "Ordinance (Ord)",
+      "title": "An ordinance relating to land use and zoning; introducing a new definition for data centers; adopting a moratorium on the filing, acceptance, processing, or approval of applications for the establishment or expansion of, or change of use to, data centers; amending Section 23.84A.008 of the Seattle Municipal Code; approving a work plan; declaring an emergency; and establishing an immediate effective date; all by a 3/4 vote of the City Council.",
+      "outcome": {
+        "action": "passed",
+        "passed_flag": "Pass",
+        "action_text": "The Council Bill (CB) was passed by the following vote, and the President signed the Council Bill (CB):",
+        "mover": null,
+        "seconder": null,
+        "vote_counts": {
+          "In Favor": 9
+        },
+        "votes": [
+          {
+            "name": "Dionne Foster",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Joy Hollingsworth",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Debora Juarez",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Robert Kettle",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Eddie Lin",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Alexis Mercedes Rinck",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Maritza Rivera",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Rob Saka",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Dan Strauss",
+            "vote": "In Favor"
+          }
+        ]
+      },
+      "source": {
+        "video_page": "https://seattlechannel.org/FullCouncil?videoid=x187690",
+        "video_url": "https://video.seattle.gov/media/council/council_060926_2022645.mp4",
+        "video_bytes": 825551353,
+        "video_last_modified": "Wed, 10 Jun 2026 00:18:37 GMT",
+        "retrieval": "ranged read: ffmpeg -ss over HTTPS Range requests; full video not stored, so no video sha256",
+        "item_start_s": 6630,
+        "item_end_s": 7396,
+        "segment_start_s": 6600,
+        "segment_end_s": 7426,
+        "padding_s": 30,
+        "boundary_source": "Seattle Channel video index (data-seek chapter markers); end = next chapter start",
+        "next_chapter": "CF 314549: relating to  Eagle Rock Ventu"
+      },
+      "legistar_urls": {
+        "event_item": "https://webapi.legistar.com/v1/seattle/events/6749/eventitems/123656?AgendaNote=1&MinutesNote=1&Attachments=1",
+        "votes": "https://webapi.legistar.com/v1/seattle/eventitems/123656/votes",
+        "fetched_utc": "2026-11-08T02:25:37+00:00"
+      },
+      "licence": "Seattle City public record (Seattle Channel). Seattle Municipal Archives: 'Moving image content created by the City of Seattle is public record and does not require permission for use'. Credit: Courtesy of the Seattle Municipal Archives / Seattle Channel. Not redistributed."
+    },
+    {
+      "path": "seattle/6735/seattle_6735_123444_seg.wav",
+      "bytes": 25984078,
+      "sha256": "fd1c95c4351fb7282dd0cfef8f466bc43e784aa9fdbde05aa65710a37d41f68a",
+      "format": "WAV PCM s16le, 16 kHz, mono",
+      "duration_s": 812.0,
+      "city": "Seattle",
+      "body": "City Council",
+      "meeting_date": "2026-06-02",
+      "legistar_event_id": 6735,
+      "legistar_event_item_id": 123444,
+      "matter_file": "Res 32202",
+      "matter_type": "Resolution (Res)",
+      "title": "A resolution regarding next steps after the forensic evaluation of the King County Regional Homelessness Authority (KCRHA); requesting that the Seattle Mayor take steps to immediately safeguard public funds, provide an initial assessment of whether it is feasible for KCRHA to adequately address all of the findings in the forensic evaluation, recommend if KCRHA should be dissolved, restructured, or continue as is, submit a set of next steps on how the City will approach the dissolution or restructure of KCRHA if determined to be necessary, and submit monthly reports to Council.",
+      "outcome": {
+        "action": "adopted",
+        "passed_flag": "Pass",
+        "action_text": "The Resolution (Res) was adopted by the following vote, and the President signed the Resolution (Res):",
+        "mover": null,
+        "seconder": null,
+        "vote_counts": {
+          "In Favor": 9
+        },
+        "votes": [
+          {
+            "name": "Dionne Foster",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Joy Hollingsworth",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Debora Juarez",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Robert Kettle",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Eddie Lin",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Alexis Mercedes Rinck",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Maritza Rivera",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Rob Saka",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Dan Strauss",
+            "vote": "In Favor"
+          }
+        ]
+      },
+      "source": {
+        "video_page": "https://seattlechannel.org/FullCouncil?videoid=x187573",
+        "video_url": "https://video.seattle.gov/media/council/council_060226_2022643.mp4",
+        "video_bytes": 603171408,
+        "video_last_modified": "Tue, 02 Jun 2026 23:29:07 GMT",
+        "retrieval": "ranged read: ffmpeg -ss over HTTPS Range requests; full video not stored, so no video sha256",
+        "item_start_s": 4384,
+        "item_end_s": 5136,
+        "segment_start_s": 4354,
+        "segment_end_s": 5166,
+        "padding_s": 30,
+        "boundary_source": "Seattle Channel video index (data-seek chapter markers); end = next chapter start",
+        "next_chapter": "CB 121190: ordinance relating to the 202"
+      },
+      "legistar_urls": {
+        "event_item": "https://webapi.legistar.com/v1/seattle/events/6735/eventitems/123444?AgendaNote=1&MinutesNote=1&Attachments=1",
+        "votes": "https://webapi.legistar.com/v1/seattle/eventitems/123444/votes",
+        "fetched_utc": "2026-11-08T02:25:37+00:00"
+      },
+      "licence": "Seattle City public record (Seattle Channel). Seattle Municipal Archives: 'Moving image content created by the City of Seattle is public record and does not require permission for use'. Credit: Courtesy of the Seattle Municipal Archives / Seattle Channel. Not redistributed."
+    },
+    {
+      "path": "seattle/6847/seattle_6847_124992_seg.wav",
+      "bytes": 27552078,
+      "sha256": "abf1003aa5b147efa2845e7ab257a5b0315ad7beff2c479055cf91fd5c7a37ee",
+      "format": "WAV PCM s16le, 16 kHz, mono",
+      "duration_s": 861.0,
+      "city": "Seattle",
+      "body": "City Council",
+      "meeting_date": "2026-08-04",
+      "legistar_event_id": 6847,
+      "legistar_event_item_id": 124992,
+      "matter_file": "CB 121259",
+      "matter_type": "Ordinance (Ord)",
+      "title": "An ordinance relating to unfair housing practices; adding new protections for homeowners from unwanted solicitation of residential property by establishing a Do Not Solicit List; providing an enforcement process; prescribing penalties; amending Section 14.08.020 and 14.08.190 of the Seattle Municipal Code; adding a new Section 14.08.042 to the Seattle Municipal Code; and adding reporting requirements.",
+      "outcome": {
+        "action": "passed as amended",
+        "passed_flag": "Pass",
+        "action_text": "The Council Bill (CB) was passed as amended by the following vote, and the President signed the Council Bill (CB):",
+        "mover": null,
+        "seconder": null,
+        "vote_counts": {
+          "In Favor": 9
+        },
+        "votes": [
+          {
+            "name": "Dionne Foster",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Joy Hollingsworth",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Debora Juarez",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Robert Kettle",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Eddie Lin",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Alexis Mercedes Rinck",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Maritza Rivera",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Rob Saka",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Dan Strauss",
+            "vote": "In Favor"
+          }
+        ]
+      },
+      "source": {
+        "video_page": "https://www.seattlechannel.org/FullCouncil?videoid=x189079",
+        "video_url": "https://video.seattle.gov/media/council/council_080426_2022661.mp4",
+        "video_bytes": 665852774,
+        "video_last_modified": "Tue, 04 Aug 2026 23:45:52 GMT",
+        "retrieval": "ranged read: ffmpeg -ss over HTTPS Range requests; full video not stored, so no video sha256",
+        "item_start_s": 4532,
+        "item_end_s": 5333,
+        "segment_start_s": 4502,
+        "segment_end_s": 5363,
+        "padding_s": 30,
+        "boundary_source": "Seattle Channel video index (data-seek chapter markers); end = next chapter start",
+        "next_chapter": "CB 121248: An ordinance relating to cont"
+      },
+      "legistar_urls": {
+        "event_item": "https://webapi.legistar.com/v1/seattle/events/6847/eventitems/124992?AgendaNote=1&MinutesNote=1&Attachments=1",
+        "votes": "https://webapi.legistar.com/v1/seattle/eventitems/124992/votes",
+        "fetched_utc": "2026-11-08T02:25:37+00:00"
+      },
+      "licence": "Seattle City public record (Seattle Channel). Seattle Municipal Archives: 'Moving image content created by the City of Seattle is public record and does not require permission for use'. Credit: Courtesy of the Seattle Municipal Archives / Seattle Channel. Not redistributed."
+    },
+    {
+      "path": "seattle/6018/seattle_6018_110005_seg.wav",
+      "bytes": 62880078,
+      "sha256": "63fc8aaf1d18b8564ed9de13f49cdaf9d39465ab53203d4952cdfa4f176c53be",
+      "format": "WAV PCM s16le, 16 kHz, mono",
+      "duration_s": 1965.0,
+      "city": "Seattle",
+      "body": "City Council",
+      "meeting_date": "2024-09-17",
+      "legistar_event_id": 6018,
+      "legistar_event_item_id": 110005,
+      "matter_file": "Res 32142",
+      "matter_type": "Resolution (Res)",
+      "title": "A RESOLUTION regarding Initiative 137 concerning a payroll expense tax to fund the Social Housing Developer; authorizing the City Clerk and the Executive Director of the Ethics and  Elections Commission to take those actions necessary to enable the proposed Initiative Measure to appear on the November 5, 2024, ballot and the local voters’ pamphlet; requesting the King County Elections Director to place the proposed Initiative Measure on the November 5, 2024, ballot; and providing for the publication of such proposed Initiative Measure.",
+      "outcome": {
+        "action": "postponed",
+        "passed_flag": "Pass",
+        "action_text": "The Motion carried and the Resolution (Res) was postponed to September 19, 2024 by the following vote:",
+        "mover": null,
+        "seconder": null,
+        "vote_counts": {
+          "In Favor": 9
+        },
+        "votes": [
+          {
+            "name": "Joy Hollingsworth",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Robert Kettle",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Cathy Moore",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Tammy J. Morales",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Sara Nelson",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Maritza Rivera",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Rob Saka",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Dan Strauss",
+            "vote": "In Favor"
+          },
+          {
+            "name": "Tanya Woo",
+            "vote": "In Favor"
+          }
+        ]
+      },
+      "source": {
+        "video_page": "https://seattlechannel.org/FullCouncil/?videoid=x159493",
+        "video_url": "https://video.seattle.gov/media/council/council_091724_2022471.mp4",
+        "video_bytes": 1599310671,
+        "video_last_modified": "Wed, 18 Sep 2024 03:35:24 GMT",
+        "retrieval": "ranged read: ffmpeg -ss over HTTPS Range requests; full video not stored, so no video sha256",
+        "item_start_s": 6039,
+        "item_end_s": 7944,
+        "segment_start_s": 6009,
+        "segment_end_s": 7974,
+        "padding_s": 30,
+        "boundary_source": "Seattle Channel video index (data-seek chapter markers); end = next chapter start",
+        "next_chapter": "Proclamation: Olympic and Paralympic Ath"
+      },
+      "legistar_urls": {
+        "event_item": "https://webapi.legistar.com/v1/seattle/events/6018/eventitems/110005?AgendaNote=1&MinutesNote=1&Attachments=1",
+        "votes": "https://webapi.legistar.com/v1/seattle/eventitems/110005/votes",
+        "fetched_utc": "2026-11-08T02:25:37+00:00"
+      },
+      "licence": "Seattle City public record (Seattle Channel). Seattle Municipal Archives: 'Moving image content created by the City of Seattle is public record and does not require permission for use'. Credit: Courtesy of the Seattle Municipal Archives / Seattle Channel. Not redistributed."
+    }
+  ]
+}

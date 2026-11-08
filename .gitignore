@@ -20,6 +20,7 @@ data/ami/*
 !data/ami/MANIFEST.json
 # Council-meeting pilot (city video segments and Legistar JSON; local only)
 data/council/*
+!data/council/MANIFEST.json
 
 # Web build output
 web/node_modules/
