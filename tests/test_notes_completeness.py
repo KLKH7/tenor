@@ -11,7 +11,7 @@ from typing import Any
 from tenor.ami.corpus import AmiMeeting, DialogueAct, Speaker, SummarySentence, Word, meeting_note
 from tenor.evals import list_check as E
 from tenor.evals import notes_completeness as N
-from tenor.llm.client import Completion, Ledger, LLMClient, LLMRequest, cost_usd
+from tenor.llm.client import Completion, Ledger, LLMClient, LLMRequest, cost_usd, text_blocks
 
 # -- splitting --------------------------------------------------------------------------------
 
@@ -175,7 +175,7 @@ def test_judge_user_blocks_and_transcript_fit(monkeypatch: Any) -> None:
     text = N.judge_user(u)
     assert "<reference_transcript>\n[L0000 Project Manager 00:00] We use rubber." in text
     assert "<product_transcript>\nThem: Bo will send the slides\n</product_transcript>" in text
-    assert text.endswith("B5 [section: Decisions] Budget is 20 euros")
+    assert text.endswith("B5 [section: Decisions] Budget is 20 euros\n\nJudging pass 1.")
     assert "granola" not in text.lower()  # the judge is not told which product
     monkeypatch.setattr(N, "MAX_PRODUCT_CHARS", 5)
     assert not u.includes_transcript
@@ -393,3 +393,128 @@ def test_make_unit_from_ami_meeting() -> None:
     assert [x.speaker for x in u.transcript] == ["Project Manager", "Project Manager"]
     other = m.model_copy(update={"meeting_id": "IS1008b"})
     assert N.make_unit(other, note, "granola").split == "test"
+
+
+# -- passes, prompt-cache breakpoints, combining ------------------------------------------------
+
+
+def test_judge_request_breaks_and_pass_markers(tmp_path: Path) -> None:
+    u = _unit()
+    shared, product, marker = N.judge_parts(u, 2)
+    req = N.judge_request(u, 2)
+    assert req.user == shared + product + marker and marker == "\n\nJudging pass 2."
+    assert req.cache_breaks == (len(shared), len(shared) + len(product))
+    blocks = text_blocks(req.user, req.cache_breaks, "5m")
+    assert blocks[0]["text"].endswith("</reference_transcript>\n\n")
+    assert blocks[1]["text"].startswith("<product_transcript>") and "cache_control" in blocks[1]
+    assert blocks[2] == {"type": "text", "text": marker}  # the varying tail: never cached
+    other = _unit(product="wispr")
+    other.transcript = [E.Line(0, "Ed", "", "different")]
+    assert N.judge_parts(other, 1)[0] == shared  # both products share the meeting part
+    judge = LLMClient(Fake(), model=N.JUDGE_MODEL, cache_dir=tmp_path, ledger=Ledger())
+    assert judge.cache_path(N.judge_request(u, 1)) != judge.cache_path(N.judge_request(u, 2))
+
+
+def _pass(rec: dict[str, Any], k: int, **gold_cov: str) -> dict[str, Any]:
+    """``rec`` as pass ``k`` with some gold coverages changed (scores recomputed)."""
+    out = json.loads(json.dumps(rec))
+    out["pass"] = k
+    for g in out["gold_verdicts"]:
+        if g["id"] in gold_cov:
+            g["coverage"] = gold_cov[g["id"]]
+            if g["coverage"] == "full":
+                g["heard"], g["quote_found"] = "not_assessed", False
+    v = N.Verdicts(
+        tuple(N.GoldVerdict(**{**g, "bullets": tuple(g["bullets"])}) for g in out["gold_verdicts"]),
+        tuple(N.BulletVerdict(**{**b, "gold": tuple(b["gold"])}) for b in out["bullet_verdicts"]),
+        (),
+    )
+    out["scores"] = N.score_unit(v)
+    return out
+
+
+def test_combine_mean_spread_and_majority(tmp_path: Path) -> None:
+    judge = LLMClient(Fake(), model=N.JUDGE_MODEL, cache_dir=tmp_path, ledger=Ledger())
+    base = N.run_unit(_unit(), judge, 1)
+    passes = [base, _pass(base, 2, A1="full"), _pass(base, 3, A1="none", A2="full")]
+    r = N.combine(passes)
+    assert r["n_passes"] == 3 and [p["pass"] for p in r["passes"]] == [1, 2, 3]
+    act = [p["scores"]["action"]["recall"] for p in passes]
+    assert act == [0.25, 0.5, 0.5]
+    assert r["scores"]["action"]["recall"] == sum(act) / 3
+    sp = r["spread"]["action"]["recall"]
+    assert (sp["min"], sp["max"], sp["range"]) == (0.25, 0.5, 0.25)
+    assert r["spread"]["problem"]["precision"] is None  # no problem bullets in any pass
+    # Majority: A1 partial / full / none -> median partial; A2 none / none / full -> none.
+    mv = N.majority_verdicts(passes)
+    cov = {g.id: g.coverage for g in mv.gold}
+    assert cov == {"D1": "full", "A1": "partial", "A2": "none", "P1": "none"}
+    a2 = next(g for g in mv.gold if g.id == "A2")
+    assert a2.heard == "yes" and a2.quote_found  # the two "none" passes heard it, quote found
+    assert r["majority"]["action"]["recall"] == 0.25
+    assert {b.id: b.supported for b in mv.bullets}["B2"] == "partly"
+    assert N.combine(passes) == r  # deterministic
+
+
+def test_vote_and_majority_ids() -> None:
+    assert N._vote(["no", "yes", "yes"], ("no", "yes")) == "yes"
+    assert N._vote(["yes", "no"], ("no", "yes")) == "no"  # tie: earliest in order
+    assert N._majority_ids([["B1", "B2"], ["B2"], ["B3", "B2"]]) == ("B2",)
+    assert N._majority_ids([["B1"], ["B1"], []]) == ("B1",)
+
+
+def test_summaries_over_combined_units(tmp_path: Path) -> None:
+    judge = LLMClient(Fake(), model=N.JUDGE_MODEL, cache_dir=tmp_path, ledger=Ledger())
+    base = N.run_unit(_unit(), judge, 1)
+    g = N.combine([base, _pass(base, 2, A1="full")])
+    w_base = {**base, "product": "wispr"}
+    w = N.combine([w_base, _pass(w_base, 2, A2="partial")])
+    recs = [g, w]
+    s = N.summarize(recs, seed=3)
+    assert s["dev"]["products"]["granola"]["action"]["micro"]["full"] == 0.5  # pass mean
+    m = N.summarize(recs, seed=3, key="majority")
+    assert m["dev"]["products"]["granola"]["action"]["n_meetings"] == 1
+    ps = N.pass_spread(recs)
+    pooled = ps["granola"]["action"]["pooled"]["micro_recall"]
+    assert pooled["per_pass"] == [0.25, 0.5] and pooled["spread"]["range"] == 0.25
+    assert ps["wispr"]["action"]["unit"]["recall"]["max_range"] == 0.25  # A2 none -> partial
+    agg = N.aggregate({"meta": {}, "summary": s, "pass_spread": ps, "records": recs})
+    assert [u["product"] for u in agg["units"]] == ["granola", "wispr"]
+    assert agg["units"][0]["range"]["action"]["recall"] == 0.25
+    pa = agg["pass_agreement"]["granola"]
+    assert (pa["gold_items"], pa["gold_unanimous"], pa["gold_three_labels"]) == (4, 3, 0)
+    assert pa["bullets"] == 5 and pa["kind_unanimous"] == 5 and pa["dap_bullets"] == 4
+    assert "Ana: write the plan" in N.private_texts(recs)
+
+
+def test_cost_summary_counts_live_calls_and_cache_saving() -> None:
+    m = N.JUDGE_MODEL
+    rows = [
+        {"stage": N.STAGE, "model": m, "cached": False, "input_tokens": 100,
+         "cache_read_tokens": 9000, "cache_write_tokens": 0, "output_tokens": 1000,
+         "cost_usd": cost_usd(m, 100, 1000, 9000, 0)},
+        {"stage": N.STAGE, "model": m, "cached": True, "input_tokens": 1,
+         "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 1, "cost_usd": 5.0},
+    ]  # fmt: skip
+    c = N.cost_summary(rows)
+    live = c["live"]
+    assert (live["calls"], c["replayed_calls"], live["cache_read_tokens"]) == (1, 1, 9000)
+    assert live["usd_without_prompt_cache"] == cost_usd(m, 9100, 1000)
+    assert live["prompt_cache_saving_usd"] > 0
+    assert c["all_calls"]["calls"] == 2 and c["all_calls"]["usd"] == live["usd"] + 5.0
+
+
+def test_quote_with_passes_simulates_prompt_cache(tmp_path: Path) -> None:
+    judge = LLMClient(Fake(), model=N.JUDGE_MODEL, cache_dir=tmp_path, ledger=Ledger())
+    u = _unit()
+    w = _unit(transcript=[E.Line(0, "Ed", "", "another transcript")], product="wispr")
+
+    def counter(texts: list[str]) -> list[int]:
+        return [max(1, len(t)) * 10 for t in texts]  # big enough to pass the cache minimum
+
+    q = N.quote([u, w], judge, counter, passes=3)
+    assert (q.calls, q.cached) == (6, 0)
+    assert q.cache_read_tokens > 0 and q.cache_write_tokens > 0
+    assert q.usd_expected_cached < q.usd_expected and q.usd_high_cached < q.usd_high
+    N.run_unit(u, judge, 2)
+    assert N.quote([u, w], judge, counter, passes=3).cached == 1

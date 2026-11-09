@@ -42,7 +42,15 @@ from tenor.evals.list_check import (
     sign_test,
     transcript_lines,
 )
-from tenor.llm.client import LLMClient, LLMRequest, cost_usd, load_prompt
+from tenor.llm.client import (
+    LLMClient,
+    LLMRequest,
+    PromptShape,
+    breaks_after,
+    cost_usd,
+    load_prompt,
+    simulate_prompt_cache,
+)
 
 # v1 (pilot, DEV): gold-side and bullet-side links disagreed, a bullet about a different task was
 # linked to a gold item, and the owner rule for action coverage was implicit. v2 judges the
@@ -72,10 +80,11 @@ SECTIONS = {
 }
 METRICS = ("recall", "recall_full", "precision", "precision_true", "precision_gold", "f1")
 TEST_METRICS = ("recall", "recall_full", "precision", "f1")
-# Output tokens per call (expected, high): base + per gold item and bullet. ASSUMED until a
-# pilot's ledger replaces them (medium effort: thinking counts as output).
-ASSUMED_OUT_BASE = (1500.0, 5000.0)
-ASSUMED_OUT_PER_ITEM = (60.0, 120.0)
+# Output tokens per call (expected, high): base + per gold item and bullet (medium effort:
+# thinking counts as output). From the DEV pilot's ledger: 8 calls (prompts v1-v4 x 2 products,
+# 25-29 items each) wrote 1,478-1,636 output tokens; expected fits that, high is twice it.
+ASSUMED_OUT_BASE = (600.0, 1200.0)
+ASSUMED_OUT_PER_ITEM = (35.0, 70.0)
 
 Coverage = Literal["full", "partial", "none"]
 Heard = Literal["yes", "no", "not_assessed"]
@@ -285,18 +294,26 @@ def make_unit(meeting: Any, note: MeetingNote, product: str, roster: str = "") -
     )
 
 
-def judge_user(unit: Unit) -> str:
+def judge_parts(unit: Unit, pass_no: int = 1) -> tuple[str, str, str]:
+    """The judge's user text in three parts, each ending at a prompt-cache breakpoint but the
+    last: the meeting's gold + roster + AMI reference (shared by both products and every pass),
+    the product's transcript + notes (shared by that product's passes), and the pass marker
+    (distinct per pass, so the disk cache does not replay pass 1; semantically neutral)."""
     ref = "\n".join(x.render() for x in unit.reference)
     if unit.includes_transcript:
         own = f"<product_transcript>\n{unit.product_text()}\n</product_transcript>"
     else:
         own = "Product transcript: not included (mark in_product_transcript not_assessed)."
     notes = "\n".join(b.render() for b in unit.bullets) or "(the notes are empty)"
-    return (
+    shared = (
         f"Gold items:\n{render_gold(unit.gold, unit.roster)}\n\n"
-        f"<reference_transcript>\n{ref}\n</reference_transcript>\n\n{own}\n\n"
-        f"Product notes (bullets):\n{notes}"
+        f"<reference_transcript>\n{ref}\n</reference_transcript>\n\n"
     )
+    return shared, f"{own}\n\nProduct notes (bullets):\n{notes}", f"\n\nJudging pass {pass_no}."
+
+
+def judge_user(unit: Unit, pass_no: int = 1) -> str:
+    return "".join(judge_parts(unit, pass_no))
 
 
 class _GoldOut(BaseModel):
@@ -369,15 +386,19 @@ SCHEMA: dict[str, Any] = _obj(
 )
 
 
-def judge_request(unit: Unit) -> LLMRequest:
+def judge_request(unit: Unit, pass_no: int = 1) -> LLMRequest:
+    """Pass ``pass_no`` of the judge on ``unit``. Breakpoints after the shared meeting part and
+    after the product part (:func:`judge_parts`), plus the system prompt: 3 of the API's 4."""
+    user, breaks = breaks_after(*judge_parts(unit, pass_no))
     return LLMRequest(
         stage=STAGE,
         prompt_id=PROMPT,
         system=load_prompt(PROMPT),
-        user=judge_user(unit),
+        user=user,
         schema=SCHEMA,
         max_tokens=MAX_TOKENS,
         effort="medium",
+        cache_breaks=breaks,
     )
 
 
@@ -580,14 +601,16 @@ def score_unit(v: Verdicts) -> dict[str, dict[str, Any]]:
     return {c: score_category(v, c).row() for c in (*CATEGORIES, ALL)}
 
 
-def run_unit(unit: Unit, judge: LLMClient) -> dict[str, Any]:
-    """Judge and score one unit; a JSON-ready record (holds notes and gold text: local only)."""
-    out = judge.structured(judge_request(unit), JudgeOut)
+def run_unit(unit: Unit, judge: LLMClient, pass_no: int = 1) -> dict[str, Any]:
+    """Judge (pass ``pass_no``) and score one unit; a JSON-ready record (holds notes and gold
+    text: local only)."""
+    out = judge.structured(judge_request(unit, pass_no), JudgeOut)
     v = parse(out, unit)
     return {
         "meeting_id": unit.meeting_id,
         "product": unit.product,
         "split": unit.split,
+        "pass": pass_no,
         "product_transcript_included": unit.includes_transcript,
         "bullets": [asdict(b) for b in unit.bullets],
         "gold": [asdict(g) for g in unit.gold],
@@ -596,6 +619,105 @@ def run_unit(unit: Unit, judge: LLMClient) -> dict[str, Any]:
         "repairs": list(v.repairs),
         "link_disagreements": link_disagreements(v),
         "scores": score_unit(v),
+    }
+
+
+# -- combining passes -------------------------------------------------------------------------
+
+COVERAGE_RANK = {"none": 0, "partial": 1, "full": 2}
+SUPPORT_RANK = {"no": 0, "n/a": 0, "partly": 1, "yes": 2}
+
+
+def _vote(values: Sequence[str], order: Sequence[str]) -> str:
+    """Most common value; a tie goes to the value earliest in ``order``."""
+    counts = {v: values.count(v) for v in set(values)}
+    return min(counts, key=lambda v: (-counts[v], order.index(v)))
+
+
+def _majority_ids(lists: Sequence[Sequence[str]]) -> tuple[str, ...]:
+    """IDs listed by more than half of the passes, in first-seen order."""
+    seen = list(dict.fromkeys(i for xs in lists for i in xs))
+    return tuple(i for i in seen if sum(i in xs for xs in lists) * 2 > len(lists))
+
+
+def majority_verdicts(passes: Sequence[Mapping[str, Any]]) -> Verdicts:
+    """One verdict set from several passes on a unit, item by item. Gold coverage: the median
+    of none < partial < full (lower median on a tie); its bullets: those most passes cite;
+    "heard": the vote of the passes that did not call it fully covered (a tie goes to "no";
+    not assessed when the majority coverage is full); quote verified if most "yes" passes'
+    quotes were found. Bullet kind: the vote (ties in decision, action, problem, other order);
+    support: the lower median of no < partly < yes over the passes that gave that kind a
+    verdict; gold links: those most passes give."""
+    n = len(passes)
+    gold: list[GoldVerdict] = []
+    for i, g0 in enumerate(passes[0]["gold_verdicts"]):
+        gs = [p["gold_verdicts"][i] for p in passes]
+        ranks = sorted(COVERAGE_RANK[g["coverage"]] for g in gs)
+        cov = next(k for k, r in COVERAGE_RANK.items() if r == statistics.median_low(ranks))
+        heard, found = "not_assessed", False
+        if cov != "full":
+            votes = [g["heard"] for g in gs if g["coverage"] != "full"]
+            heard = _vote(votes, ("no", "yes", "not_assessed")) if votes else "not_assessed"
+            yes = [g["quote_found"] for g in gs if g["heard"] == "yes"]
+            found = heard == "yes" and sum(yes) * 2 > len(yes)
+        bl = _majority_ids([g["bullets"] for g in gs])
+        gold.append(GoldVerdict(g0["id"], g0["category"], cov, bl, heard, "", found, ""))
+    bullets: list[BulletVerdict] = []
+    for i, b0 in enumerate(passes[0]["bullet_verdicts"]):
+        bs = [p["bullet_verdicts"][i] for p in passes]
+        kind = _vote([b["kind"] for b in bs], (*CATEGORIES, "other"))
+        sup = "n/a"
+        if kind != "other":
+            ranks = sorted(SUPPORT_RANK[b["supported"]] for b in bs if b["kind"] != "other")
+            r = statistics.median_low(ranks)
+            sup = next(k for k in ("no", "partly", "yes") if SUPPORT_RANK[k] == r)
+        gl = _majority_ids([b["gold"] for b in bs])
+        bullets.append(BulletVerdict(b0["id"], b0["section"], kind, gl, sup, ""))
+    assert all(len(p["gold_verdicts"]) == len(gold) for p in passes) and n
+    return Verdicts(tuple(gold), tuple(bullets), ())
+
+
+def _mean_row(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Counts and metrics averaged over passes (a metric over the passes where it exists)."""
+    out: dict[str, Any] = {k: statistics.fmean(float(r[k]) for r in rows) for k in _COUNTS}
+    for m in METRICS:
+        vals = [float(r[m]) for r in rows if r[m] is not None]
+        out[m] = statistics.fmean(vals) if vals else None
+    return out
+
+
+def _spread(values: Sequence[float | None]) -> dict[str, float] | None:
+    vals = [float(v) for v in values if v is not None]
+    if not vals:
+        return None
+    return {
+        "min": min(vals),
+        "max": max(vals),
+        "range": max(vals) - min(vals),
+        "sd": statistics.pstdev(vals),
+    }
+
+
+def combine(passes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """One unit's passes as one record: ``scores`` = the mean over passes (the headline),
+    ``spread`` = min / max / range / SD across passes per metric, ``majority`` = the scores of
+    :func:`majority_verdicts` (the alternative aggregate). The passes are kept."""
+    first = passes[0]
+    cats = (*CATEGORIES, ALL)
+    return {
+        "meeting_id": first["meeting_id"],
+        "product": first["product"],
+        "split": first["split"],
+        "product_transcript_included": first["product_transcript_included"],
+        "n_passes": len(passes),
+        "scores": {c: _mean_row([p["scores"][c] for p in passes]) for c in cats},
+        "spread": {
+            c: {m: _spread([p["scores"][c][m] for p in passes]) for m in METRICS} for c in cats
+        },
+        "majority": score_unit(majority_verdicts(passes)),
+        "repairs": [f"pass {p['pass']}: {x}" for p in passes for x in p["repairs"]],
+        "link_disagreements": sum(int(p["link_disagreements"]) for p in passes),
+        "passes": list(passes),
     }
 
 
@@ -609,7 +731,7 @@ _COUNTS = (
 
 
 def _cat_summary(rows: Sequence[Mapping[str, Any]], seed: int) -> dict[str, Any]:
-    tot = {k: sum(int(r[k]) for r in rows) for k in _COUNTS}
+    tot = {k: sum(float(r[k]) for r in rows) for k in _COUNTS}
     out: dict[str, Any] = {"n_meetings": len(rows), "micro": tot}
     out["micro_recall"] = (
         (tot["full"] + 0.5 * tot["partial"]) / tot["n_gold"] if tot["n_gold"] else None
@@ -624,10 +746,13 @@ def _cat_summary(rows: Sequence[Mapping[str, Any]], seed: int) -> dict[str, Any]
     return out
 
 
-def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]:
+def summarize(
+    records: Sequence[Mapping[str, Any]], seed: int = 42, key: str = "scores"
+) -> dict[str, Any]:
     """Per split (dev, test, all), per product and category: means over meetings with 95%
-    bootstrap CIs, micro totals; Granola vs Wispr sign tests per category over meetings both
-    recorded (wins = Wispr higher); parser repairs and link disagreements."""
+    bootstrap CIs, micro totals (of pass-mean counts); Granola vs Wispr sign tests per
+    category over meetings both recorded (wins = Wispr higher); parser repairs and link
+    disagreements. ``key``: ``scores`` (mean over passes) or ``majority`` (majority vote)."""
     out: dict[str, Any] = {}
     for split in ("dev", "test", "all"):
         rs = [r for r in records if split == "all" or r["split"] == split]
@@ -638,7 +763,7 @@ def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str,
             prs = [r for r in rs if r["product"] == p]
             if prs:
                 per[p] = {
-                    c: _cat_summary([r["scores"][c] for r in prs], seed) for c in (*CATEGORIES, ALL)
+                    c: _cat_summary([r[key][c] for r in prs], seed) for c in (*CATEGORIES, ALL)
                 }
         paired: dict[str, Any] = {}
         if all(p in per for p in PRODUCTS):
@@ -646,8 +771,8 @@ def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str,
             for c in (*CATEGORIES, ALL):
                 paired[f"{b} vs {a}: {c}"] = {
                     m: sign_test(
-                        {r["meeting_id"]: r["scores"][c][m] for r in rs if r["product"] == a},
-                        {r["meeting_id"]: r["scores"][c][m] for r in rs if r["product"] == b},
+                        {r["meeting_id"]: r[key][c][m] for r in rs if r["product"] == a},
+                        {r["meeting_id"]: r[key][c][m] for r in rs if r["product"] == b},
                     )
                     for m in TEST_METRICS
                 }
@@ -663,20 +788,159 @@ def summarize(records: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str,
     return out
 
 
+def pass_spread(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Between-pass spread, per product and category. ``unit``: the mean and the largest
+    per-unit range (max - min across passes) of each metric. ``pooled``: each pass's micro
+    recall / precision over all of the product's units, and their range (how much a pooled
+    headline would move with a single judge pass)."""
+    out: dict[str, Any] = {}
+    for p in PRODUCTS:
+        rs = [r for r in records if r["product"] == p]
+        if not rs:
+            continue
+        n = min(int(r["n_passes"]) for r in rs)
+        out[p] = {}
+        for c in (*CATEGORIES, ALL):
+            unit = {}
+            for m in METRICS:
+                ranges = [r["spread"][c][m]["range"] for r in rs if r["spread"][c][m]]
+                unit[m] = {
+                    "mean_range": statistics.fmean(ranges) if ranges else None,
+                    "max_range": max(ranges) if ranges else None,
+                    "mean_sd": statistics.fmean(
+                        r["spread"][c][m]["sd"] for r in rs if r["spread"][c][m]
+                    )
+                    if ranges
+                    else None,
+                }
+            pooled: dict[str, list[float | None]] = {"micro_recall": [], "micro_precision": []}
+            for k in range(n):
+                rows = [r["passes"][k]["scores"][c] for r in rs]
+                g = sum(x["n_gold"] for x in rows)
+                b = sum(x["n_bullets"] for x in rows)
+                rec = (sum(x["full"] for x in rows) + 0.5 * sum(x["partial"] for x in rows)) / g
+                pooled["micro_recall"].append(rec if g else None)
+                pooled["micro_precision"].append(sum(x["right"] for x in rows) / b if b else None)
+            out[p][c] = {
+                "unit": unit,
+                "pooled": {m: {"per_pass": v, "spread": _spread(v)} for m, v in pooled.items()},
+            }
+    return out
+
+
+def pass_agreement(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Item-level agreement between passes, per product: gold items with the same coverage in
+    every pass (and with three or more distinct labels), bullets with the same kind in every
+    pass, and, among bullets every pass called a decision / action / problem, the same support
+    verdict in every pass."""
+    out: dict[str, Any] = {}
+    for p in PRODUCTS:
+        c = dict.fromkeys(
+            ("gold_items", "gold_unanimous", "gold_three_labels", "bullets", "kind_unanimous",
+             "dap_bullets", "support_unanimous"),
+            0,
+        )  # fmt: skip
+        for r in records:
+            if r["product"] != p:
+                continue
+            ps = r["passes"]
+            for i in range(len(ps[0]["gold_verdicts"])):
+                labels = {x["gold_verdicts"][i]["coverage"] for x in ps}
+                c["gold_items"] += 1
+                c["gold_unanimous"] += len(labels) == 1
+                c["gold_three_labels"] += len(labels) >= 3
+            for i in range(len(ps[0]["bullet_verdicts"])):
+                kinds = [x["bullet_verdicts"][i]["kind"] for x in ps]
+                c["bullets"] += 1
+                c["kind_unanimous"] += len(set(kinds)) == 1
+                if "other" not in kinds:
+                    c["dap_bullets"] += 1
+                    c["support_unanimous"] += (
+                        len({x["bullet_verdicts"][i]["supported"] for x in ps}) == 1
+                    )
+        if c["gold_items"]:
+            out[p] = c
+    return out
+
+
+def unit_rows(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Per unit, numbers only (AMI meeting IDs are public): pass-mean metrics, majority-vote
+    metrics and the between-pass range, per category."""
+    return [
+        {
+            "meeting_id": r["meeting_id"],
+            "product": r["product"],
+            "split": r["split"],
+            "mean": {c: {m: r["scores"][c][m] for m in METRICS} for c in r["scores"]},
+            "majority": {c: {m: r["majority"][c][m] for m in METRICS} for c in r["majority"]},
+            "range": {
+                c: {m: (s["range"] if s else None) for m, s in r["spread"][c].items()}
+                for c in r["spread"]
+            },
+            "n_gold": {c: r["scores"][c]["n_gold"] for c in r["scores"]},
+        }
+        for r in records
+    ]
+
+
 def aggregate(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Numbers only: the run's meta (no ledger) and summary."""
+    """Numbers only: the run's meta (no per-call ledger), summary, spread and per-unit rows."""
     meta = dict(result["meta"])
     meta.pop("ledger_by_stage", None)
-    return {"meta": meta, "summary": result["summary"]}
+    out = {"meta": meta, "summary": result["summary"]}
+    for k in ("summary_majority", "pass_spread"):
+        if k in result:
+            out[k] = result[k]
+    if "records" in result:
+        out["units"] = unit_rows(result["records"])
+        if all("passes" in r for r in result["records"]):
+            out["pass_agreement"] = pass_agreement(result["records"])
+    return out
+
+
+def _costs(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    plain = sum(
+        cost_usd(
+            str(r["model"]),
+            int(r["input_tokens"]) + int(r["cache_read_tokens"]) + int(r["cache_write_tokens"]),
+            int(r["output_tokens"]),
+        )
+        for r in rows
+    )
+    usd = sum(float(r["cost_usd"]) for r in rows)
+    return {
+        "calls": len(rows),
+        "usd": usd,
+        "input_tokens_uncached": sum(int(r["input_tokens"]) for r in rows),
+        "cache_read_tokens": sum(int(r["cache_read_tokens"]) for r in rows),
+        "cache_write_tokens": sum(int(r["cache_write_tokens"]) for r in rows),
+        "output_tokens": sum(int(r["output_tokens"]) for r in rows),
+        "usd_without_prompt_cache": plain,
+        "prompt_cache_saving_usd": plain - usd,
+    }
+
+
+def cost_summary(ledger_records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Judge spend by token class and what prompt caching saved (the same tokens all billed as
+    plain input, minus the bill). ``live``: calls made in this run; ``all_calls``: every call
+    the results rest on, disk-cache replays at what they originally cost (e.g. a pilot's)."""
+    rows = [r for r in ledger_records if r["stage"] == STAGE]
+    return {
+        "live": _costs([r for r in rows if not r["cached"]]),
+        "all_calls": _costs(rows),
+        "replayed_calls": sum(1 for r in rows if r["cached"]),
+    }
 
 
 def private_texts(records: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Strings an aggregate must not contain: bullets, gold, quotes, reasons."""
+    """Strings an aggregate must not contain: bullets, gold, quotes, reasons (every pass)."""
     out: list[str] = []
-    for r in records:
-        out += [b["text"] for b in r["bullets"]] + [g["text"] for g in r["gold"]]
-        out += [g["quote"] for g in r["gold_verdicts"]] + [g["reason"] for g in r["gold_verdicts"]]
-        out += [b["reason"] for b in r["bullet_verdicts"]]
+    for unit in records:
+        for r in unit.get("passes", [unit]):
+            out += [b["text"] for b in r["bullets"]] + [g["text"] for g in r["gold"]]
+            out += [g["quote"] for g in r["gold_verdicts"]]
+            out += [g["reason"] for g in r["gold_verdicts"]]
+            out += [b["reason"] for b in r["bullet_verdicts"]]
     return out
 
 
@@ -686,34 +950,55 @@ def private_texts(records: Sequence[Mapping[str, Any]]) -> list[str]:
 @dataclass
 class Quote:
     calls: int = 0
-    cached: int = 0
+    cached: int = 0  # disk-cache replays ($0)
     input_tokens: int = 0  # uncached calls, exact (count_tokens) + OVERHEAD each
     items: int = 0  # gold items + bullets over uncached calls
     usd_expected: float = 0.0
     usd_high: float = 0.0
+    # With prompt caching, the uncached calls replayed in run order through a warm cache.
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    usd_expected_cached: float = 0.0
+    usd_high_cached: float = 0.0
 
 
 def items_of(unit: Unit) -> int:
     return len(unit.gold) + len(unit.bullets)
 
 
-def quote(units: Sequence[Unit], judge: LLMClient, counter: Any) -> Quote:
-    """Price judging ``units``: exact input (``counter``: count_tokens, free) plus
-    :data:`OVERHEAD`; output ASSUMED (:data:`ASSUMED_OUT_BASE` + per item). Cached: $0."""
+def quote(units: Sequence[Unit], judge: LLMClient, counter: Any, passes: int = 1) -> Quote:
+    """Price ``passes`` judge passes on each of ``units``, in run order (unit by unit, passes
+    back to back; order ``units`` meeting by meeting). Input exact (``counter``: count_tokens,
+    free) plus :data:`OVERHEAD`; output ASSUMED (:data:`ASSUMED_OUT_BASE` + per item).
+    Disk-cached calls cost $0. The cached price replays the uncached calls through a warm
+    prompt cache: system + schema, then the meeting part, then the product part
+    (:func:`judge_parts`); the pass marker is never cached."""
     q = Quote()
+    shapes: list[PromptShape] = []
+    sys_tokens = counter([load_prompt(PROMPT)])[0] + OVERHEAD
     for u in units:
-        req = judge_request(u)
-        q.calls += 1
-        if judge.is_cached(req):
-            q.cached += 1
-            continue
-        tin = counter([f"{req.system}\n\n{req.user}"])[0] + OVERHEAD
+        shared, product, _ = judge_parts(u)
+        t_shared, t_product = counter([shared, product])
         n = items_of(u)
-        q.input_tokens += tin
-        q.items += n
-        for i, attr in enumerate(("usd_expected", "usd_high")):
-            out = ASSUMED_OUT_BASE[i] + ASSUMED_OUT_PER_ITEM[i] * n
-            setattr(q, attr, getattr(q, attr) + cost_usd(judge.model, tin, round(out)))
+        for k in range(1, passes + 1):
+            req = judge_request(u, k)
+            q.calls += 1
+            if judge.is_cached(req):
+                q.cached += 1
+                continue
+            tin = counter([f"{req.system}\n\n{req.user}"])[0] + OVERHEAD
+            q.input_tokens += tin
+            q.items += n
+            for i, attr in enumerate(("usd_expected", "usd_high")):
+                out = ASSUMED_OUT_BASE[i] + ASSUMED_OUT_PER_ITEM[i] * n
+                setattr(q, attr, getattr(q, attr) + cost_usd(judge.model, tin, round(out)))
+            seg = (("sys", sys_tokens), (f"m:{u.meeting_id}", t_shared), (f"p:{u.key}", t_product))
+            shapes.append(PromptShape(seg, max(0, tin - sys_tokens - t_shared - t_product)))
+    est = simulate_prompt_cache(judge.model, shapes)
+    saving = est.saving_usd(judge.model)
+    q.cache_read_tokens, q.cache_write_tokens = est.read, est.write
+    q.usd_expected_cached = q.usd_expected - saving
+    q.usd_high_cached = q.usd_high - saving
     return q
 
 
@@ -725,13 +1010,13 @@ def reprice(
     full_items: int,
     margin: float = MARGIN,
 ) -> dict[str, Any]:
-    """The full run priced from the pilot's ledger: the pilot's recorded input cost scaled by
-    exact input tokens (full / pilot, both counted), its output cost by gold items + bullets
-    (output grows with the items judged), times ``margin``. Cached pilot calls count at their
-    original cost."""
+    """The full run priced from the pilot's ledger: the pilot's recorded input cost (prompt-cache
+    reads and writes included, as billed) scaled by exact input tokens (full / pilot, both
+    counted), its output cost by gold items + bullets (output grows with the items judged),
+    times ``margin``. Disk-cached pilot calls count at their original cost."""
     rows = [r for r in ledger_records if r["stage"] == STAGE]
-    usd_in = sum(cost_usd(str(r["model"]), int(r["input_tokens"]), 0) for r in rows)
     usd_out = sum(cost_usd(str(r["model"]), 0, int(r["output_tokens"])) for r in rows)
+    usd_in = sum(float(r["cost_usd"]) for r in rows) - usd_out
     k_in = full_input_tokens / pilot_input_tokens if pilot_input_tokens else 0.0
     k_out = full_items / pilot_items if pilot_items else 0.0
     usd = usd_in * k_in + usd_out * k_out

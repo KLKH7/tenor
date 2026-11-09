@@ -4366,6 +4366,9 @@ def ami_notes_completeness(
     pilot: Annotated[
         bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a), both products.")
     ] = False,
+    passes: Annotated[
+        int, typer.Option(help="Judge passes per unit (distinct pass marker; mean + spread).")
+    ] = 3,
     max_usd: Annotated[
         float | None,
         typer.Option(help="Hard spend cap (the approved amount); a pilot defaults to $0.50."),
@@ -4377,10 +4380,15 @@ def ami_notes_completeness(
     wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
     overrides: OverridesOpt = FACTS_OVERRIDES,
     out_dir: OutDirOpt = AMI_RESULTS / "e3",
+    commit_to: Annotated[
+        Path | None,
+        typer.Option(help="Also write the numbers-only aggregate here (checked). Not a pilot."),
+    ] = None,
 ) -> None:
     """E3: how much of AMI's human decisions / actions / problems each product's notes contain,
-    and whether the notes' decision / action / problem bullets are true. One judge call per
-    product per meeting. Start with --quote, then --pilot. Reads synced DBs only (no sync)."""
+    and whether the notes' decision / action / problem bullets are true. --passes judge calls
+    per product per meeting, run meeting by meeting with passes back to back so they share the
+    prompt cache. Start with --quote, then --pilot. Reads synced DBs only (no sync)."""
     import functools
     from datetime import UTC, datetime
 
@@ -4392,11 +4400,14 @@ def ami_notes_completeness(
 
     if pilot and quote_only:
         raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
-    units, skipped = _e3_units(granola_db, wispr_db, overrides)
+    if passes < 1:
+        raise typer.BadParameter("--passes must be at least 1")
+    units, skipped = _e3_units(granola_db, wispr_db, overrides)  # meeting by meeting
     pilot_units = [u for u in units if u.meeting_id == N.PILOT_MEETING]
     typer.echo(
-        f"{len(units)} units ({len(units) // 2} meetings x {len(N.PRODUCTS)} products); "
-        f"skipped: {skipped or 'none'}; pilot: {[u.key for u in pilot_units]}; judge {judge_model}"
+        f"{len(units)} units ({len(units) // 2} meetings x {len(N.PRODUCTS)} products) x "
+        f"{passes} passes; skipped: {skipped or 'none'}; pilot: {[u.key for u in pilot_units]}; "
+        f"judge {judge_model}"
     )
     cap = max_usd if max_usd is not None else (N.PILOT_MAX_USD if pilot else None)
     if cap is None and not quote_only:
@@ -4404,27 +4415,30 @@ def ami_notes_completeness(
     ledger = Ledger()
     judge_c = LLMClient(model=judge_model, ledger=ledger, max_usd=cap, offline=quote_only)
     counter = functools.partial(count_tokens, model=judge_model, cache_dir=judge_c.cache_dir)
-    fq, pq = N.quote(units, judge_c, counter), N.quote(pilot_units, judge_c, counter)
+    fq = N.quote(units, judge_c, counter, passes)
+    pq = N.quote(pilot_units, judge_c, counter, passes)
     for label, q in (("full", fq), ("pilot (DEV)", pq)):
         typer.echo(
             f"{label}: {q.calls} judge calls ({q.cached} cached), {q.input_tokens:,} input "
-            f"tokens (exact) -> ${q.usd_expected:.3f} expected, ${q.usd_high:.3f} high "
-            f"({judge_model}; output ASSUMED {N.ASSUMED_OUT_BASE} + {N.ASSUMED_OUT_PER_ITEM}"
-            f"/item)"
+            f"tokens (exact). No prompt cache: ${q.usd_expected:.3f} expected, "
+            f"${q.usd_high:.3f} high. With prompt cache ({q.cache_read_tokens:,} read, "
+            f"{q.cache_write_tokens:,} written): ${q.usd_expected_cached:.3f} expected, "
+            f"${q.usd_high_cached:.3f} high ({judge_model}; output ASSUMED "
+            f"{N.ASSUMED_OUT_BASE} + {N.ASSUMED_OUT_PER_ITEM}/item)"
         )
     if quote_only:
         typer.echo("no money spent (token counting is free)")
         return
     assert cap is not None
     run = pilot_units if pilot else units
-    high = (pq if pilot else fq).usd_high
+    high = (pq if pilot else fq).usd_high  # without prompt-cache savings: the safe side
     if high > cap:
         typer.echo(f"high estimate ${high:.2f} exceeds the cap ${cap:.2f}", err=True)
         raise typer.Exit(1)
     if not yes:
         typer.confirm(
-            f"{'PILOT: ' if pilot else ''}Judge {len(run)} units (hard cap ${cap:.2f}, quoted "
-            f"high ${high:.2f})?",
+            f"{'PILOT: ' if pilot else ''}Judge {len(run)} units x {passes} passes (hard cap "
+            f"${cap:.2f}, quoted high ${high:.2f})?",
             abort=True,
         )
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -4432,40 +4446,40 @@ def ami_notes_completeness(
     stopped = None
     try:
         for u in run:
-            records.append(N.run_unit(u, judge_c))
-            a = records[-1]["scores"]["all"]
-            typer.echo(
-                f"{u.key}: recall {a['recall']}, precision {a['precision']}, "
-                f"repairs {len(records[-1]['repairs'])} (spent ${ledger.spent_usd():.4f})"
-            )
+            done = []
+            for k in range(1, passes + 1):
+                done.append(N.run_unit(u, judge_c, k))
+                a = done[-1]["scores"]["all"]
+                typer.echo(
+                    f"{u.key} pass {k}: recall {a['recall']:.3f}, precision "
+                    f"{a['precision'] if a['precision'] is None else round(a['precision'], 3)}, "
+                    f"repairs {len(done[-1]['repairs'])} (spent ${ledger.spent_usd():.4f})"
+                )
+            records.append(N.combine(done))
     except BudgetExceeded as e:
         stopped = str(e)
 
     def counted(us: list[Any]) -> tuple[int, int]:
-        """Exact input tokens (+ overhead) and items over ``us``, cached or not."""
-        reqs = [N.judge_request(u) for u in us]
-        tin = sum(counter([f"{r.system}\n\n{r.user}" for r in reqs])) + N.OVERHEAD * len(us)
-        return tin, sum(N.items_of(u) for u in us)
+        """Exact input tokens (+ overhead) and items over every pass of ``us``."""
+        reqs = [N.judge_request(u, k) for u in us for k in range(1, passes + 1)]
+        tin = sum(counter([f"{r.system}\n\n{r.user}" for r in reqs])) + N.OVERHEAD * len(reqs)
+        return tin, passes * sum(N.items_of(u) for u in us)
 
     reprice = None
     if pilot:
         (pin, pit), (fin, fit) = counted(pilot_units), counted(units)
-        rest = [u for u in units if not judge_c.is_cached(N.judge_request(u))]
-        rin, rit = counted(rest) if rest else (0, 0)
-        reprice = {
-            "all_units": N.reprice(ledger.to_json(), pin, pit, fin, fit),
-            "uncached_units": {
-                "n": len(rest),
-                **N.reprice(ledger.to_json(), pin, pit, rin, rit),
-            },
-        }
-    result = {
+        reprice = N.reprice(ledger.to_json(), pin, pit, fin, fit)
+    cost = N.cost_summary(ledger.to_json())
+    result: dict[str, Any] = {
         "meta": {
             "date": stamp,
             "git": _git(),
             "seed": seed,
             "judge_model": judge_model,
             "prompt": N.PROMPT,
+            "passes": passes,
+            "pass_marker": "Judging pass k. (after the prompt-cache breakpoints)",
+            "aggregate": "mean over passes (headline); majority vote per item (alternative)",
             "pilot": pilot,
             "max_usd": cap,
             "units": [u.key for u in run],
@@ -4474,9 +4488,18 @@ def ami_notes_completeness(
             "paragraph_chars": N.PARAGRAPH_CHARS,
             "stopped_early": stopped,
             "spent_usd": ledger.spent_usd(),
+            "cost": cost,
+            "quote": {
+                "usd_expected": fq.usd_expected,
+                "usd_high": fq.usd_high,
+                "usd_expected_cached": fq.usd_expected_cached,
+                "usd_high_cached": fq.usd_high_cached,
+            },
             "ledger_by_stage": ledger.by_stage(),
         },
         "summary": N.summarize(records, seed),
+        "summary_majority": N.summarize(records, seed, key="majority"),
+        "pass_spread": N.pass_spread(records),
         "reprice": reprice,
         "records": records,
         "ledger": ledger.to_json(),
@@ -4484,20 +4507,27 @@ def ami_notes_completeness(
     suffix = ".pilot" if pilot else ""
     path = out_dir / f"{stamp}{suffix}.json"
     E.write_json(path, result)
-    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}) · {path}")
+    typer.echo(
+        f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}); prompt cache read "
+        f"{cost['live']['cache_read_tokens']:,} / wrote {cost['live']['cache_write_tokens']:,} "
+        f"tokens, saved ${cost['live']['prompt_cache_saving_usd']:.4f}; all calls the results "
+        f"rest on (replays at original cost): ${cost['all_calls']['usd']:.4f} · {path}"
+    )
     agg = N.aggregate(result)
     check_committable(agg, N.private_texts(records))
     E.write_json(out_dir / f"{stamp}{suffix}.aggregate.json", agg)
+    if commit_to is not None and not pilot and not stopped:
+        E.write_json(commit_to, agg)
+        typer.echo(f"aggregate (numbers only): {commit_to}")
     if stopped:
         typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
         raise typer.Exit(1)
-    if reprice is not None:
-        for k, r in reprice.items():
-            typer.echo(
-                f"full run re-priced from the pilot ledger ({k}): ${r['full_usd']:.2f}, "
-                f"${r['full_usd_with_margin']:.2f} with x{N.MARGIN} margin. Ask before any "
-                "run over $2."
-            )
+    if isinstance(reprice, dict):
+        typer.echo(
+            f"full run re-priced from the pilot ledger: ${reprice['full_usd']:.2f}, "
+            f"${reprice['full_usd_with_margin']:.2f} with x{N.MARGIN} margin (prompt caching "
+            "as in the pilot). Ask before any run over $2."
+        )
 
 
 # -- MCP contract check (packages/tenor/sources/contract.py) -----------------------------
