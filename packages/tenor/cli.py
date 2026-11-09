@@ -5124,3 +5124,231 @@ def mcp_contract(
     for line in changes:
         typer.echo(f"  {line}")
     raise typer.Exit(1)
+
+
+# -- E4: coverage head-to-head (docs/tracks/NOTES.md, "E4") ---------------------------------
+
+
+@ami_app.command("coverage-e4")
+def ami_coverage_e4(
+    quote_only: Annotated[
+        bool, typer.Option("--quote", help="Price the full run and the pilot; spends nothing.")
+    ] = False,
+    pilot: Annotated[
+        bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a), both products.")
+    ] = False,
+    ask_chat: Annotated[
+        bool,
+        typer.Option(
+            "--ask-chat",
+            help="Only record condition Q: ask Granola Chat (read-only MCP, sequential) for the "
+            "run's Granola units not yet in --chat-file. No LLM spend.",
+        ),
+    ] = False,
+    passes: Annotated[int, typer.Option(help="E4 judge passes per unit.")] = 3,
+    full_passes: Annotated[int, typer.Option(help="Judge passes the full run is priced at.")] = 3,
+    max_usd: Annotated[
+        float | None,
+        typer.Option(help="Hard spend cap (the approved amount); a pilot defaults to $0.50."),
+    ] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    list_model: Annotated[str, typer.Option(help="Lister (E1's reader).")] = "claude-opus-5-5",
+    check_model: Annotated[str, typer.Option(help="E2 check + dedupe.")] = "claude-haiku-5-5",
+    judge_model: Annotated[str, typer.Option(help="Judge and R's writer.")] = "claude-sonnet-5-5",
+    e3_prompt: Annotated[
+        str | None,
+        typer.Option(help="E3 judge prompt for the baseline (default: E3's current one)."),
+    ] = None,
+    stage: Annotated[
+        str,
+        typer.Option(
+            help="'pipeline': only list / check / dedupe / regenerate (cached, so the judge is "
+            "then priced exactly); 'all': everything."
+        ),
+    ] = "all",
+    seed: Annotated[int, typer.Option()] = 42,
+    pause_s: Annotated[float, typer.Option(help="--ask-chat: seconds between calls.")] = 2.0,
+    chat_file: Annotated[
+        Path, typer.Option(help="Condition Q's recorded Chat answers (JSONL, gitignored).")
+    ] = AMI_RESULTS / "e4" / "chat_q.jsonl",
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+    out_dir: OutDirOpt = AMI_RESULTS / "e4",
+) -> None:
+    """E4: can a "+N missed items" line under the notes surface what they left out? Coverage
+    top 3 / uncapped vs regenerated notes vs asking Granola Chat, judged against E3's missing
+    gold. Start with --quote, then --ask-chat and --pilot. Reads synced DBs only."""
+    import functools
+    import json
+    import time
+    from contextlib import ExitStack
+    from datetime import UTC, datetime
+
+    from tenor.blackbox.kit import check_committable
+    from tenor.evals import agreed_check as A
+    from tenor.evals import coverage_e4 as C4
+    from tenor.evals import deletion_ami as DA
+    from tenor.evals import list_check as E
+    from tenor.evals import notes_completeness as N
+    from tenor.evals.runner import _git
+    from tenor.llm.client import BudgetExceeded, Ledger, count_tokens
+
+    if pilot and quote_only:
+        raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
+    errata, gold_version = C4.load_gold_errata()
+    extra: dict[str, Any] = {"errata": errata} if errata is not None else {}
+    meetings = (C4.PILOT_MEETING, *C4.TEST_MEETINGS)
+    units, skipped = _e3_units(granola_db, wispr_db, overrides, meetings, **extra)
+    pilot_units = [u for u in units if u.meeting_id == C4.PILOT_MEETING]
+    full_units = [u for u in units if u.split == "test"]
+    run = pilot_units if pilot else full_units
+    typer.echo(
+        f"{len(full_units)} TEST units, pilot {[u.key for u in pilot_units]}; skipped "
+        f"{skipped or 'none'}; gold {gold_version}; E3 prompt {e3_prompt or N.PROMPT}"
+    )
+    chat: dict[str, str] = {}
+    if chat_file.is_file():
+        for line in chat_file.read_text().splitlines():
+            if line.strip():
+                row = json.loads(line)
+                if row["question"] == C4.CHAT_QUESTION:
+                    chat[row["key"]] = row["answer"]
+
+    if ask_chat:
+        from tenor.blackbox.products import GranolaProduct
+        from tenor.core.store import read_notes
+        from tenor.sources.mcp_transport import LiveMcpCaller
+
+        recs = DA.load_recordings({"granola": granola_db}, overrides, read_notes)["granola"]
+        todo = [u for u in run if u.product == "granola" and u.key not in chat]
+        typer.echo(f"{len(todo)} Chat questions to ask ({len(chat)} recorded)")
+        chat_file.parent.mkdir(parents=True, exist_ok=True)
+        with ExitStack() as stack:
+            product = GranolaProduct(stack.enter_context(LiveMcpCaller()))
+            for i, u in enumerate(todo):
+                row = {"key": u.key, **C4.ask_chat(product, recs[u.meeting_id].note_id)}
+                with chat_file.open("a") as fh:
+                    fh.write(json.dumps(row) + "\n")
+                typer.echo(f"[{i + 1}/{len(todo)}] {u.key}: {len(row['answer'])} chars")
+                if i + 1 < len(todo):
+                    time.sleep(pause_s)
+        return
+
+    cap = max_usd if max_usd is not None else (C4.PILOT_MAX_USD if pilot else None)
+    if cap is None and not quote_only:
+        raise typer.BadParameter("paid runs need --max-usd (the approved amount); --pilot first")
+    ledger = Ledger()
+
+    def client(model: str) -> LLMClient:
+        return LLMClient(model=model, ledger=ledger, max_usd=cap, offline=quote_only)
+
+    clients = C4.Clients(client(list_model), client(check_model), client(judge_model),
+                         client(judge_model))  # fmt: skip
+    cache_dir = clients.judge.cache_dir
+    counters = {
+        m: functools.partial(count_tokens, model=m, cache_dir=cache_dir)
+        for m in {list_model, check_model, judge_model}
+    }
+    fq = C4.quote(full_units, clients, counters, chat, full_passes, seed, e3_prompt)
+    pq = C4.quote(pilot_units, clients, counters, chat, passes, seed, e3_prompt)
+    md = C4.quote_markdown(
+        [(f"Full run: {len(full_units)} TEST units, judge x{full_passes}", fq),
+         (f"Pilot: {len(pilot_units)} DEV units, judge x{passes}", pq)]
+    )  # fmt: skip
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "quote.md").write_text(md)
+    typer.echo(md)
+    if quote_only:
+        typer.echo("no money spent (token counting is free)")
+        return
+    assert cap is not None
+    if stage not in ("pipeline", "all"):
+        raise typer.BadParameter("--stage must be 'pipeline' or 'all'")
+    rows = pq if pilot else fq
+    if stage == "pipeline":
+        rows = [r for r in rows if not r["stage"].startswith(("judge", "E3"))]
+    high = C4.totals(rows)["usd_high"]  # without prompt-cache savings
+    if high > cap:
+        typer.echo(f"high estimate ${high:.2f} exceeds the cap ${cap:.2f}", err=True)
+        raise typer.Exit(1)
+    if missing := [u.key for u in run if u.product == "granola" and u.key not in chat]:
+        typer.echo(f"no Chat answer recorded for {missing}: Q skipped there (--ask-chat)")
+    if not yes:
+        typer.confirm(
+            f"{'PILOT: ' if pilot else ''}Run E4 on {len(run)} units, judge x{passes} (hard cap "
+            f"${cap:.2f}, quoted high ${high:.2f})?",
+            abort=True,
+        )
+    if stage == "pipeline":
+        try:
+            for u in run:
+                cov = C4.coverage(u, clients.lister, clients.checker)
+                C4.regen(u, clients.regen)
+                typer.echo(f"{u.key}: {len(cov)} listed, {sum(c.shown for c in cov)} shown")
+        except BudgetExceeded as e:
+            typer.echo(f"STOPPED: {e}", err=True)
+        by_stage = {k: round(v["usd"], 4) for k, v in ledger.by_stage().items()}
+        typer.echo(f"pipeline: spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}); {by_stage}")
+        return
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    records: list[dict[str, Any]] = []
+    stopped = None
+    try:
+        for mid in dict.fromkeys(u.meeting_id for u in run):
+            us = [u for u in run if u.meeting_id == mid]
+            records += C4.run_meeting(
+                us, clients, chat, passes, seed, log=typer.echo, e3_prompt=e3_prompt
+            )
+            typer.echo(f"{mid} done (spent ${ledger.spent_usd():.4f})")
+    except BudgetExceeded as e:
+        stopped = str(e)
+    reprice = None
+    if pilot and not stopped:
+        jc = counters[judge_model]
+        size = {k: 0 for k in ("transcript", "judge")}
+        p_size, f_size = dict(size), dict(size)
+        for us, acc in ((pilot_units, p_size), (full_units, f_size)):
+            for u in us:
+                for k, v in C4.unit_size(u, jc).items():
+                    acc[k] += v
+        e3_full = next(r for r in fq if r["stage"].startswith("E3 baseline"))["usd_high_cached"]
+        reprice = C4.reprice(ledger.to_json(), p_size, f_size, passes, full_passes, e3_full)
+    result: dict[str, Any] = {
+        "meta": {
+            "date": stamp, "git": _git(), "seed": seed, "pilot": pilot, "max_usd": cap,
+            "models": {"list": list_model, "check": check_model, "dedupe": check_model,
+                       "regen": judge_model, "judge": judge_model},
+            "prompts": {"list": [E.ENUMERATE_PROMPT, E.MERGE_PROMPT],
+                        "check": A.PROMPT, "dedupe": C4.DEDUPE_PROMPT,
+                        "regen": C4.REGEN_PROMPT, "judge": C4.JUDGE_PROMPT,
+                        "e3_baseline": e3_prompt or N.PROMPT},
+            "gold_version": gold_version, "passes": passes, "e3_passes": C4.E3_PASSES,
+            "k": C4.K, "chat_question": C4.CHAT_QUESTION,
+            "list_question": C4.list_question("<meeting>"), "units": [u.key for u in run],
+            "skipped": skipped, "stopped_early": stopped, "spent_usd": ledger.spent_usd(),
+            "quote_full": C4.totals(fq), "quote_pilot": C4.totals(pq),
+            "ledger_by_stage": ledger.by_stage(),
+        },
+        "summary": C4.summarize(records, seed),
+        "reprice": reprice,
+        "records": records,
+        "ledger": ledger.to_json(),
+    }  # fmt: skip
+    suffix = ".pilot" if pilot else ""
+    path = out_dir / f"{stamp}{suffix}.json"
+    C4.write_json(path, result)
+    agg = C4.aggregate(result)
+    check_committable(agg, C4.private_texts(records))
+    C4.write_json(out_dir / f"{stamp}{suffix}.aggregate.json", agg)
+    by = {k: round(v["usd"], 4) for k, v in ledger.by_stage().items()}
+    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}); {by} · {path}")
+    if stopped:
+        typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
+        raise typer.Exit(1)
+    if reprice is not None:
+        typer.echo(
+            f"full run re-priced from the pilot ledger: ${reprice['full_usd']:.2f}, "
+            f"${reprice['full_usd_with_margin']:.2f} with x{C4.MARGIN} margin "
+            f"({reprice['full_usd_by_group']}). Ask before any run over $2."
+        )

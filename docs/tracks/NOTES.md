@@ -401,3 +401,51 @@ Run 3 per category, Granola / Wispr Flow:
   - Quoted beforehand: $0.61 expected / $0.84 high without prompt caching; $0.39 / $0.61 with it.
   - Sandbox: CB 121282, pass 1, both products, cap $0.20. Spent $0.04; outputs checked.
   - Full run: hard cap $0.60, spent $0.25 (the sandbox calls replayed at $0). **Total $0.29.**
+
+## E4: coverage head-to-head (designed; DEV pilot run, full run not run)
+
+**Question.** Can a "+N missed items" line under a product's notes surface what the notes left out, precisely enough to be worth showing? And does it beat two simple alternatives: writing fuller notes, or asking Granola Chat? This decides whether "Coverage" is pitchable (go / no-go thresholds below, fixed before any TEST data).
+
+| | |
+|---|---|
+| **Unit** | One product's AI notes for one AMI meeting: E3's units. TEST: the 11 E3 TEST meetings x 2 products = 22 units. DEV: IS1008a (pilot and any prompt change) |
+| **Missing gold** | Gold items that E3's judge (majority of its 3 passes, replayed from the disk cache) says the notes do not fully cover. Gold with the E3 errata when present (`gold_version` recorded) |
+| **Judge** | Sonnet 5.5, `coverage_judge.v1`, E3's machinery: the same gold, roster and AMI reference transcript, prompt-cached per meeting (meeting part, then the notes). It reads the union of every condition's items, deduplicated by text, in a seeded order, blind to which condition produced them. Per item: kind (decision / action / problem / other), the gold items it states, whether AMI's transcript supports it (yes / partly / no), whether the notes already have it (yes / partly / no, with bullets), and for actions whether the named owner is right. Several passes, combined per item by majority |
+
+**Conditions** (all scored against the same notes):
+
+- **N: notes alone.** E3, no new calls. Defines the missing gold.
+- **C3: Coverage, top 3.** List decisions / actions / problems from the product's own transcript with quotes (E1's map + merge, `enumerate.v1` / `enumerate_merge.v1` on Opus 5.5, E1's reader; one combined question per unit instead of one per question type). Drop items whose quote is not in the transcript (string match). E2's check (`agreed_check.v3`, Haiku 5.5): keep agreed decisions, assigned actions, raised problems. A **real** dedupe against the notes' bullets (`coverage_dedupe.v1`, Haiku 5.5, one call per item, notes prompt-cached): drop "already in the notes". Rank: decisions and actions before problems, then items absent from the notes before items partly there, then the check's confidence, then transcript order. Show 3.
+- **CU: Coverage, uncapped** (collapsed line with a count).
+- **C3S / CUS: strict dedupe.** As C3 / CU, but also drop items the dedupe calls "partly" in the notes. Added after the DEV pilot (below), before any TEST call. Free: same judged items.
+- **R: write fuller notes.** One Sonnet 5.5 call (`coverage_regen.v1`) writes notes from the product transcript, told to include every decision, action with owner, and open problem. Shown items = R's bullets the judge calls a decision / action / problem not already in the notes. This filter is the judge itself (an oracle), so R is favoured.
+- **RD: fuller notes, real dedupe.** R's bullets under its Decisions / Action items / Problems headings, minus those the same Haiku dedupe finds in the notes. The fair version of R (no oracle).
+- **Q: ask Granola Chat.** "What decisions, action items or open problems from this meeting are missing from my notes?", scoped to the meeting's note through the read-only MCP tool `query_granola_meetings` (sequential, rate limits waited out; no write tools). Items = the answer's bullets, citation links and Granola's standing transcript note dropped. Granola only: Wispr Flow has no Q&A tool.
+
+**Metrics** per condition, pooled over units (Wilson and cluster-bootstrap 95% CIs), per product and both:
+
+- **Precision as true omissions.** Lenient: not already in the notes, a decision / action / problem, and states a missing gold item or is fully supported by AMI's transcript. Strict: states a missing gold item. "New": lenient and absent from the notes (not even partly).
+- **Recall of missing gold**: the share of missing gold items some shown item (not a duplicate) states. Also for gold missing outright.
+- **Duplicates** of notes content (judge: already in the notes). **Wrong owner** among actions that name an owner. **False items** per unit, and items shown in categories where the notes already cover every gold item.
+- Paired sign tests per unit: C3 vs R, RD, Q; CU vs C3; C3S vs C3; CU vs RD.
+- **Stability** over 3 full re-runs: later (needs fresh listing calls, not disk-cache replays).
+- For R: bullets, how many repeat the notes, and the gold items its bullets state.
+
+**Go / no-go** (`data/private/FEATURE_CANDIDATES.md` section 4.4; `GO` in code). Go: precision ≥ 0.70 pooled with lower CI ≥ 0.60; recall of missing gold ≥ 0.35 at K ≤ 3; duplicates ≤ 10%; wrong owner ≤ 10%; ≤ 1 false item per complete category; beats R, RD and Q (higher precision at equal or higher recall of missing gold). If it passes only for one product, or only uncapped, that is reported as such.
+
+**DEV pilot (IS1008a, both products; sanity only, not a result).**
+
+- **Run:** judge 1 pass, E3 baseline `notes_completeness.v4` (cached, $0; IS1008a has no errata, so its gold is unchanged). **Spent $0.305 under a $0.50 cap**: listing $0.159, R $0.037, Haiku check + dedupe $0.014, judge $0.096.
+- **Checks done by reading the outputs:**
+  - Every listed item's quote was found in the transcript (42 of 42). Some quotes are weak support: "two weeks is is close enough?" for a two-week plan.
+  - The Haiku dedupe is too lenient. It called "partly" items whose notes bullet differed only in an added detail, such as budget or "pinpoint the target market". The judge then marked 4 of the 6 C3 items as already in the notes. This is a weakness of the method, not a bug. It is why C3S / CUS were added.
+  - Coverage missed the gold items the notes also missed ("discuss the design plans at the next meeting", "first work on a functional design", "insufficient information in advance"). These are meta-level statements the lister rarely phrases as decisions.
+  - R's regenerated notes repeat the notes heavily: 13 of 25 bullets (Granola) and 18 of 29 (Wispr Flow) are already there. Its extras are mostly true.
+  - Granola Chat's 6 items included 4 already in the notes.
+  - No parser repairs.
+- **Pilot counts** (both products; n = 14 gold items, too small to compare): C3 2 of 6 shown items true, 4 duplicates, 1 of 10 missing gold recovered. CUS 3 of 3 true, 1 of 10. R (oracle) 12 of 17, 7 of 10. RD 11 of 27, 7 of 10. Q (Granola) 2 of 6, 1 of 4.
+- **Full run: not run (over $2).** Re-priced from the pilot ledger x1.5:
+  - $18.6 without the E3 baseline. The judge at 3 passes is about $11.5 of it, listing $5.4.
+  - The E3 baseline (`notes_completeness.v5`, errata gold) adds up to $4.6 x1.5. It is $0 if the separately quoted E3 v5 re-judge runs first, because those are the same calls.
+  - Cheaper options: 1 judge pass (about $11 without E3), or a Sonnet lister (not measured).
+- **Code:** `tenor ami coverage-e4` (`--quote`, `--ask-chat`, `--pilot`, `--stage pipeline`, `--e3-prompt`) and [`coverage_e4.py`](../../packages/tenor/evals/coverage_e4.py). Prompts `coverage_dedupe.v1`, `coverage_regen.v1`, `coverage_judge.v1`.
