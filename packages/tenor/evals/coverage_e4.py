@@ -106,7 +106,7 @@ CATEGORY_OF = {
     "problem_raised": "problem",
 }
 TIER = {"action": 0, "decision": 0, "problem": 1}  # decisions and actions before problems
-MAX_TOKENS_DEDUPE = 500
+MAX_TOKENS_DEDUPE = 1200  # 500 truncated a long quote list on IS1008a (2026-11-09)
 MAX_TOKENS_REGEN = 12000
 MAX_TOKENS_JUDGE = 16000
 OVERHEAD = 250  # structured-output tokens per call (as list_check.Assumed.overhead)
