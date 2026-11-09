@@ -54,6 +54,14 @@ Users ask their note-taker about past meetings ("what did we decide about the pr
 - **Known limits.** Granola's AMI transcripts label every line "Them", so the speaker label carries no information and owners are inferred. The lenient precision accepts any true item, so a decision question answered with true action items scores well on it; the strict precision does not. `verify_item.v1` rejected items whose owner the lines could not show; v2 judges content only (changed on DEV).
 - **Status.** Full run done (results below). Code: `tenor ami list-check` ([`list_check.py`](../../packages/tenor/evals/list_check.py)).
 
+### Extending E1 and E2 to the replayed extension meetings (2026-11-09, not run)
+
+- **Chat answers.** 57 Granola Chat answers were collected for the list questions (decision, action_what, problem) of the 6 recorded extension meetings: TS3009c 7, ES2008b 11, ES2006c 9, TS3006b 9, IS1000a 8, ES2015c 13. ES2007c was not recorded. They come from `tenor ami chat-answers`: `query_granola_meetings`, read-only and allowlisted, each scoped to its meeting's note with `document_ids`, asked one at a time. Median latency was 6.4 s, with no rate limits hit. Every answer cites only its own note. Raw answers are local, in `data/ami/results/facts/answers_granola_ext.jsonl` (gitignored).
+- **Combined set: 87 list questions** (6 DEV): run 1's 30 plus the 57 new ones. Pass both question files and both answer files. 27 extension questions also sit in `questions.jsonl` as `annotation_only` copies with identical content; each is kept once.
+- **E1 quote** (exact input; output partly ASSUMED). $20.07 expected / $32.12 high uncached; $14.34 / $26.39 with prompt caching. Re-priced from the pilot ledger: $31.02, or $46.53 with the 1.5x margin. That re-price scales cached DEV calls at their original cost, so it errs high. With `judge_items.v2` (one cached reference transcript per meeting), the judge stage drops from $5.37 to $2.76 expected with caching. The N condition does not replay run 1's cache: the notes pool now holds more meetings, so its requests changed. **Not run: needs approval (> $2).**
+- **E1 pilot** (3 questions, cap $0.50, spent $0.19). One new question (IS1000a decision-03) was run through every stage, plus 2 DEV questions whose L stages replayed. Outputs look sane. A 3-question pilot on new meetings alone was quoted at $1.00 expected / $1.58 high, over the cap.
+- **E2** classifies E1's items, so it cannot run on the combined set before E1 does. On the pilot's 3 questions (Haiku): $0.0008, outputs sane. On the full set it would cost about $0.05 (about $0.0003 per item).
+
 ### E1 results (Preliminary)
 
 Real AMI meetings played into Granola. 30 list questions (DEV 6 + TEST 24) on 5 meetings. Automated judge. Mean per question, 95% bootstrap CI. Numbers: [`evals/reports/ami/list_check.json`](../../evals/reports/ami/list_check.json).

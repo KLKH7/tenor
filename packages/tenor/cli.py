@@ -4659,6 +4659,100 @@ def ami_notes_completeness_pool(
     typer.echo(f"pooled {len(meta['units'])} units from {len(loaded)} runs -> {out}")
 
 
+@ami_app.command("council-notes")
+def ami_council_notes(
+    quote_only: Annotated[bool, typer.Option("--quote", help="Price only; no spend.")] = False,
+    pilot: Annotated[bool, typer.Option(help="Sandbox: one segment, pass 1.")] = False,
+    passes: Annotated[int, typer.Option(help="Judge passes per unit.")] = 3,
+    max_usd: Annotated[float | None, typer.Option(help="Hard spend cap (approved).")] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    council: Annotated[Path, typer.Option(help="Council data folder.")] = Path("data/council"),
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    commit_to: Annotated[Path | None, typer.Option(help="Numbers-only aggregate.")] = None,
+) -> None:
+    """Council notes: score each product's notes of a Seattle council agenda item against its
+    official Legistar outcome (gold built by code; E3's judge, prompt council_notes.v1)."""
+    import functools
+    from datetime import UTC, datetime
+
+    from tenor.blackbox.kit import check_committable
+    from tenor.core.store import read_notes
+    from tenor.evals import council_notes as C
+    from tenor.evals import list_check as E
+    from tenor.evals.runner import _git
+    from tenor.evals.wrong_facts import DROP_MIC, own_transcript
+    from tenor.llm.client import BudgetExceeded, Ledger, count_tokens
+
+    ids = C.read_recording_ids(council / "recording_ids.txt")
+    dbs = {"granola": granola_db, "wispr": wispr_db}
+    notes = {p: {n.note_id: n for n in read_notes(db)} for p, db in dbs.items()}
+    gold = {s: C.gold_claims(council / "legistar" / s) for s in ids}
+    E.write_json(council / "gold.json", C.gold_json(gold))
+    units, skipped = [], []
+    for seg, by_product in ids.items():
+        for p in C.PRODUCTS:
+            n = notes[p].get(by_product.get(p, ""))
+            if n is None or not (n.summary_markdown or n.summary_text or "").strip():
+                skipped.append(f"{seg}:{p}: {'not synced' if n is None else 'no AI notes'}")
+                continue
+            own = own_transcript(n, drop_mic=DROP_MIC.get(p, True))
+            units.append(C.make_unit(seg, own, p, gold[seg]))
+    run = [u for u in units if u.segment == C.PILOT_SEGMENT] if pilot else units
+    n_pass = 1 if pilot else passes
+    typer.echo(f"{len(run)} units x {n_pass} passes; skipped: {skipped or 'none'}")
+    cap = max_usd if max_usd is not None else (C.PILOT_MAX_USD if pilot else None)
+    if cap is None and not quote_only:
+        raise typer.BadParameter("paid runs need --max-usd (the approved amount); --pilot first")
+    ledger = Ledger()
+    judge_c = LLMClient(model=C.JUDGE_MODEL, ledger=ledger, max_usd=cap, offline=quote_only)
+    counter = functools.partial(count_tokens, model=C.JUDGE_MODEL, cache_dir=judge_c.cache_dir)
+    pilot_units = [u for u in units if u.segment == C.PILOT_SEGMENT]
+    for label, us, k in (("full", units, passes), ("pilot", pilot_units, 1)):
+        q = C.quote(us, judge_c, counter, k)
+        typer.echo(
+            f"{label}: {q.calls} calls ({q.cached} cached), {q.input_tokens:,} input tokens; "
+            f"${q.usd_expected:.3f} expected / ${q.usd_high:.3f} high without prompt cache, "
+            f"${q.usd_expected_cached:.3f} / ${q.usd_high_cached:.3f} with (output ASSUMED "
+            f"{C.ASSUMED_OUT})"
+        )
+    if quote_only:
+        return
+    assert cap is not None
+    if not yes:
+        typer.confirm(f"Judge {len(run)} units x {n_pass} passes (cap ${cap:.2f})?", abort=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    records, stopped = [], None
+    try:
+        for u in run:
+            done = [C.run_unit(u, judge_c, k) for k in range(1, n_pass + 1)]
+            records.append(C.combine(done))
+            typer.echo(f"{u.key}: {records[-1]['coverage']} (spent ${ledger.spent_usd():.4f})")
+    except BudgetExceeded as e:
+        stopped = str(e)
+    meta = {
+        "date": stamp, "git": _git(), "judge_model": C.JUDGE_MODEL, "prompt": C.PROMPT,
+        "passes": n_pass, "pilot": pilot, "max_usd": cap, "units": [u.key for u in run],
+        "skipped": skipped, "stopped_early": stopped, "spent_usd": ledger.spent_usd(),
+        "gold_source": "Legistar event item + votes JSON, built by code (no LLM)",
+        "ledger_by_stage": ledger.by_stage(),
+    }  # fmt: skip
+    result = {"meta": meta, "summary": C.summarize(records), "records": records,
+              "ledger": ledger.to_json()}  # fmt: skip
+    suffix = ".pilot" if pilot else ""
+    E.write_json(council / "results" / f"{stamp}{suffix}.json", result)
+    agg = {"meta": {k: v for k, v in meta.items() if k != "ledger_by_stage"},
+           "summary": result["summary"], "segments": C.segment_rows(records)}  # fmt: skip
+    check_committable(agg, C.private_texts(records))
+    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}) · {stamp}{suffix}")
+    if commit_to is not None and not pilot and not stopped:
+        E.write_json(commit_to, agg)
+        typer.echo(f"aggregate (numbers only): {commit_to}")
+    if stopped:
+        typer.echo(f"STOPPED: {stopped}", err=True)
+        raise typer.Exit(1)
+
+
 # -- MCP contract check (packages/tenor/sources/contract.py) -----------------------------
 
 CONTRACT_BASELINE = Path("evals/contracts/granola_mcp.json")

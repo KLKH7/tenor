@@ -151,6 +151,7 @@ These exist [spec summary]: `GET /v1/spaces`, `POST /v1/notes/search` (keywords,
 | Item | Value | Status |
 |---|---|---|
 | `query_granola_meetings` | An agent that searches and reads notes; answers are summary-first with `[[n]](https://notes.granola.ai/d/<id>)` citations | VERIFIED (live) |
+| `query_granola_meetings` `document_ids` | Limits the agent to the given notes (max 10). 57 AMI answers scoped to one note each (2026-11-09) cited only that note | VERIFIED (tool schema; live, 57 of 57) |
 | Black-box track (`tenor.blackbox`): `query_granola_meetings` changes nothing in the account, so it is the only tool the Granola adapter allowlists | ASSUMED from its name and docs ("query"); Granola's tool annotations (`readOnlyHint`) are not checked, because the OAuth caller doesn't list tools. The allowlist still refuses every other tool before sending |
 | Black-box track: `query_granola_meetings` returns no abstain flag and no structured citations, so abstention is judged from the text and citations are parsed from the `notes.granola.ai/d/<id>` links | VERIFIED (live, 39 recorded answers) for the format; how stable it is over time is ASSUMED, so each recording keeps `asked_at` |
 | Transcript speaker labels via MCP | `Microphone`, `System audio`, or `System audio (<Full Name>)` when identified; plus `recording_context` (recorder, `microphone_sharing`) | VERIFIED (live). **Corrects** our assumption that names are rare |
