@@ -3877,6 +3877,13 @@ def ami_list_check(
         str | None, typer.Option(help="Reader; default: the deletion run's (its meta).")
     ] = None,
     judge_model: Annotated[str, typer.Option(help="Item judge.")] = "claude-sonnet-5-5",
+    judge_prompt: Annotated[
+        str,
+        typer.Option(
+            help="judge_items.v1 (question first, as E1 ran) or judge_items.v2 (reference "
+            "transcript first: one prompt-cached transcript per meeting)."
+        ),
+    ] = "judge_items.v1",
     exact: Annotated[
         bool,
         typer.Option("--exact/--heuristic", help="count_tokens (free) or chars/3.5 offline."),
@@ -3929,6 +3936,8 @@ def ami_list_check(
         raise typer.BadParameter(f"unknown conditions {unknown}; choose from {E.CONDITIONS}")
     if pilot and quote_only:
         raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
+    if judge_prompt not in E.JUDGE_PROMPTS:
+        raise typer.BadParameter(f"--judge-prompt: choose from {E.JUDGE_PROMPTS}")
     inp = _e1_inputs(questions_file, answers, granola_db, wispr_db, overrides)
     notes, chat_text, full, full_ctx = inp.notes, inp.chat_text, inp.full, inp.contexts
     pilot_qs = E.pilot_questions(full, pilot_n, seed)
@@ -3985,8 +3994,9 @@ def ami_list_check(
         n_sys = DA.notes_only(r, notes.get("granola", []), "notes_only", "question")
         try:
             E.run_question(
-                c, r, j, notes_answer(n_sys, c.qid), names, chat_answer=chat_text.get(c.qid)
-            )
+                c, r, j, notes_answer(n_sys, c.qid), names, chat_answer=chat_text.get(c.qid),
+                judge_prompt=judge_prompt,
+            )  # fmt: skip
         except LLMError:
             return False
         return True
@@ -4006,7 +4016,7 @@ def ami_list_check(
         return E.quote(
             todo, reader_c, judge_c, counter, jcount, reqs,
             lambda r: D.cached_turn(reader_c, r) is not None, names, notes_texts=texts,
-            chat_texts=chat_text,
+            chat_texts=chat_text, judge_prompt=judge_prompt,
         )  # fmt: skip
 
     full_lines, pilot_lines = quote(full_ctx), quote(pilot_ctx)
@@ -4033,6 +4043,11 @@ def ami_list_check(
     pe, ph = E.totals(pilot_lines)
     typer.echo(md)
     typer.echo(f"full: ${fe:.2f} expected, ${fh:.2f} high · pilot: ${pe:.2f}, ${ph:.2f} high")
+    (fec, fhc), (pec, phc) = E.totals_cached(full_lines), E.totals_cached(pilot_lines)
+    typer.echo(
+        f"with prompt caching: full ${fec:.2f} expected, ${fhc:.2f} high · pilot ${pec:.2f}, "
+        f"${phc:.2f} high (the cap is checked against the uncached high)"
+    )
     if quote_only:
         typer.echo("no money spent (token counting is free)")
         return
@@ -4083,6 +4098,7 @@ def ami_list_check(
                     notes_answer(notes_sys, c.qid),
                     names,
                     chat_answer=chat_text.get(c.qid),
+                    judge_prompt=judge_prompt,
                 )
             )
             typer.echo(f"{c.qid}: {_json_scores(records[-1])} (spent ${ledger.spent_usd():.4f})")
@@ -4091,6 +4107,7 @@ def ami_list_check(
     meta = E.RunMeta(
         date=stamp, git=_git(), seed=seed, reader_model=reader, judge_model=judge_model,
         pilot=pilot, max_usd=cap, questions=[c.qid for c in run_ctx],
+        prompts={**E.PROMPTS, "judge": [judge_prompt]},
     )  # fmt: skip
     result = {
         "meta": {**dataclasses.asdict(meta), "stopped_early": stopped,
@@ -4221,7 +4238,9 @@ def ami_agreed_check(
             f"{label}: {n} questions, {q.calls} classifier calls ({q.cached} cached), "
             f"{q.input_tokens:,} input tokens (exact) -> ${q.usd_expected:.3f} expected, "
             f"${q.usd_high:.3f} high ({reader}{', batch' if batch else ''}; "
-            f"output ASSUMED {A.ASSUMED_OUT})"
+            f"output ASSUMED {A.ASSUMED_OUT}); with prompt caching ${q.usd_expected_cached:.3f} "
+            f"expected, ${q.usd_high_cached:.3f} high ({q.cache_read_tokens:,} tokens read "
+            f"from the cache{', best-effort in a batch' if batch else ''})"
         )
     if quote_only:
         typer.echo(f"source: {src}. No money spent (token counting is free).")

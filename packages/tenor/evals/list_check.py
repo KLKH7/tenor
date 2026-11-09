@@ -28,6 +28,7 @@ gold items covered; precision strict (gold only) and lenient (gold or transcript
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import re
@@ -43,7 +44,16 @@ from pydantic import BaseModel, ConfigDict
 from tenor.ami.questions import AmiQuestion
 from tenor.core.models import Channel, MeetingNote
 from tenor.evals.stats import binom_two_sided_p
-from tenor.llm.client import Ledger, LLMClient, LLMRequest, cost_usd, load_prompt
+from tenor.llm.client import (
+    Ledger,
+    LLMClient,
+    LLMRequest,
+    PromptShape,
+    breaks_after,
+    cost_usd,
+    load_prompt,
+    simulate_prompt_cache,
+)
 
 LIST_TYPES = ("decision", "action_what", "problem")
 C, N, L, LD, LM = "C", "N", "L", "LD", "LM"
@@ -64,6 +74,11 @@ ENUMERATE_PROMPT = "enumerate.v1"
 MERGE_PROMPT = "enumerate_merge.v1"
 VERIFY_PROMPT = "verify_item.v2"  # v1 rejected items whose owner the lines could not show (pilot)
 JUDGE_PROMPT = "judge_items.v1"
+# Same instructions, reference transcript first: every question on a meeting then shares one
+# cached prefix (system + transcript). v1 puts the question first, so its cache is shared only by
+# the judge calls of one question (C, N, L). Opt-in (--judge-prompt), as v1 is what E1 ran.
+JUDGE_PROMPT_TRANSCRIPT_FIRST = "judge_items.v2"
+JUDGE_PROMPTS = (JUDGE_PROMPT, JUDGE_PROMPT_TRANSCRIPT_FIRST)
 ANSWER_PROMPT = "answer.v1"  # N, via deletion_ami's notes_only
 PROMPTS = {
     C: ["granola:chat"],
@@ -539,26 +554,55 @@ def judge_answer_block(answer: str | Sequence[tuple[str, str]]) -> str:
 
 
 def judge_request(
-    question: str, gold: Gold, reference: Sequence[Line], answer: str | Sequence[tuple[str, str]]
+    question: str,
+    gold: Gold,
+    reference: Sequence[Line],
+    answer: str | Sequence[tuple[str, str]],
+    *,
+    prompt_id: str = JUDGE_PROMPT,
+    share: bool = True,
 ) -> LLMRequest:
+    """The judge call for one answer. Static content first: the system prompt, then what every
+    answer to this question shares (:func:`judge_context`), then the answer. ``share``: other
+    judge calls on this question follow (C, N, L), so a cache breakpoint ends the shared part.
+    With the transcript-first prompt the reference transcript is its own breakpoint, shared by
+    every question on the meeting."""
+    parts = [*judge_parts(question, gold, reference, prompt_id), judge_answer_block(answer)]
+    if not share:  # no question-level breakpoint (a meeting-level one stays)
+        parts[-2:] = [parts[-2] + parts[-1]]
+    user, breaks = breaks_after(*parts)
     return LLMRequest(
         stage="e1.judge",
-        prompt_id=JUDGE_PROMPT,
-        system=load_prompt(JUDGE_PROMPT),
-        user=judge_context(question, gold, reference) + "\n\n" + judge_answer_block(answer),
+        prompt_id=prompt_id,
+        system=load_prompt(prompt_id),
+        user=user,
         schema=JUDGE_SCHEMA,
         max_tokens=8000,
         effort="medium",
+        cache_breaks=breaks,
     )
 
 
-def judge_context(question: str, gold: Gold, reference: Sequence[Line]) -> str:
-    """Everything the judge reads except the answer (exactly countable before answers exist)."""
+def judge_parts(
+    question: str, gold: Gold, reference: Sequence[Line], prompt_id: str = JUDGE_PROMPT
+) -> tuple[str, ...]:
+    """The judge's user text before the answer, as cacheable parts (each ends at a breakpoint).
+    v1: one part, question first. v2: the reference transcript, then the question block."""
     ref = "\n".join(x.render() for x in reference)
-    return (
-        f"Question: {question}\n\nGold items:\n{gold.render()}\n\n"
-        f"<reference_transcript>\n{ref}\n</reference_transcript>"
-    )
+    ref_block = f"<reference_transcript>\n{ref}\n</reference_transcript>"
+    q_block = f"Question: {question}\n\nGold items:\n{gold.render()}"
+    if prompt_id == JUDGE_PROMPT:
+        return (f"{q_block}\n\n{ref_block}\n\n",)
+    if prompt_id == JUDGE_PROMPT_TRANSCRIPT_FIRST:
+        return (f"{ref_block}\n\n", f"{q_block}\n\n")
+    raise ValueError(f"unknown judge prompt {prompt_id!r}; choose from {JUDGE_PROMPTS}")
+
+
+def judge_context(
+    question: str, gold: Gold, reference: Sequence[Line], prompt_id: str = JUDGE_PROMPT
+) -> str:
+    """Everything the judge reads except the answer (exactly countable before answers exist)."""
+    return "".join(judge_parts(question, gold, reference, prompt_id)).removesuffix("\n\n")
 
 
 class JudgeParseError(ValueError):
@@ -902,9 +946,12 @@ def run_question(
     conditions: Sequence[str] = CONDITIONS,
     chunk_chars: int = CHUNK_CHARS,
     chat_answer: str | None = None,
+    judge_prompt: str = JUDGE_PROMPT,
 ) -> dict[str, Any]:
     """Every condition on one question, judged; a JSON-ready record (holds transcript text:
-    local only)."""
+    local only). The reader's calls run first and the judge's calls last, back to back, so the
+    judge's shared prefix (system + question + reference transcript) stays in the prompt cache
+    between them."""
     rec: dict[str, Any] = {
         "qid": ctx.qid,
         "category": ctx.category,
@@ -919,25 +966,34 @@ def run_question(
         free.append((C, chat_answer))
     if N in conditions and notes_answer is not None:
         free.append((N, notes_answer()))
+    listing = bool({L, LD, LM} & set(conditions))
+    items: list[Item] = []
+    confirmed: dict[str, bool] = {}
+    extra: dict[str, Any] = {}
+    if listing:
+        cands, items = list_items(reader, ctx, chunk_chars)
+        extra["candidates"] = [asdict(c) for c in cands]
+        extra["items"] = [asdict(it) for it in items]
+        if {LD, LM} & set(conditions):
+            confirmed, why = check_items(reader, ctx, items)
+            extra["confirmed"], extra["verify_reasoning"] = confirmed, why
+    share = len(free) + int(listing) > 1
+
+    def judged_out(answer: str | Sequence[tuple[str, str]]) -> JudgeOut:
+        req = judge_request(
+            ctx.question, ctx.gold, ctx.reference, answer, prompt_id=judge_prompt, share=share
+        )
+        return judge.structured(req, JudgeOut)
+
     for cond, text in free:
-        out = judge.structured(judge_request(ctx.question, ctx.gold, ctx.reference, text), JudgeOut)
-        judged = parse_mapping(out, gids, None)
+        judged = parse_mapping(judged_out(text), gids, None)
         rec["answers"][cond] = text
         rec["judged"][cond] = [j.model_dump() for j in judged]
         rec["scores"][cond] = _score_row(score(judged, gids))
-    if {L, LD, LM} & set(conditions):
-        cands, items = list_items(reader, ctx, chunk_chars)
-        rec["candidates"] = [asdict(c) for c in cands]
-        rec["items"] = [asdict(it) for it in items]
-        confirmed: dict[str, bool] = {}
-        if {LD, LM} & set(conditions):
-            confirmed, why = check_items(reader, ctx, items)
-            rec["confirmed"], rec["verify_reasoning"] = confirmed, why
+    if listing:
+        rec.update(extra)
         listed = [(f"A{i}", it.text) for i, it in enumerate(items, 1)]
-        out = judge.structured(
-            judge_request(ctx.question, ctx.gold, ctx.reference, listed), JudgeOut
-        )
-        judged_a = parse_mapping(out, gids, [a for a, _ in listed])
+        judged_a = parse_mapping(judged_out(listed), gids, [a for a, _ in listed])
         # Back to item IDs, so LD/LM can select by item.
         judged = [j.model_copy(update={"id": it.id}) for j, it in zip(judged_a, items, strict=True)]
         rec["judged"][L] = [j.model_dump() for j in judged]
@@ -975,6 +1031,10 @@ class QuoteLine:
     usd_expected: float
     usd_high: float
     note: str = ""
+    # With prompt caching (system + shared context read from the cache; see quote()).
+    usd_expected_cached: float | None = None
+    usd_high_cached: float | None = None
+    cache_read_tokens: int = 0  # expected prompt-cache reads
 
 
 Counter = Callable[[list[str]], list[int]]
@@ -992,6 +1052,9 @@ class _Stage:
     tin: list[float] = field(default_factory=lambda: [0.0, 0.0])
     tout: list[float] = field(default_factory=lambda: [0.0, 0.0])
     assumed: bool = False
+    # The cacheable prefix of every uncached call, in run order (tails are uncached either way,
+    # so the saving depends only on these).
+    shapes: list[PromptShape] = field(default_factory=list)
 
     def add(self, tin: tuple[float, float], tout: tuple[float, float], calls: int = 1) -> None:
         self.calls += calls
@@ -1002,10 +1065,16 @@ class _Stage:
     def line(self, stage: str, model: str, note: str) -> QuoteLine:
         exp = cost_usd(model, round(self.tin[0]), round(self.tout[0]))
         high = cost_usd(model, round(self.tin[1]), round(self.tout[1]))
+        est = simulate_prompt_cache(model, self.shapes)
+        saving = est.saving_usd(model)
         return QuoteLine(
             stage, model, self.calls, self.cached, round(self.tin[0]), not self.assumed, exp,
-            high, note,
+            high, note, exp - saving, high - saving, est.read,
         )  # fmt: skip
+
+
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
 def quote(
@@ -1021,12 +1090,19 @@ def quote(
     a: Assumed = ASSUMED,
     notes_texts: Mapping[str, str] | None = None,
     chat_texts: Mapping[str, str] | None = None,
+    judge_prompt: str = JUDGE_PROMPT,
 ) -> list[QuoteLine]:
     """Price a run before any call, question by question. Input is exact (count_tokens)
     wherever the request can be built: the map calls always; the merge, verify and judge
     calls once the calls before them are cached (they are replayed offline to build them);
     N's judge call when N's answer is known (``notes_texts``). Otherwise :class:`Assumed`.
-    Output lengths are always ASSUMED. Cached calls cost $0."""
+    Output lengths are always ASSUMED. Cached calls cost $0.
+
+    Each line also carries a cached price: every uncached call's cacheable prefix (system
+    prompt + the structured-output schema, then for the judge the question's shared context,
+    and with the transcript-first judge the meeting's reference transcript) replayed in run
+    order through :func:`~tenor.llm.client.simulate_prompt_cache`. The schema's share of the
+    prefix is ``a.overhead`` (ASSUMED; that it is cached is VERIFIED live, 2026-11-08)."""
     oh, rm, jm = a.overhead, reader.model, judge.model
     listing = bool({L, LD, LM} & set(conditions))
     checking = bool({LD, LM} & set(conditions))
@@ -1034,15 +1110,29 @@ def quote(
     st = {k: _Stage() for k in ("N", "enumerate", "merge", "verify", "judge")}
     sys_m = counter([load_prompt(MERGE_PROMPT)])[0] + oh + 40
     sys_v = counter([load_prompt(VERIFY_PROMPT)])[0] + oh
-    sys_j = judge_counter([load_prompt(JUDGE_PROMPT)])[0] + oh
+    sys_j = judge_counter([load_prompt(judge_prompt)])[0] + oh
+    sys_e = counter([load_prompt(ENUMERATE_PROMPT)])[0] + oh
+    sys_shape = {
+        "enumerate": (("sys", sys_e),),
+        "merge": (("sys", sys_m - 40),),
+        "verify": (("sys", sys_v),),
+    }
+    judge_shape: tuple[tuple[str, int], ...] = (("sys", sys_j),)
 
     def exact(client: LLMClient, cnt: Counter, req: LLMRequest, out: tuple[float, float]) -> None:
-        stage = st[req.stage.removeprefix("e1.")]
+        name = req.stage.removeprefix("e1.")
+        stage = st[name]
         if client.is_cached(req):
             stage.cached += 1
             return
         t = cnt([f"{req.system}\n\n{req.user}"])[0] + oh
         stage.add((t, t), out)
+        stage.shapes.append(PromptShape(judge_shape if name == "judge" else sys_shape[name]))
+
+    def assumed_judge(t: float, out: tuple[float, float]) -> None:
+        st["judge"].add((t, t), out)
+        st["judge"].assumed = True
+        st["judge"].shapes.append(PromptShape(judge_shape))
 
     if N in conditions and notes_requests:
         todo = [r for r in notes_requests if not notes_cached(r)]
@@ -1051,22 +1141,33 @@ def quote(
             t = sum(counter([f"{r.system}\n\n{r.messages[0]['content']}" for r in todo]))
             t += oh * len(todo)
             st["N"].add((t, t), _scale(a.answer_out, len(todo)), len(todo))
+            sys_n = counter([todo[0].system])[0] + oh
+            for r in todo:  # the notes block (first break) is shared by questions on a corpus
+                head = r.messages[0]["content"][: r.cache_breaks[0]] if r.cache_breaks else ""
+                segs = [("sys", sys_n)]
+                if head:
+                    segs.append((_digest(head), counter([head])[0]))
+                st["N"].shapes.append(PromptShape(tuple(segs)))
     n_chunks = 0
     for c in contexts:
-        ctx_j = judge_counter([judge_context(c.question, c.gold, c.reference)])[0]
+        parts = judge_parts(c.question, c.gold, c.reference, judge_prompt)
+        ctx_j = judge_counter([judge_context(c.question, c.gold, c.reference, judge_prompt)])[0]
         chat = (chat_texts or {}).get(c.qid)
+        planned = int(C in conditions and chat is not None) + int(N in conditions) + int(listing)
+        # The judge calls this question shares (see judge_request): every part is a breakpoint
+        # when more than one judge call runs on it, else only a meeting-level transcript part.
+        shared = parts if planned > 1 else parts[:-1]
+        judge_shape = (("sys", sys_j), *((_digest(x), judge_counter([x])[0]) for x in shared))
         if C in conditions and chat is not None:  # recorded answer: judge request is exact
-            req = judge_request(c.question, c.gold, c.reference, chat)
+            req = judge_request(c.question, c.gold, c.reference, chat, prompt_id=judge_prompt)
             exact(judge, judge_counter, req, _judge_out(a, (4.0, 8.0)))
         if N in conditions:
             text = (notes_texts or {}).get(c.qid)
             if text is not None:
-                req = judge_request(c.question, c.gold, c.reference, text)
+                req = judge_request(c.question, c.gold, c.reference, text, prompt_id=judge_prompt)
                 exact(judge, judge_counter, req, _judge_out(a, (4.0, 8.0)))
             else:
-                t = sys_j + ctx_j + a.answer_item_tokens * 4
-                st["judge"].add((t, t), _judge_out(a, (4.0, 8.0)))
-                st["judge"].assumed = True
+                assumed_judge(sys_j + ctx_j + a.answer_item_tokens * 4, _judge_out(a, (4.0, 8.0)))
         if not listing:
             continue
         chunks = chunk_lines(c.transcript, chunk_chars)
@@ -1097,6 +1198,7 @@ def quote(
                 (a.merge_out_per_cand[0] * nc[0], a.merge_out_per_cand[1] * nc[1]),
             )
             st["merge"].assumed = True
+            st["merge"].shapes.append(PromptShape(sys_shape["merge"]))
         if items is not None:
             if checking:
                 for it in items:
@@ -1104,7 +1206,7 @@ def quote(
                         reader, counter, verify_request(c.question, it, c.transcript), a.verify_out
                     )
             listed = [(f"A{i}", it.text) for i, it in enumerate(items, 1)]
-            jreq = judge_request(c.question, c.gold, c.reference, listed)
+            jreq = judge_request(c.question, c.gold, c.reference, listed, prompt_id=judge_prompt)
             n = float(len(items))
             exact(judge, judge_counter, jreq, _judge_out(a, (n, n)))
         else:
@@ -1117,12 +1219,14 @@ def quote(
                     round(ni[0]),
                 )
                 st["verify"].assumed = True
+                st["verify"].shapes += [PromptShape(sys_shape["verify"])] * round(ni[0])
             t = sys_j + ctx_j
             st["judge"].add(
                 (t + a.answer_item_tokens * ni[0], t + a.answer_item_tokens * ni[1]),
                 _judge_out(a, ni),
             )
             st["judge"].assumed = True
+            st["judge"].shapes.append(PromptShape(judge_shape))
     nq = len(contexts)
     lines: list[QuoteLine] = []
     if N in conditions and notes_requests:
@@ -1158,7 +1262,7 @@ def quote(
     if ({C, N} & set(conditions) or listing) and contexts:
         lines.append(
             st["judge"].line(
-                f"judge ({JUDGE_PROMPT})",
+                f"judge ({judge_prompt})",
                 jm,
                 "C + N + L answers (LD/LM scored from L's items); exact once the answer is known",
             )
@@ -1180,31 +1284,57 @@ def _judge_out(a: Assumed, items: tuple[float, float]) -> tuple[float, float]:
 
 
 def quote_markdown(sections: Sequence[tuple[str, Sequence[QuoteLine]]], how: str) -> str:
-    """The quote as one table per section."""
-    out = [f"Input tokens: {how}, + {ASSUMED.overhead} structured-output overhead per call."]
+    """The quote as one table per section: uncached, and with prompt caching."""
+    out = [
+        f"Input tokens: {how}, + {ASSUMED.overhead} structured-output overhead per call.",
+        "Cached: system prompt + schema, and the judge's shared context, read from the prompt "
+        "cache (calls replayed in run order against a warm cache: ASSUMED they start within "
+        "5 minutes of each other).",
+    ]
     for title, lines in sections:
         out += [
             "",
             f"### {title}",
             "",
-            "| stage | model | calls (cached) | input tokens | exact? | expected | high |",
-            "|---|---|---|---|---|---|---|",
+            "| stage | model | calls (cached) | input tokens | exact? | expected | high "
+            "| cache reads | expected (cached) | high (cached) |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for x in lines:
             exact = "yes" if x.exact else "partly ASSUMED"
+            ec = x.usd_expected if x.usd_expected_cached is None else x.usd_expected_cached
+            hc = x.usd_high if x.usd_high_cached is None else x.usd_high_cached
             out.append(
                 f"| {x.stage} | {x.model} | {x.calls} ({x.cached}) | {x.input_tokens:,} | "
-                f"{exact} | ${x.usd_expected:.3f} | ${x.usd_high:.3f} |"
+                f"{exact} | ${x.usd_expected:.3f} | ${x.usd_high:.3f} | "
+                f"{x.cache_read_tokens:,} | ${ec:.3f} | ${hc:.3f} |"
             )
         e, h = totals(lines)
-        out.append(f"| **total** | | | | | **${e:.3f}** | **${h:.3f}** |")
+        ec, hc = totals_cached(lines)
+        out.append(
+            f"| **total** | | | | | **${e:.3f}** | **${h:.3f}** | | **${ec:.3f}** | **${hc:.3f}** |"
+        )
         out += [f"- {x.stage}: {x.note}" for x in lines if x.note]
     return "\n".join(out) + "\n"
 
 
 def totals(lines: Iterable[QuoteLine]) -> tuple[float, float]:
+    """(expected, high) without prompt caching: what the spend cap is checked against."""
     ls = list(lines)
     return sum(x.usd_expected for x in ls), sum(x.usd_high for x in ls)
+
+
+def totals_cached(lines: Iterable[QuoteLine]) -> tuple[float, float]:
+    """(expected, high) with prompt caching (lines without a cached price count uncached)."""
+    ls = list(lines)
+
+    def pick(x: QuoteLine, cached: float | None, plain: float) -> float:
+        return plain if cached is None else cached
+
+    return (
+        sum(pick(x, x.usd_expected_cached, x.usd_expected) for x in ls),
+        sum(pick(x, x.usd_high_cached, x.usd_high) for x in ls),
+    )
 
 
 def reprice(

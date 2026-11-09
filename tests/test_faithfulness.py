@@ -134,7 +134,11 @@ def test_check_request_puts_transcript_in_cached_system_and_claims_in_user() -> 
 def test_cache_flag_leaves_existing_cache_keys_unchanged(tmp_path: object) -> None:
     client = LLMClient(model="m", cache_dir=tmp_path)  # type: ignore[arg-type]
     plain = LLMRequest("s", "p.v1", "sys", "user", {})
-    assert structured_params(plain, "m")["system"] == "sys"
+    # Caching off: the system prompt goes as a plain string; by default it is a breakpoint.
+    off = LLMRequest("s", "p.v1", "sys", "user", {}, cache_ttl=None)
+    assert structured_params(off, "m")["system"] == "sys"
+    assert structured_params(plain, "m")["system"][0]["cache_control"] == {"type": "ephemeral"}
+    assert client.cache_path(off) == client.cache_path(plain)  # markers are not in the key
     cached = LLMRequest("s", "p.v1", "sys", "user", {}, cache_system=True)
     assert client.cache_path(plain) != client.cache_path(cached)
     # The key of a plain request is the one it had before the flag existed.

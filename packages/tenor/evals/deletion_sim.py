@@ -117,7 +117,13 @@ class NotesOnlySystem(_Base):
 
     def _prompt(self, q: QuestionLike) -> _Prompt:
         user, retrieved = self._context(q)
-        return _Prompt(self.instructions, user, cache_system=False, retrieved=retrieved)
+        # The notes block comes first and is shared by every question on the same corpus: a
+        # cache breakpoint at its end lets those questions read it from the prompt cache.
+        tail = _user_prompt(q)
+        breaks = (len(user) - len(tail),) if user.endswith(tail) and len(user) > len(tail) else ()
+        return _Prompt(
+            self.instructions, user, cache_system=False, retrieved=retrieved, cache_breaks=breaks
+        )
 
     def prompt_texts(self, q: QuestionLike) -> tuple[str, str]:
         """(system, user) exactly as sent, for exact token counting."""

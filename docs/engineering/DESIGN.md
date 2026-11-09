@@ -547,3 +547,49 @@ Write-up: [RETENTION.md](../tracks/RETENTION.md#ami-replication-5-nov-2026). Num
 - **Decision: `concentrate` stays as a temporary CLI alias.** It prints a one-line deprecation notice to stderr and runs the same app, so scheduled jobs (`concentrate mcp-contract`) keep working.
 - **Kept stable on purpose:** `CONCENTRATE_*` env vars, `~/.config/concentrate/` OAuth tokens, `data/cache/concentrate/` stores, the `concentrate` system id in results, and the figure hash salt and SVG metadata. The LLM cache key hashes request content only, so no cached call is invalidated; `synth --seed 42` and `figures --check` stay byte-identical.
 - **Historical files keep their names:** `docs/archive/**`, `evals/reports/**`, `evals/economics/**` and `evals/scale/**` (only archived link targets were repointed to `packages/tenor`).
+
+## Prompt caching everywhere a prefix repeats (2026-11-08)
+
+The Console reported "Prompt caching: not enabled". Only the faithfulness and grounding checks set `cache_system`, and E1 to E3 sent every request uncached.
+
+- **Decision: the system prompt is a cache breakpoint by default.** `LLMRequest` and `TurnRequest` gained `cache_ttl` (`"5m"` default, `"1h"`, or `None` to turn caching off). Tools and the structured-output schema render before the system prompt, so they are cached with it.
+  - Measured live: the schema's injected text is part of the cached prefix. `verify_item.v2` counts 365 tokens, but Haiku 5.5 wrote 548. So even our ~300-500-token instructions clear the 512-token minimum on the current models.
+- **Decision: requests can add breakpoints inside the user text.** `cache_breaks` holds character offsets after a shared prefix (a transcript, a notes block), with at most 3 plus the system prompt. The helper is `breaks_after(shared, ..., varying)`.
+  - The text is split into blocks that concatenate back to the same string, so the model reads the same bytes.
+- **Decision: cache markers are not part of the disk-cache key.** `cache_breaks` and `cache_ttl` never enter `LLMClient._key` or `_turn_key`. Every existing entry replays, and E1's judge user text is byte-identical to before. The legacy `cache_system` flag stays in keys where it already was.
+- **Accounting.** The pieces:
+  - `Completion` and `TurnCompletion` record cache reads, writes and the 1-hour part of the writes (`usage.cache_creation.ephemeral_1h_input_tokens`).
+  - `cost_usd` prices them: reads at the model's rate, which is 0.05x on Opus 5.5 and 0.1x on Sonnet 5.5 (Haiku 5.5's 0.1x is ASSUMED, as the skill's table doesn't list it). Writes cost 1.25x with the 5-minute TTL and 2x with the 1-hour TTL.
+  - `CallRecord` and `Ledger.by_stage()` carry `cache_read_tokens` and `cache_write_tokens`.
+  - Fixed a bug: `prefetch_structured` dropped cache tokens when it wrote batch results, so their replays were under-priced.
+- **Prompt layout: static first, varying last.** Semantic content is unchanged unless a version was bumped.
+  - **E1 judge.** The judge calls for one question (C, N, L) now share system + question + gold + reference transcript, with a breakpoint before the answer, but only when more than one judge call runs. `run_question` now runs the reader's calls first and the judge's three back to back, so the 5-minute cache stays warm. The requests themselves are identical.
+  - **Opt-in `judge_items.v2`** (`--judge-prompt`) has the same instructions and puts the reference transcript first. Only the sentence describing the input order changed, hence the bump. Every question on a meeting then shares one cached transcript. v1 stays the default because it is what E1 ran.
+  - **E2.** Windows differ per item, so only system + schema are cached (~1k tokens).
+  - **N answer (notes-only).** The notes block comes first. A breakpoint at its end is shared by every question on the same corpus.
+  - **E1 map / merge / verify.** Only the instructions are shared.
+  - **E3** (another workstream's module, not edited). It gets system caching for free. A `breaks_after(gold + reference, rest)` in its `judge_request` would also share the meeting-level part across products.
+- **Quotes show both prices.** `simulate_prompt_cache` replays each uncached call's prefix segments in run order against a warm cache. It is ASSUMED that calls sharing a prefix start within the TTL; in a batch, hits are best-effort, so the result is an upper bound there. The spend cap is still checked against the uncached high.
+- **Live verification (≤ $0.10 cap, 2026-11-08).** Each test sent two calls with the same prefix and a different suffix. Every second call read the whole prefix from the cache:
+
+  | test | prefix | write → read | 2nd call |
+  |---|---|---|---|
+  | Haiku 5.5, E2 system | system | 986 tokens | -65% |
+  | Sonnet 5.5, judge-shaped | ~5k-token transcript prefix | 5,208 tokens | $0.0106 → $0.0012 (-88%) |
+  | Opus 5.5 | ~2.5k-token prefix | 2,471 tokens | $0.0102 → $0.0008 (-92%) |
+
+  Total spent $0.0283 against $0.0421 uncached: -33% over pairs, including the write premium.
+- **Re-quoted fresh runs (empty disk cache, exact inputs, ASSUMED outputs, expected):**
+
+  | eval | uncached | cached | saving |
+  |---|---|---|---|
+  | E1 (v1 judge) | $7.17 | $5.13 | -28%; judge $2.69 → $1.46 |
+  | E1 (v2 judge) | $7.17 | $4.45 | -38%; judge → $0.78 |
+  | E2 (Haiku) | $0.091 | $0.057 | -37% |
+  | E2 (Opus) | $3.63 | $2.21 | -39% |
+  | E3 (12 units, Sonnet) | $0.97 | $0.93 today | $0.84 with the meeting-level break |
+
+- **Trade-offs:**
+  - A breakpoint on a prefix that is used once costs a 25% write premium on it. This is why the judge breakpoint depends on how many judge calls are planned. The system-prompt default pays it once per run per prompt.
+  - We use the 5-minute TTL by default, because grouped calls start seconds apart and the 1-hour TTL's 2x write only pays for gaps of 5-60 minutes.
+  - Not done: putting the whole transcript in E1's verifier or E2's prefix would cache far more, but it changes what the model reads (a new experiment, not a transport change).

@@ -141,6 +141,9 @@ class _Prompt:
     user: str
     cache_system: bool
     retrieved: list[str]
+    # Prompt-cache breakpoints inside ``user`` (character offsets): the end of a context block
+    # other questions share. Not part of the disk-cache key.
+    cache_breaks: tuple[int, ...] = ()
 
 
 class _Base:
@@ -167,6 +170,7 @@ class _Base:
             schema=ANSWER_SCHEMA,
             max_tokens=8000,
             cache_system=p.cache_system,
+            cache_breaks=p.cache_breaks,
         )
 
     def turn_request(self, q: QuestionLike) -> TurnRequest:

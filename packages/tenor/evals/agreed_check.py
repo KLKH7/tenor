@@ -38,7 +38,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from tenor.evals.list_check import Context, Line, bootstrap_ci, sign_test, wilson_ci
-from tenor.llm.client import LLMClient, LLMRequest, cost_usd, load_prompt
+from tenor.llm.client import (
+    LLMClient,
+    LLMRequest,
+    PromptShape,
+    cost_usd,
+    load_prompt,
+    simulate_prompt_cache,
+)
 
 # v1 (pilot, DEV) labelled agreed tasks "agreed_decision", so action questions lost them, and
 # judged team-wide tasks as not answering a question about one role. v2's fix sent a group's
@@ -177,6 +184,9 @@ def window(cited: Sequence[int], transcript: Sequence[Line], k: int = WINDOW) ->
 def agreed_request(
     question: str, item: E1Item, transcript: Sequence[Line], k: int = WINDOW
 ) -> LLMRequest:
+    """One classifier call. Static first: the system prompt (a prompt-cache breakpoint, shared
+    by every call: ~1k tokens with the schema), then the question, then the item and its
+    window. Windows differ per item, so nothing after the system prompt is cached."""
     shown = window(item.lines, transcript, k)
     cited = ", ".join(f"L{i:04d}" for i in item.lines) or "none"
     body = "\n".join(x.render() for x in shown) or "(no lines cited)"
@@ -437,6 +447,10 @@ class Quote:
     usd_expected: float = 0.0
     usd_high: float = 0.0
     per_question: dict[str, int] = field(default_factory=dict)  # uncached calls
+    # With prompt caching: the system prompt + schema read from the cache after the first call.
+    cache_read_tokens: int = 0
+    usd_expected_cached: float = 0.0
+    usd_high_cached: float = 0.0
 
 
 def quote(
@@ -449,8 +463,12 @@ def quote(
 ) -> Quote:
     """Price classifying every item of ``pairs`` (E1 record, context). Input is exact
     (``counter``: count_tokens, free) plus :data:`OVERHEAD`; output is ASSUMED. Cached calls
-    cost $0; ``batch`` applies the Message Batches discount."""
+    cost $0; ``batch`` applies the Message Batches discount. The cached price replays the
+    uncached calls in run order through a warm prompt cache (system + schema shared; for a
+    batch the hits are best-effort, so this is an upper bound on the saving)."""
     q = Quote()
+    shapes: list[PromptShape] = []
+    sys_tokens = counter([load_prompt(PROMPT)])[0] + OVERHEAD
     for rec, ctx in pairs:
         reqs = [agreed_request(ctx.question, it, ctx.transcript) for it in e1_items(rec)]
         todo = [r for r in reqs if not reader.is_cached(r)]
@@ -463,6 +481,12 @@ def quote(
         q.input_tokens += tin
         q.usd_expected += cost_usd(reader.model, tin, round(out[0] * len(todo)), batch=batch)
         q.usd_high += cost_usd(reader.model, tin, round(out[1] * len(todo)), batch=batch)
+        shapes += [PromptShape((("sys", sys_tokens),))] * len(todo)
+    est = simulate_prompt_cache(reader.model, shapes)
+    saving = est.saving_usd(reader.model, batch=batch)
+    q.cache_read_tokens = est.read
+    q.usd_expected_cached = q.usd_expected - saving
+    q.usd_high_cached = q.usd_high - saving
     return q
 
 

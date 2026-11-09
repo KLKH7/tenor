@@ -69,6 +69,9 @@ def test_notes_only_sends_only_notes(tmp_path: Path) -> None:
     assert not any(t in user for t in _transcript_text(_notes()))
     assert res.retrieved == [m.note_id for m in D.held_notes(_notes(), q.as_of)]
     assert s.prompt_texts(q)[1] == user
+    # Prompt cache: one breakpoint at the end of the notes block, shared by every question.
+    (cut,) = llm.requests[0].cache_breaks
+    assert user[:cut].endswith("</meetings>\n\n") and user[cut:].startswith("Today's date:")
 
 
 def test_notes_facts_deletes_every_transcript_even_same_day(tmp_path: Path) -> None:
