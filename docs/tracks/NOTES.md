@@ -592,3 +592,58 @@ With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wron
 - **Half the gap survives every condition.** Taking the union of all conditions, 49 of 104 missing items are fully recovered. Of the 55 that are not, 49 are in the product's own transcript, 39 are recovered partly, and **17 are action items short only of an owner**: the transcript does not say who spoke (all remote speech arrives on one "Them" channel), so no rewrite of the transcript can name them. Owner attribution, not summarisation, is the largest single residual.
 - **Caveats.** One run of generation (no seeds to vary on the models); R's filter uses the reader as an oracle (RD is the fair version); readers share a model family with the generators; the missing-gold set comes from post-hoc-validated E3 labels on the original gold; 11 meetings.
 - Data: `data/ami/results/e4/20261109T092238Z.candidates.json` (local), reader runs `data/private/reader/runs/e4_test_{a,b,c}/`, consensus and scores `data/private/reader/runs/e4_consensus_score.json`.
+
+## Gap check (G1, G2; Preliminary)
+
+**Question.** Two parts of the "gap check" proposed in `data/private/FEATURE_DECISION.md`, simulated with one Sonnet 5.5 call each and scored at $0 from the existing agent-reader labels (no API judge). (G1) Shown as a diff (only what is missing, at most 5, quoted), do E4's fuller-notes items keep their recovery without the duplicates? (G2) Can a model suggest owners for action items the notes leave without one, from the transcript alone (S1) or with a calendar-style attendee list (S2)?
+
+| | |
+|---|---|
+| **G1 unit / input** | E4's 22 TEST units (DEV: IS1008a, 2 units). Input: condition R's regenerated bullets per unit (`data/ami/results/e4/20261109T092238Z.candidates.json`, DEV `20261109T101313Z`); no new generation |
+| **G1 call** | `gap_diff.v1` (Sonnet 5.5, medium effort): keep only bullets that are a decision / action / open problem, not stated in the notes even partly, merged when two say the same thing, ≤ 5, ranked; each with a quote from the product transcript. Quotes are verified by string match (`list_check.quote_found`); unverified items are dropped. The model returns R ids, so a shown item's text is the R bullet's verbatim |
+| **G1 scoring** | Each shown item mapped to its E4 K id through `data/private/reader/e4_keys/<run>.key.json` (source `regen:R<n>` and equal normalised text); labels from the 3-run consensus `data/private/reader/runs/e4_test_consensus/`; missing gold from `test_consensus3.jsonl` (104 items). Same counts as `e4_reader.unit_counts` |
+| **G2 units** | E3 TEST gold actions where (A) the notes' consensus verdict is partial and the reason says the owner is missing / unmatched (regex `OWNER_REASON`, excluding "gold names no owner"): 20; or (B) the notes cover it but no evidence bullet states a usable owner (none, vague, or only "Speaker N", by `owner_check`'s position rules): 13. 33 units (28 distinct bullet sets); 3 left out because the gold owner is a coach or "one team member" |
+| **G2 call** | `owner_suggest.v1` (Sonnet 5.5, low effort): the evidence bullet(s) → an owner as the transcript names them, or "unsure", with a quote. **S1**: transcript + notes. **S2**: plus an attendee list with the AMI roster's names and roles (**simulated: AMI has no calendar invite**; roles whose holder never says their name are listed without one; IB4003 has no roster at all) |
+| **G2 scoring** | The suggestion resolved to AMI roles with `owner_check.resolve` (series roster, close spellings, hand-resolved names). Correct = equals the gold owner's roles. "unsure" or a quote not in the transcript = no suggestion. Gold: original AMI 1.6.2 (what the E3 labels used); errata v1 as sensitivity |
+| **Prompt cache** | Shared system prompt `gap_system.v1`, then transcript + notes with a breakpoint, task and varying part last. G1 and G2 cannot share a cache entry (the output schema is part of the cached prefix), so G1's writes are not reused; G2's S1/S2 calls on a unit read it |
+| **Code** | `tenor ami gap-check` (`--quote`, `--pilot`, `--max-usd`), [`gap_check.py`](../../packages/tenor/evals/gap_check.py). Numbers: [`evals/reports/ami/gap_check.json`](../../evals/reports/ami/gap_check.json); raw outputs local in `data/ami/results/gap_check/` |
+
+**G1 results, TEST** (cluster-bootstrap 95% CIs over meetings, seed 42; E4 rows from the table above).
+
+| Condition | Items shown | Per unit | True and new | Duplicates of the notes | Partly in the notes | False | Missing gold recovered (full) |
+|---|---|---|---|---|---|---|---|
+| **G1: diff, pooled** | 56 | 2.5 [2.0, 3.1] | 36% [20, 51] | 5% [0, 12] | 41% [22, 60] | 0% | **1/104 (1% [0, 3])** |
+| G1, Granola | 37 | 3.4 | 38% [18, 60] | 3% [0, 10] | 41% | 0% | 1/61 |
+| G1, Wispr Flow | 19 | 1.7 | 32% [15, 47] | 11% [0, 27] | 42% | 0% | 0/43 |
+| C3: Coverage, top 3 | 66 | 3.0 | 30% [20, 42] | 18% | – | 3% | 8/104 (8%) |
+| R: fuller notes (oracle-filtered) | 264 | 12.0 | 26% [22, 30] | 0% | – | 2% | 40/104 (38%) |
+| RD: fuller notes, real dedupe | 312 | 14.2 | 21% [18, 26] | 17% | – | 2% | 37/104 (36%) |
+
+- Every shown item mapped to a labelled K id (0 unlabelled). 1 returned item was dropped for a quote not in the transcript. 3 shown items are of kind "other". Partly-recovered missing gold (full or partial match): 7/104.
+- **The diff removes the duplicates but loses almost all of the recovery.** Duplicates fall from RD's 17% to 5%, false items to 0, and the list shrinks from 14 to 2.5 items per unit. But it recovers 1 of the 104 missing gold items, against 37–40 for the full rewrite. The model chose true items that are mostly not the ones AMI's annotators recorded, and 41% of what it showed is still partly in the notes by the readers' standard. **No-go for G1 as specified;** "show only the difference" is not a free filter on top of the rewrite.
+- One run, one prompt version (no DEV tuning after the pilot), so the shortfall may be partly the prompt's "when in doubt, drop it" and the cap of 5; not tested.
+
+**G2 results, TEST** (33 owner-less or unmatched gold actions; Wilson 95% CIs, meeting-cluster CIs in the report).
+
+| Setting | Group | Suggested (coverage) | Correct when suggested | Correct of all | Wrong | Ambiguous |
+|---|---|---|---|---|---|---|
+| S1: transcript only | pooled | 7/33 (21% [11, 38]) | 2/7 (29% [8, 64]) | 2/33 | 3 | 2 |
+| | Granola | 4/16 | 1/4 | 1/16 | 3 | 0 |
+| | Wispr Flow | 3/17 | 1/3 | 1/17 | 0 | 2 |
+| S2: + simulated invite | pooled | 10/33 (30% [17, 47]) | 7/10 (70% [40, 89]) | 7/33 | 2 | 1 |
+| | Granola | 6/16 | 3/6 | 3/16 | 2 | 1 |
+| | Wispr Flow | 4/17 | 4/4 | 4/17 | 0 | 0 |
+
+- By unit source, S2: (A) partial-owner verdicts 5/20 suggested, 2/5 right; (B) owner-less bullets 5/13 suggested, 5/5 right. S1: (A) 3/20, 0/3; (B) 4/13, 2/4.
+- **Ambiguous mappings (listed, counted as suggested and not correct):** IB4003 (natural meeting, no AMI roster): "Andre" (Granola A1, S2), "Andreas" (Wispr Flow A1 and A2, S1). The gold owner is the meeting lead; whether he is Andre(as) cannot be checked against AMI.
+- **All 5 wrong suggestions are "everyone" for a task the gold gives to one person** (ES2008b A3 in S1 and S2; ES2015c A1, A2 in S1; IS1000a A1 in S2). In ES2015c the transcript defers the tasks to the personal coaches, so the gold may be the weaker side; not adjudicated.
+- One S2 suggestion was dropped because its quote was not in the transcript (it would have been correct: 7/11 ignoring the quote check). Errata v1 changes one G2 gold owner (ES2006a A3, Granola); neither setting suggested an owner for it, so the numbers are unchanged.
+- **Reading.** From the transcript alone the model rarely names an owner and is usually wrong when it does: this is the replay's "all speech is Them" limit. With names and roles from an invite it names an owner for 30% of the actions and is right 7 of 10 times, all wrong ones being "everyone". Far below the earlier lead (12 of 13 right, `owner_check`, a different prompt and subset), and n = 10 suggestions. Part (b) still needs a test with a real invite and the mic channel (FEATURE_DECISION experiment 1).
+
+**Threats to validity.** One run per call, no seeds to vary; 11 meetings; readers share a model family with the generator; S2's attendee list is simulated from AMI self-introductions (incomplete: 7 of the 11 TEST meetings miss at least one name, IB4003 has none), and a real invite carries names but rarely roles; G2 scores by role equality, so "everyone" for a one-person task is wrong even where the transcript is vague; G1's missing gold comes from post-hoc-validated E3 labels on the original gold.
+
+**Provenance and cost.** Run 2026-11-09 (UTC), code at `91cc5dc` (clean). Model `claude-sonnet-5-5`; prompts `gap_system.v1`, `gap_diff.v1`, `owner_suggest.v1`; seed 42 (bootstrap only).
+- Quoted beforehand: TEST $1.24 expected / $3.09 high (no cache); the pilot ledger re-priced it at $0.85 ($1.28 with x1.5).
+- DEV pilot (IS1008a, cap $0.30): **$0.064**. Outputs read: quotes verbatim, G1 kept 2–3 items per unit, owner suggestions sensible (one "unsure" in S1 resolved in S2).
+- TEST (hard cap $3.10, the high estimate rounded up): **$1.209**. Prompt-cache evidence (live calls): S2 28 calls, 294k cache-read vs 14k uncached input tokens, all 28 with reads; S1 156k read / 137k written; G1 13k read / 206k written (no reuse possible, see above).
+- **Total $1.27.**
