@@ -1,0 +1,6855 @@
+{
+ "excluded_non_action_links": 2,
+ "label_counts": {
+  "dev": {
+   "all": {
+    "ambiguous": 2,
+    "bullets": 8,
+    "correct": 5,
+    "missing": 0,
+    "no_gold_owner": 0,
+    "partial": 1,
+    "wrong": 0
+   },
+   "granola": {
+    "ambiguous": 0,
+    "bullets": 4,
+    "correct": 3,
+    "missing": 0,
+    "no_gold_owner": 0,
+    "partial": 1,
+    "wrong": 0
+   },
+   "wispr": {
+    "ambiguous": 2,
+    "bullets": 4,
+    "correct": 2,
+    "missing": 0,
+    "no_gold_owner": 0,
+    "partial": 0,
+    "wrong": 0
+   }
+  },
+  "test": {
+   "all": {
+    "ambiguous": 14,
+    "bullets": 70,
+    "correct": 30,
+    "missing": 19,
+    "no_gold_owner": 3,
+    "partial": 1,
+    "wrong": 3
+   },
+   "granola": {
+    "ambiguous": 0,
+    "bullets": 40,
+    "correct": 19,
+    "missing": 18,
+    "no_gold_owner": 2,
+    "partial": 0,
+    "wrong": 1
+   },
+   "wispr": {
+    "ambiguous": 14,
+    "bullets": 30,
+    "correct": 11,
+    "missing": 1,
+    "no_gold_owner": 1,
+    "partial": 1,
+    "wrong": 2
+   }
+  }
+ },
+ "meta": {
+  "anchors": 2,
+  "cost_all_calls_usd": 0.5979691000000006,
+  "date": "20261109T082453Z",
+  "e3_prompt": "notes_completeness.v4",
+  "e3_runs": [
+   "20261109T014826Z",
+   "20261109T063610Z",
+   "20261109T072942Z"
+  ],
+  "git": {
+   "dirty": true,
+   "sha": "9f6750e"
+  },
+  "gold_version": "ami-1.6.2 (original AMI gold; no errata file existed when this experiment started)",
+  "ledger_by_stage": {
+   "owner_check": {
+    "cache_read_tokens": 323680,
+    "cache_write_tokens": 0,
+    "cached": 280,
+    "calls": 280,
+    "input_tokens": 386844,
+    "output_tokens": 34906,
+    "usd": 0.0
+   }
+  },
+  "max_usd": 1.8,
+  "models": {
+   "haiku": "claude-haiku-5-5",
+   "sonnet": "claude-sonnet-5-5"
+  },
+  "pilot": false,
+  "prompt": "owner_check.v2",
+  "quote": {
+   "usd_expected": 0.0,
+   "usd_high": 0.0,
+   "usd_high_cached": 0.0
+  },
+  "reprice": null,
+  "seed": 42,
+  "sonnet_items": null,
+  "spent_usd": 0,
+  "spot_check_gold": "SPOT_CHECK_GOLD (2 owner corrections, ES2006a), sensitivity only",
+  "stopped_early": null,
+  "window": 8
+ },
+ "spot_label_counts": {
+  "ambiguous": 14,
+  "correct": 32,
+  "missing": 19,
+  "no_gold_owner": 3,
+  "partial": 1,
+  "wrong": 1
+ },
+ "summary": {
+  "label": {
+   "all": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1179,
+        0.4093
+       ],
+       "k": 7,
+       "n": 30,
+       "rate": 0.23333333333333334
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.1179,
+         0.4093
+        ],
+        "k": 7,
+        "n": 30,
+        "rate": 0.23333333333333334
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2077,
+         0.9385
+        ],
+        "k": 2,
+        "n": 3,
+        "rate": 0.6666666666666666
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0632,
+        0.5474
+       ],
+       "k": 2,
+       "n": 9,
+       "rate": 0.2222222222222222
+      },
+      "recall": {
+       "ci95": [
+        0.2077,
+        0.9385
+       ],
+       "k": 2,
+       "n": 3,
+       "rate": 0.6666666666666666
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0531,
+        0.2968
+       ],
+       "k": 4,
+       "n": 30,
+       "rate": 0.13333333333333333
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0531,
+         0.2968
+        ],
+        "k": 4,
+        "n": 30,
+        "rate": 0.13333333333333333
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.4899
+       ],
+       "k": 0,
+       "n": 4,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.4535,
+        0.8828
+       ],
+       "k": 10,
+       "n": 14,
+       "rate": 0.7142857142857143
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6644,
+        0.9266
+       ],
+       "k": 25,
+       "n": 30,
+       "rate": 0.8333333333333334
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.3171,
+        0.7267
+       ],
+       "k": 10,
+       "n": 19,
+       "rate": 0.5263157894736842
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6944,
+        0.945
+       ],
+       "k": 25,
+       "n": 29,
+       "rate": 0.8620689655172413
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": true,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.095,
+        0.3731
+       ],
+       "k": 6,
+       "n": 30,
+       "rate": 0.2
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.095,
+         0.3731
+        ],
+        "k": 6,
+        "n": 30,
+        "rate": 0.2
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2077,
+         0.9385
+        ],
+        "k": 2,
+        "n": 3,
+        "rate": 0.6666666666666666
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0715,
+        0.5907
+       ],
+       "k": 2,
+       "n": 8,
+       "rate": 0.25
+      },
+      "recall": {
+       "ci95": [
+        0.2077,
+        0.9385
+       ],
+       "k": 2,
+       "n": 3,
+       "rate": 0.6666666666666666
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0185,
+        0.2132
+       ],
+       "k": 2,
+       "n": 30,
+       "rate": 0.06666666666666667
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0185,
+         0.2132
+        ],
+        "k": 2,
+        "n": 30,
+        "rate": 0.06666666666666667
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0615,
+         0.7923
+        ],
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333333333333333
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0615,
+        0.7923
+       ],
+       "k": 1,
+       "n": 3,
+       "rate": 0.3333333333333333
+      },
+      "recall": {
+       "ci95": [
+        0.0615,
+        0.7923
+       ],
+       "k": 1,
+       "n": 3,
+       "rate": 0.3333333333333333
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.3259,
+        0.7862
+       ],
+       "k": 8,
+       "n": 14,
+       "rate": 0.5714285714285714
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6644,
+        0.9266
+       ],
+       "k": 25,
+       "n": 30,
+       "rate": 0.8333333333333334
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0851,
+        0.4333
+       ],
+       "k": 4,
+       "n": 19,
+       "rate": 0.21052631578947367
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0615,
+        0.7923
+       ],
+       "k": 1,
+       "n": 3,
+       "rate": 0.3333333333333333
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4343,
+        0.9025
+       ],
+       "k": 8,
+       "n": 11,
+       "rate": 0.7272727272727273
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7663,
+        0.9794
+       ],
+       "k": 25,
+       "n": 27,
+       "rate": 0.9259259259259259
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.2505,
+        0.8418
+       ],
+       "k": 4,
+       "n": 7,
+       "rate": 0.5714285714285714
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0185,
+        0.2132
+       ],
+       "k": 2,
+       "n": 30,
+       "rate": 0.06666666666666667
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0185,
+         0.2132
+        ],
+        "k": 2,
+        "n": 30,
+        "rate": 0.06666666666666667
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0615,
+         0.7923
+        ],
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333333333333333
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0185,
+        0.2132
+       ],
+       "k": 2,
+       "n": 30,
+       "rate": 0.06666666666666667
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0185,
+         0.2132
+        ],
+        "k": 2,
+        "n": 30,
+        "rate": 0.06666666666666667
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0615,
+         0.7923
+        ],
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333333333333333
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0346,
+        0.2562
+       ],
+       "k": 3,
+       "n": 30,
+       "rate": 0.1
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0346,
+         0.2562
+        ],
+        "k": 3,
+        "n": 30,
+        "rate": 0.1
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2077,
+         0.9385
+        ],
+        "k": 2,
+        "n": 3,
+        "rate": 0.6666666666666666
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.1176,
+        0.7693
+       ],
+       "k": 2,
+       "n": 5,
+       "rate": 0.4
+      },
+      "recall": {
+       "ci95": [
+        0.2077,
+        0.9385
+       ],
+       "k": 2,
+       "n": 3,
+       "rate": 0.6666666666666666
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1135
+       ],
+       "k": 0,
+       "n": 30,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1135
+        ],
+        "k": 0,
+        "n": 30,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.5241,
+        0.9243
+       ],
+       "k": 11,
+       "n": 14,
+       "rate": 0.7857142857142857
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.7868,
+        0.9815
+       ],
+       "k": 28,
+       "n": 30,
+       "rate": 0.9333333333333333
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.2733,
+        0.6829
+       ],
+       "k": 9,
+       "n": 19,
+       "rate": 0.47368421052631576
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8794,
+        1.0
+       ],
+       "k": 28,
+       "n": 28,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4237,
+        0.8732
+       ],
+       "k": 9,
+       "n": 13,
+       "rate": 0.6923076923076923
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0531,
+        0.2968
+       ],
+       "k": 4,
+       "n": 30,
+       "rate": 0.13333333333333333
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0531,
+         0.2968
+        ],
+        "k": 4,
+        "n": 30,
+        "rate": 0.13333333333333333
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2077,
+         0.9385
+        ],
+        "k": 2,
+        "n": 3,
+        "rate": 0.6666666666666666
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0968,
+        0.7
+       ],
+       "k": 2,
+       "n": 6,
+       "rate": 0.3333333333333333
+      },
+      "recall": {
+       "ci95": [
+        0.2077,
+        0.9385
+       ],
+       "k": 2,
+       "n": 3,
+       "rate": 0.6666666666666666
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1135
+       ],
+       "k": 0,
+       "n": 30,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1135
+        ],
+        "k": 0,
+        "n": 30,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.2138,
+        0.6741
+       ],
+       "k": 6,
+       "n": 14,
+       "rate": 0.42857142857142855
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.7032,
+        0.9469
+       ],
+       "k": 26,
+       "n": 30,
+       "rate": 0.8666666666666667
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.1536,
+        0.5399
+       ],
+       "k": 6,
+       "n": 19,
+       "rate": 0.3157894736842105
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6097,
+        1.0
+       ],
+       "k": 6,
+       "n": 6,
+       "rate": 1.0
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8713,
+        1.0
+       ],
+       "k": 26,
+       "n": 26,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4869,
+        0.9743
+       ],
+       "k": 6,
+       "n": 7,
+       "rate": 0.8571428571428571
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    }
+   },
+   "granola": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1536,
+        0.5399
+       ],
+       "k": 6,
+       "n": 19,
+       "rate": 0.3157894736842105
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.1536,
+         0.5399
+        ],
+        "k": 6,
+        "n": 19,
+        "rate": 0.3157894736842105
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0257,
+        0.5131
+       ],
+       "k": 1,
+       "n": 7,
+       "rate": 0.14285714285714285
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0552,
+        0.3757
+       ],
+       "k": 3,
+       "n": 19,
+       "rate": 0.15789473684210525
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0552,
+         0.3757
+        ],
+        "k": 3,
+        "n": 19,
+        "rate": 0.15789473684210525
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.3372,
+        0.7544
+       ],
+       "k": 10,
+       "n": 18,
+       "rate": 0.5555555555555556
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6078,
+        0.9416
+       ],
+       "k": 15,
+       "n": 18,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.552,
+        0.953
+       ],
+       "k": 10,
+       "n": 12,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1181,
+        0.4879
+       ],
+       "k": 5,
+       "n": 19,
+       "rate": 0.2631578947368421
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.1181,
+         0.4879
+        ],
+        "k": 5,
+        "n": 19,
+        "rate": 0.2631578947368421
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0301,
+        0.5635
+       ],
+       "k": 1,
+       "n": 6,
+       "rate": 0.16666666666666666
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0094,
+        0.2464
+       ],
+       "k": 1,
+       "n": 19,
+       "rate": 0.05263157894736842
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0094,
+         0.2464
+        ],
+        "k": 1,
+        "n": 19,
+        "rate": 0.05263157894736842
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.09,
+        0.4522
+       ],
+       "k": 4,
+       "n": 18,
+       "rate": 0.2222222222222222
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7167,
+        0.9889
+       ],
+       "k": 15,
+       "n": 16,
+       "rate": 0.9375
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.3,
+        0.9032
+       ],
+       "k": 4,
+       "n": 6,
+       "rate": 0.6666666666666666
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0294,
+        0.3139
+       ],
+       "k": 2,
+       "n": 19,
+       "rate": 0.10526315789473684
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0294,
+         0.3139
+        ],
+        "k": 2,
+        "n": 19,
+        "rate": 0.10526315789473684
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0294,
+        0.3139
+       ],
+       "k": 2,
+       "n": 19,
+       "rate": 0.10526315789473684
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0294,
+         0.3139
+        ],
+        "k": 2,
+        "n": 19,
+        "rate": 0.10526315789473684
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0552,
+        0.3757
+       ],
+       "k": 3,
+       "n": 19,
+       "rate": 0.15789473684210525
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0552,
+         0.3757
+        ],
+        "k": 3,
+        "n": 19,
+        "rate": 0.15789473684210525
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0456,
+        0.6994
+       ],
+       "k": 1,
+       "n": 4,
+       "rate": 0.25
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1682
+       ],
+       "k": 0,
+       "n": 19,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6861,
+        0.9706
+       ],
+       "k": 17,
+       "n": 19,
+       "rate": 0.8947368421052632
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.2903,
+        0.7097
+       ],
+       "k": 9,
+       "n": 18,
+       "rate": 0.5
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8157,
+        1.0
+       ],
+       "k": 17,
+       "n": 17,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4677,
+        0.9111
+       ],
+       "k": 9,
+       "n": 12,
+       "rate": 0.75
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0851,
+        0.4333
+       ],
+       "k": 4,
+       "n": 19,
+       "rate": 0.21052631578947367
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0851,
+         0.4333
+        ],
+        "k": 4,
+        "n": 19,
+        "rate": 0.21052631578947367
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0362,
+        0.6245
+       ],
+       "k": 1,
+       "n": 5,
+       "rate": 0.2
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1682
+       ],
+       "k": 0,
+       "n": 19,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.1628,
+        0.5625
+       ],
+       "k": 6,
+       "n": 18,
+       "rate": 0.3333333333333333
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7961,
+        1.0
+       ],
+       "k": 15,
+       "n": 15,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4869,
+        0.9743
+       ],
+       "k": 6,
+       "n": 7,
+       "rate": 0.8571428571428571
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    }
+   },
+   "wispr": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0162,
+        0.3774
+       ],
+       "k": 1,
+       "n": 11,
+       "rate": 0.09090909090909091
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0162,
+         0.3774
+        ],
+        "k": 1,
+        "n": 11,
+        "rate": 0.09090909090909091
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0945,
+         0.9055
+        ],
+        "k": 1,
+        "n": 2,
+        "rate": 0.5
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      },
+      "recall": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0162,
+        0.3774
+       ],
+       "k": 1,
+       "n": 11,
+       "rate": 0.09090909090909091
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0162,
+         0.3774
+        ],
+        "k": 1,
+        "n": 11,
+        "rate": 0.09090909090909091
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.4535,
+        0.8828
+       ],
+       "k": 10,
+       "n": 14,
+       "rate": 0.7142857142857143
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6226,
+        0.9838
+       ],
+       "k": 10,
+       "n": 11,
+       "rate": 0.9090909090909091
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6226,
+        0.9838
+       ],
+       "k": 10,
+       "n": 11,
+       "rate": 0.9090909090909091
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": true,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0162,
+        0.3774
+       ],
+       "k": 1,
+       "n": 11,
+       "rate": 0.09090909090909091
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0162,
+         0.3774
+        ],
+        "k": 1,
+        "n": 11,
+        "rate": 0.09090909090909091
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0945,
+         0.9055
+        ],
+        "k": 1,
+        "n": 2,
+        "rate": 0.5
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      },
+      "recall": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0162,
+        0.3774
+       ],
+       "k": 1,
+       "n": 11,
+       "rate": 0.09090909090909091
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0162,
+         0.3774
+        ],
+        "k": 1,
+        "n": 11,
+        "rate": 0.09090909090909091
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0945,
+         0.9055
+        ],
+        "k": 1,
+        "n": 2,
+        "rate": 0.5
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      },
+      "recall": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.3259,
+        0.7862
+       ],
+       "k": 8,
+       "n": 14,
+       "rate": 0.5714285714285714
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6226,
+        0.9838
+       ],
+       "k": 10,
+       "n": 11,
+       "rate": 0.9090909090909091
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4343,
+        0.9025
+       ],
+       "k": 8,
+       "n": 11,
+       "rate": 0.7272727272727273
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6226,
+        0.9838
+       ],
+       "k": 10,
+       "n": 11,
+       "rate": 0.9090909090909091
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0945,
+         0.9055
+        ],
+        "k": 1,
+        "n": 2,
+        "rate": 0.5
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      },
+      "recall": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.5241,
+        0.9243
+       ],
+       "k": 11,
+       "n": 14,
+       "rate": 0.7857142857142857
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.7412,
+        1.0
+       ],
+       "k": 11,
+       "n": 11,
+       "rate": 1.0
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7412,
+        1.0
+       ],
+       "k": 11,
+       "n": 11,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0945,
+         0.9055
+        ],
+        "k": 1,
+        "n": 2,
+        "rate": 0.5
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      },
+      "recall": {
+       "ci95": [
+        0.0945,
+        0.9055
+       ],
+       "k": 1,
+       "n": 2,
+       "rate": 0.5
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2588
+       ],
+       "k": 0,
+       "n": 11,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2588
+        ],
+        "k": 0,
+        "n": 11,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.2138,
+        0.6741
+       ],
+       "k": 6,
+       "n": 14,
+       "rate": 0.42857142857142855
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.7412,
+        1.0
+       ],
+       "k": 11,
+       "n": 11,
+       "rate": 1.0
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6097,
+        1.0
+       ],
+       "k": 6,
+       "n": 6,
+       "rate": 1.0
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7412,
+        1.0
+       ],
+       "k": 11,
+       "n": 11,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    }
+   }
+  },
+  "spot_label": {
+   "all": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1325,
+        0.4211
+       ],
+       "k": 8,
+       "n": 32,
+       "rate": 0.25
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.1325,
+         0.4211
+        ],
+        "k": 8,
+        "n": 32,
+        "rate": 0.25
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0199,
+        0.435
+       ],
+       "k": 1,
+       "n": 9,
+       "rate": 0.1111111111111111
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0497,
+        0.2807
+       ],
+       "k": 4,
+       "n": 32,
+       "rate": 0.125
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0497,
+         0.2807
+        ],
+        "k": 4,
+        "n": 32,
+        "rate": 0.125
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.4899
+       ],
+       "k": 0,
+       "n": 4,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.4535,
+        0.8828
+       ],
+       "k": 10,
+       "n": 14,
+       "rate": 0.7142857142857143
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6124,
+        0.8898
+       ],
+       "k": 25,
+       "n": 32,
+       "rate": 0.78125
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.3171,
+        0.7267
+       ],
+       "k": 10,
+       "n": 19,
+       "rate": 0.5263157894736842
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6644,
+        0.9266
+       ],
+       "k": 25,
+       "n": 30,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1102,
+        0.3876
+       ],
+       "k": 7,
+       "n": 32,
+       "rate": 0.21875
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.1102,
+         0.3876
+        ],
+        "k": 7,
+        "n": 32,
+        "rate": 0.21875
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0224,
+        0.4709
+       ],
+       "k": 1,
+       "n": 8,
+       "rate": 0.125
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0324,
+        0.2422
+       ],
+       "k": 3,
+       "n": 32,
+       "rate": 0.09375
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0324,
+         0.2422
+        ],
+        "k": 3,
+        "n": 32,
+        "rate": 0.09375
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.3259,
+        0.7862
+       ],
+       "k": 8,
+       "n": 14,
+       "rate": 0.5714285714285714
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6469,
+        0.9111
+       ],
+       "k": 26,
+       "n": 32,
+       "rate": 0.8125
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0851,
+        0.4333
+       ],
+       "k": 4,
+       "n": 19,
+       "rate": 0.21052631578947367
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4343,
+        0.9025
+       ],
+       "k": 8,
+       "n": 11,
+       "rate": 0.7272727272727273
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7361,
+        0.9642
+       ],
+       "k": 26,
+       "n": 29,
+       "rate": 0.896551724137931
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.2505,
+        0.8418
+       ],
+       "k": 4,
+       "n": 7,
+       "rate": 0.5714285714285714
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0173,
+        0.2015
+       ],
+       "k": 2,
+       "n": 32,
+       "rate": 0.0625
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0173,
+         0.2015
+        ],
+        "k": 2,
+        "n": 32,
+        "rate": 0.0625
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0615,
+         0.7923
+        ],
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333333333333333
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0173,
+        0.2015
+       ],
+       "k": 2,
+       "n": 32,
+       "rate": 0.0625
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0173,
+         0.2015
+        ],
+        "k": 2,
+        "n": 32,
+        "rate": 0.0625
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0615,
+         0.7923
+        ],
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333333333333333
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0497,
+        0.2807
+       ],
+       "k": 4,
+       "n": 32,
+       "rate": 0.125
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0497,
+         0.2807
+        ],
+        "k": 4,
+        "n": 32,
+        "rate": 0.125
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0362,
+        0.6245
+       ],
+       "k": 1,
+       "n": 5,
+       "rate": 0.2
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1072
+       ],
+       "k": 0,
+       "n": 32,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1072
+        ],
+        "k": 0,
+        "n": 32,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.5241,
+        0.9243
+       ],
+       "k": 11,
+       "n": 14,
+       "rate": 0.7857142857142857
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.7193,
+        0.9503
+       ],
+       "k": 28,
+       "n": 32,
+       "rate": 0.875
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.2733,
+        0.6829
+       ],
+       "k": 9,
+       "n": 19,
+       "rate": 0.47368421052631576
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8282,
+        0.9939
+       ],
+       "k": 28,
+       "n": 29,
+       "rate": 0.9655172413793104
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4237,
+        0.8732
+       ],
+       "k": 9,
+       "n": 13,
+       "rate": 0.6923076923076923
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 70,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0686,
+        0.3175
+       ],
+       "k": 5,
+       "n": 32,
+       "rate": 0.15625
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0686,
+         0.3175
+        ],
+        "k": 5,
+        "n": 32,
+        "rate": 0.15625
+       },
+       "missing": {
+        "ci95": [
+         0.8318,
+         1.0
+        ],
+        "k": 19,
+        "n": 19,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.4385,
+         1.0
+        ],
+        "k": 3,
+        "n": 3,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0301,
+        0.5635
+       ],
+       "k": 1,
+       "n": 6,
+       "rate": 0.16666666666666666
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1072
+       ],
+       "k": 0,
+       "n": 32,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1072
+        ],
+        "k": 0,
+        "n": 32,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.5615
+        ],
+        "k": 0,
+        "n": 3,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.2138,
+        0.6741
+       ],
+       "k": 6,
+       "n": 14,
+       "rate": 0.42857142857142855
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6469,
+        0.9111
+       ],
+       "k": 26,
+       "n": 32,
+       "rate": 0.8125
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.1536,
+        0.5399
+       ],
+       "k": 6,
+       "n": 19,
+       "rate": 0.3157894736842105
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6097,
+        1.0
+       ],
+       "k": 6,
+       "n": 6,
+       "rate": 1.0
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8172,
+        0.9934
+       ],
+       "k": 26,
+       "n": 27,
+       "rate": 0.9629629629629629
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4869,
+        0.9743
+       ],
+       "k": 6,
+       "n": 7,
+       "rate": 0.8571428571428571
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    }
+   },
+   "granola": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1536,
+        0.5399
+       ],
+       "k": 6,
+       "n": 19,
+       "rate": 0.3157894736842105
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.1536,
+         0.5399
+        ],
+        "k": 6,
+        "n": 19,
+        "rate": 0.3157894736842105
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0257,
+        0.5131
+       ],
+       "k": 1,
+       "n": 7,
+       "rate": 0.14285714285714285
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0552,
+        0.3757
+       ],
+       "k": 3,
+       "n": 19,
+       "rate": 0.15789473684210525
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0552,
+         0.3757
+        ],
+        "k": 3,
+        "n": 19,
+        "rate": 0.15789473684210525
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.5615
+       ],
+       "k": 0,
+       "n": 3,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.3372,
+        0.7544
+       ],
+       "k": 10,
+       "n": 18,
+       "rate": 0.5555555555555556
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6078,
+        0.9416
+       ],
+       "k": 15,
+       "n": 18,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.552,
+        0.953
+       ],
+       "k": 10,
+       "n": 12,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.1181,
+        0.4879
+       ],
+       "k": 5,
+       "n": 19,
+       "rate": 0.2631578947368421
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.1181,
+         0.4879
+        ],
+        "k": 5,
+        "n": 19,
+        "rate": 0.2631578947368421
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0301,
+        0.5635
+       ],
+       "k": 1,
+       "n": 6,
+       "rate": 0.16666666666666666
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0094,
+        0.2464
+       ],
+       "k": 1,
+       "n": 19,
+       "rate": 0.05263157894736842
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0094,
+         0.2464
+        ],
+        "k": 1,
+        "n": 19,
+        "rate": 0.05263157894736842
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.09,
+        0.4522
+       ],
+       "k": 4,
+       "n": 18,
+       "rate": 0.2222222222222222
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7167,
+        0.9889
+       ],
+       "k": 15,
+       "n": 16,
+       "rate": 0.9375
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.3,
+        0.9032
+       ],
+       "k": 4,
+       "n": 6,
+       "rate": 0.6666666666666666
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0294,
+        0.3139
+       ],
+       "k": 2,
+       "n": 19,
+       "rate": 0.10526315789473684
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0294,
+         0.3139
+        ],
+        "k": 2,
+        "n": 19,
+        "rate": 0.10526315789473684
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0294,
+        0.3139
+       ],
+       "k": 2,
+       "n": 19,
+       "rate": 0.10526315789473684
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0294,
+         0.3139
+        ],
+        "k": 2,
+        "n": 19,
+        "rate": 0.10526315789473684
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0552,
+        0.3757
+       ],
+       "k": 3,
+       "n": 19,
+       "rate": 0.15789473684210525
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0552,
+         0.3757
+        ],
+        "k": 3,
+        "n": 19,
+        "rate": 0.15789473684210525
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0456,
+        0.6994
+       ],
+       "k": 1,
+       "n": 4,
+       "rate": 0.25
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1682
+       ],
+       "k": 0,
+       "n": 19,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.6861,
+        0.9706
+       ],
+       "k": 17,
+       "n": 19,
+       "rate": 0.8947368421052632
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.2903,
+        0.7097
+       ],
+       "k": 9,
+       "n": 18,
+       "rate": 0.5
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.8157,
+        1.0
+       ],
+       "k": 17,
+       "n": 17,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4677,
+        0.9111
+       ],
+       "k": 9,
+       "n": 12,
+       "rate": 0.75
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": true,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 40,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0851,
+        0.4333
+       ],
+       "k": 4,
+       "n": 19,
+       "rate": 0.21052631578947367
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0851,
+         0.4333
+        ],
+        "k": 4,
+        "n": 19,
+        "rate": 0.21052631578947367
+       },
+       "missing": {
+        "ci95": [
+         0.8241,
+         1.0
+        ],
+        "k": 18,
+        "n": 18,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.3424,
+         1.0
+        ],
+        "k": 2,
+        "n": 2,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0362,
+        0.6245
+       ],
+       "k": 1,
+       "n": 5,
+       "rate": 0.2
+      },
+      "recall": {
+       "ci95": [
+        0.2065,
+        1.0
+       ],
+       "k": 1,
+       "n": 1,
+       "rate": 1.0
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.1682
+       ],
+       "k": 0,
+       "n": 19,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.1682
+        ],
+        "k": 0,
+        "n": 19,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.1759
+        ],
+        "k": 0,
+        "n": 18,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.6576
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       },
+       "wrong": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5667,
+        0.9149
+       ],
+       "k": 15,
+       "n": 19,
+       "rate": 0.7894736842105263
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.1628,
+        0.5625
+       ],
+       "k": 6,
+       "n": 18,
+       "rate": 0.3333333333333333
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.7961,
+        1.0
+       ],
+       "k": 15,
+       "n": 15,
+       "rate": 1.0
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.4869,
+        0.9743
+       ],
+       "k": 6,
+       "n": 7,
+       "rate": 0.8571428571428571
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    }
+   },
+   "wispr": {
+    "haiku_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0433,
+        0.4224
+       ],
+       "k": 2,
+       "n": 13,
+       "rate": 0.15384615384615385
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0433,
+         0.4224
+        ],
+        "k": 2,
+        "n": 13,
+        "rate": 0.15384615384615385
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0137,
+        0.3331
+       ],
+       "k": 1,
+       "n": 13,
+       "rate": 0.07692307692307693
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0137,
+         0.3331
+        ],
+        "k": 1,
+        "n": 13,
+        "rate": 0.07692307692307693
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.4535,
+        0.8828
+       ],
+       "k": 10,
+       "n": 14,
+       "rate": 0.7142857142857143
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4974,
+        0.9182
+       ],
+       "k": 10,
+       "n": 13,
+       "rate": 0.7692307692307693
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.552,
+        0.953
+       ],
+       "k": 10,
+       "n": 12,
+       "rate": 0.8333333333333334
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "haiku_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0433,
+        0.4224
+       ],
+       "k": 2,
+       "n": 13,
+       "rate": 0.15384615384615385
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0433,
+         0.4224
+        ],
+        "k": 2,
+        "n": 13,
+        "rate": 0.15384615384615385
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0433,
+        0.4224
+       ],
+       "k": 2,
+       "n": 13,
+       "rate": 0.15384615384615385
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0433,
+         0.4224
+        ],
+        "k": 2,
+        "n": 13,
+        "rate": 0.15384615384615385
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.6576
+       ],
+       "k": 0,
+       "n": 2,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.3259,
+        0.7862
+       ],
+       "k": 8,
+       "n": 14,
+       "rate": 0.5714285714285714
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5776,
+        0.9567
+       ],
+       "k": 11,
+       "n": 13,
+       "rate": 0.8461538461538461
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.4343,
+        0.9025
+       ],
+       "k": 8,
+       "n": 11,
+       "rate": 0.7272727272727273
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.5776,
+        0.9567
+       ],
+       "k": 11,
+       "n": 13,
+       "rate": 0.8461538461538461
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "rule": {
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2281
+       ],
+       "k": 0,
+       "n": 13,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2281
+        ],
+        "k": 0,
+        "n": 13,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2281
+       ],
+       "k": 0,
+       "n": 13,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2281
+        ],
+        "k": 0,
+        "n": 13,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "sonnet_oracle": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0137,
+        0.3331
+       ],
+       "k": 1,
+       "n": 13,
+       "rate": 0.07692307692307693
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0137,
+         0.3331
+        ],
+        "k": 1,
+        "n": 13,
+        "rate": 0.07692307692307693
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2281
+       ],
+       "k": 0,
+       "n": 13,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2281
+        ],
+        "k": 0,
+        "n": 13,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.5241,
+        0.9243
+       ],
+       "k": 11,
+       "n": 14,
+       "rate": 0.7857142857142857
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5776,
+        0.9567
+       ],
+       "k": 11,
+       "n": 13,
+       "rate": 0.8461538461538461
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    },
+    "sonnet_product": {
+     "go": {
+      "beats_rule": false,
+      "false_flags_le_0.10": false,
+      "go": false,
+      "recall_ge_0.60": false
+     },
+     "n_rows": 30,
+     "soft": {
+      "false_flags": {
+       "ci95": [
+        0.0137,
+        0.3331
+       ],
+       "k": 1,
+       "n": 13,
+       "rate": 0.07692307692307693
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.7847,
+         1.0
+        ],
+        "k": 14,
+        "n": 14,
+        "rate": 1.0
+       },
+       "correct": {
+        "ci95": [
+         0.0137,
+         0.3331
+        ],
+        "k": 1,
+        "n": 13,
+        "rate": 0.07692307692307693
+       },
+       "missing": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     },
+     "strict": {
+      "false_flags": {
+       "ci95": [
+        0.0,
+        0.2281
+       ],
+       "k": 0,
+       "n": 13,
+       "rate": 0.0
+      },
+      "flagged_by_label": {
+       "ambiguous": {
+        "ci95": [
+         0.0,
+         0.2153
+        ],
+        "k": 0,
+        "n": 14,
+        "rate": 0.0
+       },
+       "correct": {
+        "ci95": [
+         0.0,
+         0.2281
+        ],
+        "k": 0,
+        "n": 13,
+        "rate": 0.0
+       },
+       "missing": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "no_gold_owner": {
+        "ci95": [
+         0.0,
+         0.7935
+        ],
+        "k": 0,
+        "n": 1,
+        "rate": 0.0
+       },
+       "partial": {
+        "ci95": [
+         0.2065,
+         1.0
+        ],
+        "k": 1,
+        "n": 1,
+        "rate": 1.0
+       },
+       "wrong": {
+        "ci95": null,
+        "k": 0,
+        "n": 0,
+        "rate": null
+       }
+      },
+      "precision": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "recall": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_accuracy_ambiguous": {
+       "ci95": [
+        0.2138,
+        0.6741
+       ],
+       "k": 6,
+       "n": 14,
+       "rate": 0.42857142857142855
+      },
+      "suggested_accuracy_correct": {
+       "ci95": [
+        0.5776,
+        0.9567
+       ],
+       "k": 11,
+       "n": 13,
+       "rate": 0.8461538461538461
+      },
+      "suggested_accuracy_missing": {
+       "ci95": [
+        0.0,
+        0.7935
+       ],
+       "k": 0,
+       "n": 1,
+       "rate": 0.0
+      },
+      "suggested_accuracy_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_ambiguous": {
+       "ci95": [
+        0.6097,
+        1.0
+       ],
+       "k": 6,
+       "n": 6,
+       "rate": 1.0
+      },
+      "suggested_precision_correct": {
+       "ci95": [
+        0.6461,
+        0.9851
+       ],
+       "k": 11,
+       "n": 12,
+       "rate": 0.9166666666666666
+      },
+      "suggested_precision_missing": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      },
+      "suggested_precision_wrong": {
+       "ci95": null,
+       "k": 0,
+       "n": 0,
+       "rate": null
+      }
+     }
+    }
+   }
+  }
+ }
+}

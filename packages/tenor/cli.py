@@ -4693,6 +4693,47 @@ def ami_notes_completeness_pool(
     typer.echo(f"pooled {len(meta['units'])} units from {len(loaded)} runs -> {out}")
 
 
+@ami_app.command("owner-check")
+def ami_owner_check(
+    quote_only: Annotated[bool, typer.Option("--quote", help="Price it; spends nothing.")] = False,
+    pilot: Annotated[bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a).")] = False,
+    max_usd: Annotated[float | None, typer.Option(help="Hard spend cap (approved amount).")] = None,
+    models: Annotated[str, typer.Option(help="Comma-separated: haiku,sonnet.")] = "haiku,sonnet",
+    sonnet_items: Annotated[
+        int | None, typer.Option(help="Run Sonnet on the first N TEST bullets only.")
+    ] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    seed: Annotated[int, typer.Option()] = 42,
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+    out_dir: OutDirOpt = AMI_RESULTS / "owner_check",
+    commit_to: Annotated[Path | None, typer.Option(help="Numbers-only aggregate.")] = None,
+) -> None:
+    """Owner check: wrong owners in the notes' action bullets (E3 links) and whether a rule,
+    Haiku or Sonnet flags them (``tenor.evals.owner_check``). --quote, then --pilot."""
+    from tenor.ami.products import AMI_EXTENDED
+    from tenor.evals import owner_check as O
+
+    units, _ = _e3_units(granola_db, wispr_db, overrides, AMI_EXTENDED)
+    code = O.main(
+        units,
+        results_dir=AMI_RESULTS / "e3",
+        out_dir=out_dir,
+        quote_only=quote_only,
+        pilot=pilot,
+        max_usd=max_usd,
+        models=[m.strip() for m in models.split(",") if m.strip()],
+        sonnet_items=sonnet_items,
+        seed=seed,
+        echo=typer.echo,
+        commit_to=commit_to,
+        confirm=(lambda _t: True) if yes else (lambda t: typer.confirm(t)),
+    )
+    if code:
+        raise typer.Exit(code)
+
+
 @ami_app.command("council-notes")
 def ami_council_notes(
     quote_only: Annotated[bool, typer.Option("--quote", help="Price only; no spend.")] = False,

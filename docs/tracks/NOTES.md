@@ -402,6 +402,82 @@ Run 3 per category, Granola / Wispr Flow:
   - Sandbox: CB 121282, pass 1, both products, cap $0.20. Spent $0.04; outputs checked.
   - Full run: hard cap $0.60, spent $0.25 (the sandbox calls replayed at $0). **Total $0.29.**
 
+## Owner check: wrong owners on action items (Preliminary)
+
+**Question.** When a product's notes assign an action item to a person, how often is the owner wrong? And can a cheap check flag the wrong ones? This is experiment 3 in the feature scan. Its go threshold was fixed before the run: flag ≥ 60% of owner errors, with ≤ 10% false flags on correct owners, and beat the rule.
+
+| | |
+|---|---|
+| **Data (no LLM)** | E3's 11 TEST meetings, both products. A bullet is included if its majority kind over E3's 3 judge passes is *action* and most passes link it to at least one gold ACTION item. That gives 70 bullets (Granola 40, Wispr Flow 30). 2 action-linked bullets of another kind were left out |
+| **Stated owner** | Found by position rules in code: a leading `(X)`, a leading `X:`, a leading `X to ...`, a parenthesis holding only names, `by X`, `X to ...` in the bullet's detail, or a group phrase. "One person" counts as no owner |
+| **Gold owner** | The subject of each linked AMI action sentence ("The Industrial Designer will ..."), as roles. If the gold names a coach or "one team member", the bullet is marked *no gold owner*. **Gold version: original AMI 1.6.2.** `gold_errata.v1.json` did not exist when this work started, so it is not used |
+| **Roster** | Self-introductions across the whole AMI series (a–d), matched to roles, with close spellings allowed ("Shreedhar" = Shrida). One hand-resolved name, used for the truth labels only: TS3009's "Thijs" is the Industrial Designer (Granola's transcript: "Well, Thijs, show us", then the components presentation) |
+| **Labels** | *correct* (stated roles = gold roles), *wrong* (no overlap), *partial* (some overlap), *missing* (no owner stated), *ambiguous* (an unresolved "Speaker N" or name), *no gold owner* |
+| **Checks** | (a) **Rule**: flag an owner that is not a roster name, a role or a group. (b) **Haiku 5.5** and (c) **Sonnet 5.5** (`owner_check.v2`, low effort). Each check gets the bullet, the stated owner, the roster, and ±8 transcript lines around the 2 lines that best match the bullet (lexical match, no gold). It answers correct / wrong / can't tell, plus a suggested owner. Each LLM check runs twice: on the **product's** transcript (Granola's lines are all "Them"), and on an **oracle** variant that uses AMI's human transcript with role labels. No product has the oracle's speaker identities. Flag = "wrong" (strict); "soft" also counts "can't tell" |
+| **Prompt changes** | DEV only (IS1008a). In v1, a "Speaker N" owner got "wrong" from some calls and "can't tell" from others, and one call said "wrong" while suggesting the stated owner. v2 fixes both |
+| **Code** | `tenor ami owner-check` ([`owner_check.py`](../../packages/tenor/evals/owner_check.py)). Numbers: [`evals/reports/ami/owner_check.json`](../../evals/reports/ami/owner_check.json) |
+
+**Owner labels, pooled TEST (original gold).**
+
+| Product | Bullets | Correct | Wrong | Partial | Missing | Ambiguous ("Speaker N") | No gold owner |
+|---|---|---|---|---|---|---|---|
+| Granola | 40 | 19 | 1 | 0 | 18 | 0 | 2 |
+| Wispr Flow | 30 | 11 | 2 | 1 | 1 | 14 | 1 |
+
+**Spot check (10 labels read against AMI's transcript).** 7 agree. The other 3 are the 3 *wrong* labels, and in each the gold, not the notes, looks wrong:
+- **ES2006a (Wispr Flow, 2 bullets): the gold swaps the two designers' tasks.** The UI designer says "at first I will be responsible for ... designing the technical functions". The Industrial Designer answers "Alright" to "you're looking at the working design". `gold_errata.v1` (made independently, at the same time) corrects the same two items.
+- **IS1000a (Granola, 1 bullet): doubtful.** The PM says "you" without a name. Only back-channels suggest the same swap, so the gold is left as it is.
+
+With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wrong owner** (doubtful) and 32 correct, among 33 bullets whose stated owner resolves to a person.
+
+- **Wrong owners are rare. Missing and unresolvable owners are common.**
+  - Granola states no owner on 18 of its 40 action bullets.
+  - Wispr Flow names an owner on nearly every bullet, but 14 of 30 are "Speaker N" labels that nobody reading the notes can resolve.
+  - Where an owner resolves to a person, it is wrong on 1 of 20 Granola bullets and 2 of 13 Wispr Flow bullets on the original gold. After the spot check that is 1 of 33 overall.
+
+**Checks, pooled TEST, bullets labelled correct or wrong (original gold: 3 wrong, 30 correct).**
+
+| Condition | Recall (wrong flagged) | Precision | False flags on correct | Soft recall / false flags |
+|---|---|---|---|---|
+| (a) Rule | 0 / 3 | 0 / 2 | 2 / 30 (7%) | 0 / 3, 2 / 30 |
+| (b) Haiku, product transcript | 1 / 3 | 1 / 3 | 2 / 30 (7%) | 2 / 3, 6 / 30 |
+| (b) Haiku, oracle transcript | 0 / 3 | 0 / 4 | 4 / 30 (13%) | 2 / 3, 7 / 30 |
+| (c) Sonnet, product transcript | 0 / 3 | – (no flags) | 0 / 30 | 2 / 3, 4 / 30 |
+| (c) Sonnet, oracle transcript | 0 / 3 | – (no flags) | 0 / 30 | 2 / 3, 3 / 30 |
+
+- **No-go on every condition, and the question cannot be settled on this data.** No check reaches 60% recall. But the test set holds 3 wrong owners on the original gold, and at most 1 after the spot check. Haiku's one hit is an ES2006a bullet that the transcript shows to be correct. On spot-check labels, every LLM recall is 0 / 1, and Haiku on the product transcript has 3 / 32 false flags.
+- **What the rule flags is the 14 "Speaker N" labels (14 / 14) and "Thijs" twice** (a correct name with no self-introduction in AMI). It never flags a wrong role, by construction.
+- **Sonnet never raised a false flag on a correct owner** (0 / 30 on either transcript). It confirmed 26 of 30 correct owners from the product transcript and 27 of 30 from the oracle. It also agreed with the transcript rather than the gold on one swapped ES2006a bullet. Haiku raised 2–4 false flags.
+- **The more promising use is filling in owners, not flagging them.** Results for the suggested owner, given as right / bullets where the check named one (right / all bullets):
+
+| Condition | "Speaker N" bullets (14) | No owner stated (19) |
+|---|---|---|
+| Haiku, product | 8 / 11 (8 / 14) | 4 / 7 (4 / 19) |
+| Sonnet, product | 6 / 6 (6 / 14) | 6 / 7 (6 / 19) |
+| Haiku, oracle | 10 / 13 (10 / 14) | 10 / 13 (10 / 19) |
+| Sonnet, oracle | 11 / 12 (11 / 14) | 9 / 13 (9 / 19) |
+
+  Sonnet on the product transcript names an owner rarely, but when it does it is right 12 of 13 times. This was not a pre-registered metric, so treat it as a lead.
+
+**Threats to validity.**
+- **n of wrong owners is 3 (original gold) or 1 (spot check).** Recall and precision on n ≤ 3 mean nothing, and the go threshold cannot be tested. A real test needs meetings with known owner errors, for example seeded errors.
+- **"Speaker N" labels.** 14 of Wispr Flow's 30 owners are labels with no mapping to people. They are counted as *ambiguous*, not wrong. A reader would count them as owner failures.
+- **Oracle vs product transcript.** The oracle variant reads AMI's human transcript with role labels, which no product has. Granola's own lines are all "Them", so the product variant can only use names said aloud. Even so, the oracle did not flag better. It helped only with suggestions (for example 11 vs 6 of 14 "Speaker N" bullets for Sonnet).
+- **The window is lexical.** It is ±8 lines around the 2 lines that best match the bullet. It can miss an assignment made elsewhere, often at the end of the meeting. That is a plausible cause of many "can't tell" verdicts, but we have not counted it.
+- **Stated owners are found by position rules**, and gold owners by the sentence subject. All 70 were reviewed by hand while building the rules, but the rules were never checked on other notes.
+- **Gold is one AMI annotator's.** The spot check found 2 owner errors in 33 resolvable cases. The primary labels keep the original gold, as instructed.
+- **One run of each check, no repeated passes.**
+
+**Provenance and cost.** Run 2026-11-09 (UTC).
+- Code: committed in this change. At run time it was uncommitted on top of `9f6750e` (the result records `dirty`).
+- E3 links: runs `20261109T014826Z`, `20261109T063610Z`, `20261109T072942Z` (`notes_completeness.v4`, 3 passes, majority vote).
+- Models `claude-haiku-5-5` and `claude-sonnet-5-5`, prompt `owner_check.v2`, seed 42, window ±8, 2 anchors.
+- Quoted beforehand: $0.92 expected / $1.29 high for the full TEST run (280 calls). The DEV pilot re-priced it at $0.66 ($0.99 with a 1.5× margin).
+- Spend:
+  - DEV pilots (IS1008a, cap $0.20 each): $0.075 (v1) and $0.076 (v2).
+  - Full TEST run (hard cap $1.80): $0.598 (Haiku $0.031, Sonnet $0.567).
+  - **Total $0.75.**
+
 ## E4: coverage head-to-head (designed; DEV pilot run, full run not run)
 
 **Question.** Can a "+N missed items" line under a product's notes surface what the notes left out, precisely enough to be worth showing? And does it beat two simple alternatives: writing fuller notes, or asking Granola Chat? This decides whether "Coverage" is pitchable (go / no-go thresholds below, fixed before any TEST data).
