@@ -8,26 +8,28 @@ TENOR replays public meeting recordings into real meeting products and measures,
 
 ## Key findings (preliminary)
 
-All findings come from 7 public AMI meetings and are preliminary; read them as directions, not rankings.
+All findings come from public AMI meetings (7 for capture, transcription and answers; 11 held-out meetings for notes completeness) and are preliminary; read them as directions, not rankings. Notes and answers are scored by agent readers, a method that a small human check supported ([How results are judged](#how-results-are-judged)); earlier figures from the first automated judge are listed under [Previously reported](#previously-reported).
 
+- **Notes leave out about a quarter of what was decided, assigned or raised, while the products' own transcripts contain almost all of it.** On 11 meetings (149 annotated items), Granola's notes covered 0.72 and Wispr Flow's 0.77 of the items, counting partly covered items as half. The products' own transcripts contained 291 of the 298 product-item pairs ([Notes completeness](#notes-completeness)).
 - **Capture works under normal use.** Both products captured almost all speech: 98.5% (Granola) and 99.4% (Wispr Flow) of 15-second windows, across 7 meetings ([Capture](#capture)).
-- **Note claims are mostly grounded.** 90% of Granola's and 81% of Wispr Flow's note claims were supported by both the product's and AMI's transcript (387 claims; corrected automated run, not yet human-calibrated) ([Notes](#notes)).
-- **List answers are precise but incomplete.** On 30 list questions, 86% of Granola Chat's items were true but it found 74% of the annotated items; listing every item from the full transcript found 90% but only 61% of its items were true, through over-inclusion rather than invention ([Answers](#answers)).
-- **Answering from notes alone roughly halves correct answers.** Correct answers fell from 41% with transcripts to 21% from notes alone (68 questions, p = 0.001) ([Retention](#retention-what-deleting-transcripts-costs)).
-- **Automated judges over-counted errors in every human-checked sample.** None of the 3 strongest automated "confident contradictions" was wrong on human reading (23 human labels in total) ([Judges](#how-far-to-trust-the-automated-judges)).
+- **Note claims are mostly grounded.** 90% of Granola's and 81% of Wispr Flow's note claims were supported by both the product's and AMI's transcript (387 claims; automated checker, not yet re-read) ([Notes](#notes)).
+- **Chat's list answers are precise and fairly complete; listing everything adds recall but loses precision.** On 30 list questions, 89% of Granola Chat's items were true and it found 84% of the annotated items. Listing every item from the full transcript found 93% but only 64% of its items were true, through over-inclusion rather than invention. Chat had the better balance of the two (F1 0.80 vs 0.70; better on 22 questions, worse on 5, p = 0.002) ([Answers](#answers)).
+- **Answering from notes alone roughly halves correct answers.** Correct answers fell from 60% with transcripts (Granola Chat) to 32% from Granola's notes alone (68 questions; 20 questions lost, 1 gained, p < 0.001) ([Retention](#retention-what-deleting-transcripts-costs)).
+- **The first automated judge was wrong too often to trust on its own.** It disagreed with a careful second reading on 26% of notes-completeness items, and on 15 of those items a human, blind to both verdicts, sided with the second reading every time. Several earlier conclusions changed as a result ([How results are judged](#how-results-are-judged)).
 - **Long silences did not cause silent failures; an app update did.** In two runs with 17–19 minutes of silence mid-meeting, both products warned the user and resumed when speech returned; in one run an automatic application update ended an active recording without a visible warning ([Capture under stress](#capture-under-stress)).
 
 ## Status
 
-What has been built and measured so far, as of 5 November 2026.
+What has been built and measured so far, as of 9 November 2026.
 
 | What exists | Size |
 |---|---|
-| Public meetings replayed into products | 7 AMI meetings (about 3 hours of audio), each replayed into 2 products: Granola and Wispr Flow |
+| Public meetings replayed into products | 13 AMI meetings, each replayed into 2 products, Granola and Wispr Flow: the first 7 (about 3 hours of audio) and 6 more of the same design-team scenario used for notes completeness |
 | Questions about those meetings | 68, built by fixed templates from AMI's human annotations (13 used during development) |
-| Human labels on product outputs | 23 (20 note claims, 3 Chat answers), from 1 verifier |
+| Annotated items checked against notes | 149 items in 11 held-out meetings, per product (298 product-item pairs) |
+| Human labels on product outputs | 38 from 1 verifier: 20 note claims, 3 Chat answers, and 15 notes-completeness items where two automated readings disagreed |
 
-**All AMI results are preliminary.** The sample is 7 meetings, the human-labelled set is small, and the automated judges have not yet been calibrated against enough human labels to be trusted on their own. No result below is confirmed. Planned next: capture stress tests and a nightly replay suite ([next research step](#capture-under-stress)), and about 100 human labels.
+**All AMI results are preliminary.** The samples are small (7 to 11 meetings), the human-labelled set is small, and the reader that scores notes and answers has been checked against 15 human labels, not the planned 100. No result below is confirmed. Planned next: capture stress tests and a nightly replay suite ([next research step](#capture-under-stress)), and about 100 human labels.
 
 Results from an earlier study on the author's own private meetings are collected in one place, [Earlier private study](#earlier-private-study).
 
@@ -59,17 +61,77 @@ How audio goes in, how outputs come back, and how they are scored.
 
 **Free scorers.** Capture coverage aligns AMI's timed human words with the product transcript in 15-second windows. Word error rate (WER) and content-word recall compare the full transcript with AMI's. Fact-token recall checks numbers, money, names and roles. None of these uses an LLM, so they cost nothing and are deterministic. Track definitions: [`docs/tracks/`](docs/tracks/README.md).
 
-**Calibrated judging.** Notes and answers need an LLM judge, and on meeting outputs automated judges over-count errors. The causes found so far are each fixable: judges penalise names where the answer key uses roles, product boilerplate is read as content, a small judge's verdict contradicts its own reasoning, and a one-line summary used as the answer key drops nuance the product kept. The calibrated judge adds a speaker roster from the meeting's own introductions, strips product boilerplate, uses a stronger model, scores list answers per item, and is reported with its agreement with human labels. Details: [`docs/method/CALIBRATED_JUDGING.md`](docs/method/CALIBRATED_JUDGING.md).
+**Judging.** Notes and answers need a reader who can decide whether a note or an answer states an annotated item. They were first scored by an automated LLM judge; they are now scored by agent readers, a method that a small human check supported. Why, how, and how far to trust it: [How results are judged](#how-results-are-judged).
 
-**Human verification.** A human labels a sample of note claims and answers against the AMI source, on public AMI items so that labels can be released. These labels measure how far each automated judge over- or under-counts. Protocol and status: [`docs/method/HUMAN_VERIFICATION.md`](docs/method/HUMAN_VERIFICATION.md).
+**Human verification.** A human labels a sample of note claims, answers and notes-completeness items against the AMI source, on public AMI items so that labels can be released. These labels measure how far each automated reader over- or under-counts. Protocol and status: [`docs/method/HUMAN_VERIFICATION.md`](docs/method/HUMAN_VERIFICATION.md).
+
+## How results are judged
+
+Which reader decides whether notes and answers contain the annotated items, why it was changed on 9 November 2026, and how far to trust it.
+
+**Why the first judge was replaced.** Notes and answers were first scored by an automated judge: Sonnet 5.5 called through the Anthropic API with a fixed rubric, one call per unit (3 passes for notes completeness and the council study, 1 elsewhere). A second reading found it wrong too often to report on its own. That reading was done by a Claude Code agent session (no API calls), which decided every item from the source material before opening the judge's verdict, and then compared the two:
+
+| Study | Units re-read | Judge differs from the reference reading | Main causes |
+|---|---|---|---|
+| Notes completeness (E3) | 298 product-item pairs | 77 (26%; Cohen's kappa 0.55) | Missed content that is present; wanted problems framed as open questions; misapplied its own owner rules |
+| List answers (E1) | 548 answer items | 66 (12%) | Missed matches with differently worded annotations (most often for Chat); credited the wrong kind of item |
+| Deletion study | 340 answers | 109 (32%) | Penalised true extra details it could not check; did not map names to roles; matched loosely worded annotations literally |
+
+On the 15 notes-completeness items where the judge and the second reading disagreed most informatively, a human labelled each item blind to both verdicts and to the product. The human sided with the second reading on all 15.
+
+**The reader used now.** An agent reader: a Claude Code agent session (Opus 5.5; no calls through the project's API client) that works through one meeting and one product at a time from a fixed, code-built packet. The packet holds the annotated items, the linked passages of AMI's human transcript, the product's notes split into numbered bullets exactly as the first judge saw them, and the product's own transcript, with no earlier verdicts. The reader follows written instructions ([`prompts/notes_reader.v2.md`](prompts/notes_reader.v2.md)) and records, for each item: covered fully, partly or not; the bullets and a verbatim quote as evidence; whether the product's own transcript has the item; and a one-line reason. The instructions were tuned only on the development meeting (IS1008a) and frozen before any held-out item was read, once two independent reader sessions agreed on all 14 of its items (the previous version agreed on 12).
+
+**Validation (notes completeness, 11 held-out meetings).**
+
+| Comparison | Agreement |
+|---|---|
+| Frozen reader vs the second reading, 298 items | 269 (90.3%), kappa 0.82 (linearly weighted 0.86) |
+| Frozen reader vs the human, 15 disputed items | 13 of 15 |
+| Second reading vs the human, same 15 items | 15 of 15 |
+| First judge vs the human, same 15 items | 0 of 15 |
+| Frozen reader vs the first judge, 298 items | 219 (73.5%), kappa 0.54 |
+| Majority of three full reader runs vs the second reading, 298 items | 278 (93.3%), kappa 0.87 (linearly weighted 0.91) |
+| Majority of three full reader runs vs the human, 15 disputed items | 15 of 15 (not a clean held-out result; see below) |
+
+The 15 human-labelled items were chosen because the two automated readings disagreed on them, so these are not error rates over all items; they show which reading to trust when the two disagree. Revised instructions (v3), written after two of the reader's misses on held-out items, agree with the second reading on 92.6% (kappa 0.86) and with the human on 13 of 15 (different misses). They are reported as a sensitivity check, not as the headline.
+
+**Run-to-run variation and the three-run majority.** Three independent full reader runs on the held-out items (one with the frozen v2 instructions, two with v3) agree unanimously on 270 of 298 items (91%); any two runs differ on 15 to 22 items (5–7%), and at least one run differs from the others on 28 (9%). For this reason, statements about individual items use the majority (median) of the three runs, while the headline recall stays on the single run with instructions frozen before the held-out reading (v2). The majority agrees with the human on all 15 disputed items, but this is not a clean held-out result: v3's two rule changes were motivated by two of those items. v2 alone got 13 of 15.
+
+For list answers (E1), the deletion study and the council notes, the reference verdicts come from blind agent readers (one session per meeting; in the deletion study the five systems' answers were shuffled and unlabelled), followed by an adjudication of every row where the reader and the judge disagreed. These references were not separately human-checked; they use the same kind of reading that the notes-completeness human check supported.
+
+**Caveats.**
+- **Same model family.** The readers and the first judge are all Claude models. Where they agree, errors they share would not show; the human check covers disagreements only.
+- **Not seed-reproducible.** An agent session cannot be replayed byte for byte like a cached API call, and runs differ on some items: two runs with the same v3 instructions differ on 15 of 298 (5%), and any two of the three runs on 15 to 22. Item-level statements therefore use the three-run majority. Every verdict is therefore stored with its evidence quote, and every run with its instruction version, model, date and git commit, so any verdict can be checked by hand. Verdict files quote product outputs and stay local; scores and versions are published.
+- **One human verifier, 15 items,** who also designed the study.
+
+### Previously reported
+
+Results first reported with the automated judge, beside the same results re-scored with the reference reading. The judge numbers stay in the result files and track pages; they are no longer the headline.
+
+| Result | First judge (previously reported) | Reference reading (now) | What changed |
+|---|---|---|---|
+| Notes completeness, Granola / Wispr Flow | 0.62 / 0.69 | 0.72 / 0.77 | Both higher: notes leave out about a quarter, not about a third |
+| Wispr Flow higher per meeting (notes completeness) | 10 of 11, p = 0.01 | 7 higher, 2 lower, 2 tied, p = 0.18 | No longer significant |
+| Notes completeness: missing items that the product's transcript has | most (about 33 and 24 per pass) | 22 of 23 and 15 of 16 | Holds |
+| E1 Granola Chat, recall / precision | 0.74 / 0.86 | 0.84 / 0.89 | Chat more complete than reported |
+| E1 listing everything, recall / precision | 0.90 / 0.61 | 0.93 / 0.64 | |
+| E1 listing vs Chat, recall | better on 8 questions, worse on 0, p = 0.008 | 5 / 0, p = 0.06 | Same direction, no longer significant |
+| E1 listing vs Chat, F1 | 0.68 vs 0.71, "a tie" (8 / 16, p = 0.15) | 0.70 vs 0.80 (5 / 22, p = 0.002) | Flips: Chat better |
+| E2 extras kept vs dropped, right (24 test questions) | 78% vs 37% | 78% vs 33% | Holds |
+| Deletion, correct: Granola Chat / Granola's notes only | 41% / 21% | 60% / 32% | Levels higher; the loss holds |
+| Deletion, correct: Granola's notes vs Wispr Flow's notes | 21% vs 12% (10 / 4) | 32% vs 34% (9 / 10) | A tie |
+| Deletion, Chat vs notes plus on-demand transcript, not wrong | 17 / 6, p = 0.035 | 6 / 3, p = 0.51 | No difference |
+| Deletion, same pair, correct | 9 / 3, p = 0.15 | 15 / 5, p = 0.04 (not significant after Holm correction) | Gap moves to fully correct answers |
+| Deletion, confident errors: Granola's notes / plus facts / plus transcript | 9 / 8 / 15 | 2 / 1 / 1 | Answers over Granola's notes hedge rather than bluff |
+| Council split vote, Granola's vote claim | not covered | partly covered | Two of the three named "no" votes match the record |
 
 ## Results
 
-What each product did on the 7 AMI meetings, one measure per row, Granola first. *Preliminary* means small n or a method still changing; read it as a direction, not a ranking. Intervals in brackets are 95% confidence intervals (Wilson score intervals unless stated). Dated log of every result: [`docs/results/INDEX.md`](docs/results/INDEX.md).
+What each product did on the AMI meetings (7, or 11 held-out meetings for notes completeness), one measure per row, Granola first. *Preliminary* means small n or a method still changing; read it as a direction, not a ranking. Intervals in brackets are 95% confidence intervals (Wilson score intervals unless stated). Dated log of every result: [`docs/results/INDEX.md`](docs/results/INDEX.md).
 
-![Where do Granola and Wispr Flow differ, and by how much? Dot plot of five measures both products have. Speech captured: Granola 98.5%, Wispr Flow 99.4% of 15-second windows. Note claims supported by both transcripts: 90% vs 81%. Answers from notes, correct or partly correct: 50% vs 44%; correct: 21% vs 12%. Word error rate: 16.6% vs 16.0%](docs/figures/results_overview.svg)
+![Where do Granola and Wispr Flow differ, and by how much? Dot plot of five measures both products have. Speech captured: Granola 98.5%, Wispr Flow 99.4% of 15-second windows. Note claims supported by both transcripts: 90% vs 81%. Answers from notes, scored by the first automated judge: correct or partly correct 50% vs 44%; correct 21% vs 12%. Word error rate: 16.6% vs 16.0%](docs/figures/results_overview.svg)
 
-*Figure 2. Where do Granola and Wispr Flow differ, and by how much? Each dot is one product's value on a measure both products have (Granola black, Wispr Flow teal); higher is better in the top panel and lower is better in the bottom one. Solid whiskers are 95% confidence intervals (Wilson score). Dotted whiskers are the lowest and highest meeting, used for speech captured and word error rate because windows and words cluster within meetings. n: speech captured, 665 15-second windows per product over 7 meetings; note claims, 216 (Granola) and 171 (Wispr Flow) over 7 meetings; answers from notes, the same 68 questions over 5 meetings, answered by our reader from each product's notes; word error rate, 28,581 reference words over 7 meetings, pooled. Paired sign tests on the answers: Wispr Flow was better on 7 questions and worse on 11 for correct or partly correct (p = 0.48), and better on 4 and worse on 10 for correct (p = 0.18); neither difference is significant. Note claims differ between the products, so they have no paired test. Data: AMI Meeting Corpus.*
+*Figure 2 (answers-from-notes rows: old judge). Where do Granola and Wispr Flow differ, and by how much? Each dot is one product's value on a measure both products have (Granola black, Wispr Flow teal); higher is better in the top panel and lower is better in the bottom one. Solid whiskers are 95% confidence intervals (Wilson score). Dotted whiskers are the lowest and highest meeting, used for speech captured and word error rate because windows and words cluster within meetings. n: speech captured, 665 15-second windows per product over 7 meetings; note claims, 216 (Granola) and 171 (Wispr Flow) over 7 meetings; answers from notes, the same 68 questions over 5 meetings, answered by our reader from each product's notes; word error rate, 28,581 reference words over 7 meetings, pooled. **The answers-from-notes rows show the first automated judge (old judge)**, with its paired sign tests: Wispr Flow was better on 7 questions and worse on 11 for correct or partly correct (p = 0.48), and better on 4 and worse on 10 for correct (p = 0.18). The reference reading gives 65% vs 54% correct or partly correct (Wispr Flow better on 3, worse on 10, p = 0.09) and 32% vs 34% correct (better on 10, worse on 9, p = 1.0); no difference is significant under either ([How results are judged](#how-results-are-judged)). Note claims differ between the products, so they have no paired test. Data: AMI Meeting Corpus.*
 
 Measures only one product has (Granola Chat answers; Wispr Flow's MCP has no question-answering tool) are left out of Figure 2 and given in the tables below.
 
@@ -109,7 +171,7 @@ The two products are within 0.7 points on pooled WER: Wispr Flow was lower on 4 
 
 ### Notes
 
-Are the claims in each product's notes backed by what was said? We split the notes into single claims and check each one against both the product's own transcript and AMI's human transcript with an automated checker; a human checks a sample.
+Two questions: are the claims in each product's notes backed by what was said, and do the notes contain what was decided, assigned and raised ([Notes completeness](#notes-completeness))? For the first, we split the notes into single claims and check each one against both the product's own transcript and AMI's human transcript with an automated checker; a human checks a sample.
 
 | Measure | Granola | Wispr Flow | n | Status |
 |---|---|---|---|---|
@@ -120,19 +182,41 @@ The first row is from the corrected automated run, which replaces a first pass (
 
 Granola's notes were supported 9.6 points more often (95% CI 2.5 to 16.7 if claims were independent; the true interval is wider, since claims cluster in 7 meetings). Granola was higher in 4 meetings, Wispr Flow in 2, and 1 was tied. About half the gap comes from claims on which the two checks differed by one step (one said supported, the other said inferred); counting those as supported gives 95.8% and 91.8%. Few claims were clearly added by the note-writer: 0 of 216 for Granola and 2 of 171 for Wispr Flow. Human calibration is still pending. Full breakdown by claim type: [`docs/tracks/NOTES.md`](docs/tracks/NOTES.md#ami-claim-types); method: [`docs/method/WRONG_FACTS.md`](docs/method/WRONG_FACTS.md).
 
+#### Notes completeness
+
+Do the notes contain what the meeting decided, assigned and raised? AMI's annotators wrote one sentence for each decision, action and problem in a meeting. For each of these items the reader decides whether the product's notes cover it fully, partly or not at all, and whether the product's own transcript contains it. For an action, the owner is part of the item: a task with no owner, or with a label nobody can match to a person, is at most partly covered. 11 held-out meetings, 149 items per product. A twelfth meeting (IS1008a) was used to write the reader's instructions and is not scored.
+
+| Measure | Granola | Wispr Flow | n | Status |
+|---|---|---|---|---|
+| Items covered (full = 1, partly = 0.5) | 0.72 [0.67, 0.77] | 0.77 [0.71, 0.82] | 149 items, 11 meetings | Preliminary |
+| Decisions / actions / problems covered | 0.81 / 0.61 / 0.62 | 0.89 / 0.57 / 0.74 | 65 / 47 / 37 items | Preliminary |
+| Items fully covered | 0.58 [0.51, 0.64] | 0.65 [0.55, 0.74] | 149 items | Preliminary |
+| Items the product's own transcript contains | 145 (3 more partly) | 146 (2 more partly) | 149 items | Preliminary |
+| Items missing from the notes outright; of those, in the transcript | 23; 22 (2 only partly) | 16; 15 (1 only partly) | 149 items | Preliminary |
+| Same, three-run majority (used for item-level statements) | 24; 23 (2 only partly) | 19; 18 (1 only partly) | 149 items | Preliminary |
+| Sensitivity: revised reader instructions (v3, written after the held-out reading) | 0.73 | 0.77 | 149 items | Preliminary |
+| Robustness: majority of three full reader runs | 0.72 [0.66, 0.78] | 0.78 [0.72, 0.83] | 149 items | Preliminary |
+| Sensitivity: actions whose only gap is the owner counted as full | 0.76 | 0.83 | 149 items | Preliminary |
+
+Values are means over meetings with 95% bootstrap intervals (resampling meetings, seed 42). The headline uses the reader instructions frozen before the held-out meetings were read (v2). The first automated judge gave 0.62 and 0.69 ([Previously reported](#previously-reported)).
+
+**Notes leave out about a quarter of what was decided, assigned or raised, while the products' own transcripts contain almost all of it** (291 of 298 product-item pairs fully, 5 partly; the same in the three-run majority). Of the items missing from the notes outright, all but one per product were in the product's transcript. What the notes leave out is a note-writing gap, not a transcription gap. Actions are the weakest category for both products. Wispr Flow covered more on 7 meetings, less on 2, and the same on 2 (sign test p = 0.18), so the difference between the products is not established.
+
+**Owners explain much of the action gap, and they may be understated for Granola.** Granola's notes state no owner on 18 of 40 action bullets; Wispr Flow names an owner on almost every bullet, but 14 of 30 are "Speaker N" labels that a reader cannot resolve ([owner check](docs/tracks/NOTES.md#owner-check-wrong-owners-on-action-items-preliminary)). In replay there is no calendar invite and all audio arrives on the system channel, so Granola cannot use its usual sources of names; in real meetings its owner credit may be higher. Precision of the notes' bullets was scored only by the first judge (0.94 and 0.96 of decision, action and problem bullets right) and has not been re-read. Track: [`docs/tracks/NOTES.md`](docs/tracks/NOTES.md#e3-notes-completeness-preliminary).
+
 ### Answers
 
 When asked to list a meeting's decisions, actions or problems, how many of the right items does an answer contain, and how many of its items are true? We score each listed item against AMI's annotated items and its transcript. Wispr Flow's MCP has no question-answering tool, so this section covers Granola only.
 
-| How the answer was produced | Annotated items found (recall) | Listed items that are true (precision) | Items per answer | n | Status |
-|---|---|---|---|---|---|
-| Granola Chat, transcripts kept | 0.74 [0.61, 0.87] | 0.86 [0.77, 0.93] | 3.2 | 30 questions | Preliminary |
-| Our reader on Granola's notes only | 0.73 [0.58, 0.86] | 0.72 [0.61, 0.83] | 3.1 | 30 questions | Preliminary |
-| Our reader listing every item from Granola's full transcript | 0.90 [0.79, 0.98] | 0.61 [0.51, 0.71] | 11.9 | 30 questions | Preliminary |
+| How the answer was produced | Annotated items found (recall) | Listed items that are true (precision) | F1 | Items per answer | n | Status |
+|---|---|---|---|---|---|---|
+| Granola Chat, transcripts kept | 0.84 | 0.89 | 0.80 | 3.2 | 30 questions | Preliminary |
+| Our reader on Granola's notes only | 0.79 | 0.74 | 0.69 | 3.1 | 30 questions | Preliminary |
+| Our reader listing every item from Granola's full transcript | 0.93 | 0.64 | 0.70 | 11.9 | 30 questions | Preliminary |
 
-Values are means per question with 95% bootstrap intervals. An item counts as true if it matches an annotated item or is confirmed by AMI's transcript, so true items the annotators left out are not counted wrong. Paired sign tests per question (n = 30): listing every item found more annotated items than Chat on 8 questions and fewer on 0 (p = 0.008), but had a lower share of true items on 23 and a higher share on 3 (p < 0.001). Against notes only, it found more items on 8 questions and fewer on 0 (p = 0.008); the share of true items did not differ significantly (12 higher, 16 lower, p = 0.57). Chat and notes only were not compared directly. One automated judge scored all items, with no human check yet.
+Values are means per question, scored by the reference reading ([How results are judged](#how-results-are-judged)); bootstrap intervals have not been recomputed for it. An item counts as true if it matches an annotated item or is confirmed by AMI's transcript, so true items the annotators left out are not counted wrong. F1 combines the two. Paired sign tests per question (n = 30): listing every item found more annotated items than Chat on 5 questions and fewer on 0 (p = 0.06, not significant), had a lower share of true items on 26 and a higher share on 2 (p < 0.001), and had a lower F1 on 22 and a higher F1 on 5 (p = 0.002). Against notes only, it found more items on 7 questions and fewer on 0 (p = 0.016); the share of true items did not differ significantly (10 higher, 18 lower, p = 0.18). Chat had a higher share of true items than notes only on 14 questions and a lower share on 2 (p = 0.004). The first automated judge had given Chat 0.74 recall and 0.86 precision, and listing 0.90 and 0.61, and had called the F1 comparison a tie ([Previously reported](#previously-reported)).
 
-**Chat is precise but incomplete; listing everything is complete but imprecise.** The extra items from the full listing were over-inclusion, not invention: every one of its 357 quotes appears in the transcript, and in a sample of 8 items marked wrong the reasons were "proposed but not decided", "not assigned" or "another topic". In a hand reading of Chat's imperfect answers by one coder, most real shortfalls were missing items and none was invented content. Track: [`docs/tracks/ANSWERS.md`](docs/tracks/ANSWERS.md#e1-results-preliminary); numbers: [`evals/reports/ami/list_check.json`](evals/reports/ami/list_check.json).
+**Chat is precise and finds most items; listing everything finds a few more but is much less precise, and Chat has the better balance.** The extra items from the full listing were over-inclusion, not invention: every one of its 357 quotes appears in the transcript, and in a sample of 8 items marked wrong the reasons were "proposed but not decided", "not assigned" or "another topic". In a hand reading of Chat's imperfect answers by one coder, most real shortfalls were missing items and none was invented content. A cheap "was it agreed?" check on the listed extras keeps items that are right 78% of the time and drops items that are right 33% of the time (24 test questions; [E2](docs/tracks/ANSWERS.md#e2-results-preliminary)). Track: [`docs/tracks/ANSWERS.md`](docs/tracks/ANSWERS.md#e1-results-preliminary); judge numbers: [`evals/reports/ami/list_check.json`](evals/reports/ami/list_check.json).
 
 #### How far to trust the automated judges
 
@@ -146,30 +230,31 @@ Do automated "wrong" verdicts survive a human reading? A human labelled a sample
 |---|---|---|---|---|
 | Of the 3 strongest automated "confident contradictions" in Chat answers, wrong on human check | 0 of 3 | no question tool | 3 answers | Preliminary |
 | Note claims a human found wrong, of those comparable with the checker | 0 of 12 | (pooled with Granola) | 12 claims | Preliminary |
+| Notes-completeness items where the judge and the second reading disagreed: human sided with the judge | 0 of 15 | (pooled with Granola) | 15 items | Preliminary |
 
-All 3 Chat answers were partly right. On the note claims, the human agreed with the checker on 4 of 12 for the first pass (on which the sample was drawn) and 7 of 12 for the corrected run.
+All 3 Chat answers were partly right. On the note claims, the human agreed with the checker on 4 of 12 for the first pass (on which the sample was drawn) and 7 of 12 for the corrected run. The 15 notes-completeness items came after Figure 4 and are not in it; the human answered each before seeing either verdict, and without knowing which product wrote the notes.
 
-**Automated judges over-count errors on these outputs.** In both human-checked samples, most automated error verdicts did not survive a human reading. With 23 labels this is a direction, not a rate; the over-count factor will be reported once about 100 labels exist. Track: [`docs/tracks/ANSWERS.md`](docs/tracks/ANSWERS.md).
+**The first automated judge over-counted errors, and also missed content that was present.** In every human-checked sample, most of its error verdicts did not survive a human reading. With 38 labels this is a direction, not a rate. Notes and answers are now scored by the agent reader described in [How results are judged](#how-results-are-judged); the grounding checker behind the note-claim figures has not been re-read. Track: [`docs/tracks/ANSWERS.md`](docs/tracks/ANSWERS.md).
 
 ### Retention: what deleting transcripts costs
 
-If a product keeps only its notes and deletes transcripts, how many questions can still be answered? We answer the same 68 AMI questions (5 meetings) five ways, each over the question's own meetings, and score each answer correct, partially correct or wrong with an automated judge.
+If a product keeps only its notes and deletes transcripts, how many questions can still be answered? We answer the same 68 AMI questions (5 meetings) five ways, each over the question's own meetings, and score each answer correct, partially correct or wrong against AMI's human summaries. Scores below are the reference reading ([How results are judged](#how-results-are-judged)); the first automated judge's scores are in Figure 5 and under [Previously reported](#previously-reported).
 
-![What does deleting transcripts cost, and what wins it back? Dot plot of 68 AMI questions answered five ways. Correct: Granola Chat with transcripts 41%, from Granola's notes 21%, from Wispr Flow's notes 12%, notes plus extracted facts 19%, notes plus the transcript when needed 32%](docs/figures/ami_retention.svg)
+![What does deleting transcripts cost, and what wins it back? Dot plot of 68 AMI questions answered five ways, scored by the first automated judge. Correct: Granola Chat with transcripts 41%, from Granola's notes 21%, from Wispr Flow's notes 12%, notes plus extracted facts 19%, notes plus the transcript when needed 32%](docs/figures/ami_retention.svg)
 
-*Figure 5. What does deleting transcripts cost, and what wins it back? Share of 68 AMI questions (5 meetings) answered correctly (filled dots) and correctly or partly correctly (open dots), five ways. Whiskers are 95% confidence intervals (Wilson score). Granola Chat answers with Granola's own model and its transcripts. Every other row uses our reader: over Granola's notes (black) or Wispr Flow's notes (teal), then Granola's notes plus extracted facts, then those plus the transcript, read only when the answer abstains or hedges. An automated judge scored every answer against AMI's human summaries. Paired tests are given below the table.*
+*Figure 5 (old judge). What does deleting transcripts cost, and what wins it back? Share of 68 AMI questions (5 meetings) answered correctly (filled dots) and correctly or partly correctly (open dots), five ways, **as scored by the first automated judge**; the reference reading in the table below is higher on every row and changes two comparisons (Granola's vs Wispr Flow's notes; Chat vs the on-demand transcript). Whiskers are 95% confidence intervals (Wilson score). Granola Chat answers with Granola's own model and its transcripts. Every other row uses our reader: over Granola's notes (black) or Wispr Flow's notes (teal), then Granola's notes plus extracted facts, then those plus the transcript, read only when the answer abstains or hedges.*
 
-| How the answer was produced | Correct (%) | Correct or partly correct (%) | n | Status |
-|---|---|---|---|---|
-| Granola Chat, transcripts kept | 41% [30, 53] | 76% [65, 85] | 68 questions | Preliminary |
-| Our reader on Granola's notes only | 21% [13, 32] | 50% [38, 62] | 68 questions | Preliminary |
-| Our reader on Wispr Flow's notes only | 12% [6, 22] | 44% [33, 56] | 68 questions | Preliminary |
-| Granola's notes plus an extracted fact layer | 19% [12, 30] | 51% [40, 63] | 68 questions | Preliminary |
-| Notes plus facts, reading the transcript only when the answer abstains or hedges | 32% [22, 44] | 60% [48, 71] | 68 questions | Preliminary |
+| How the answer was produced | Correct (%) | Correct or partly correct (%) | Confident errors | n | Status |
+|---|---|---|---|---|---|
+| Granola Chat, transcripts kept | 60% [48, 71] | 90% [80, 95] | 7 | 68 questions | Preliminary |
+| Our reader on Granola's notes only | 32% [22, 44] | 65% [53, 75] | 2 | 68 questions | Preliminary |
+| Our reader on Wispr Flow's notes only | 34% [24, 46] | 54% [43, 66] | 9 | 68 questions | Preliminary |
+| Granola's notes plus an extracted fact layer | 32% [22, 44] | 69% [57, 79] | 1 | 68 questions | Preliminary |
+| Notes plus facts, reading the transcript only when the answer abstains or hedges | 46% [34, 57] | 85% [75, 92] | 1 | 68 questions | Preliminary |
 
-Paired sign tests on correct answers, as questions gained–lost: Granola's notes only vs Chat, 2–16 (p = 0.001); Wispr Flow's notes vs Granola's notes, 4–10 (p = 0.18, not significant); adding facts to Granola's notes, 2–3 (not significant); reading the transcript when needed vs notes plus facts, 9–0 (p = 0.004). Chat vs reading the transcript when needed: 17–6 on correct or partly correct (p = 0.035 uncorrected; not significant after Holm correction for multiple tests) and 9–3 on correct (p = 0.15).
+A confident error is a wrong answer that does not abstain or say the material does not cover the question; Granola Chat has no abstain signal, so every wrong Chat answer counts. Paired sign tests, as questions gained–lost, correct / correct or partly correct: Granola's notes only vs Chat, 1–20 (p < 0.001) / 0–17 (p < 0.001); Wispr Flow's notes vs Granola's notes, 10–9 (p = 1.0) / 3–10 (p = 0.09); adding facts to Granola's notes, 1–1 / 3–0 (neither significant); reading the transcript when needed vs notes plus facts, 10–1 (p = 0.012) / 12–1 (p = 0.003); Chat vs reading the transcript when needed, 15–5 (p = 0.04) / 6–3 (p = 0.51). With Holm correction across the five tests per measure, the deletion loss and the on-demand transcript's gain stay significant on both measures; Chat vs the on-demand transcript does not.
 
-**Deletion costs a lot; the fact layer adds nothing; reading the transcript on demand recovers part of the loss, not all.** Chat used Granola's own model and the other rows used our reader, so the first drop mixes deletion with a change of model. The automated judge over-counts errors, equally for all rows; decision questions score 0–20% everywhere because the answer key is strict. This does not replicate the earlier private study, where on-demand transcripts nearly matched Granola. Track: [`docs/tracks/RETENTION.md`](docs/tracks/RETENTION.md); numbers: [`evals/reports/ami/deletion_ami.json`](evals/reports/ami/deletion_ami.json).
+**Deletion costs a lot; the fact layer adds nothing; reading the transcript on demand recovers most of the loss.** Chat used Granola's own model and the other rows used our reader, so the first drop mixes deletion with a change of model. With the transcript read on demand, answers are as often correct or partly correct as Chat's (85% vs 90%, no significant difference), though fewer are fully correct (46% vs 60%). Answers over Granola's notes rarely give a confident wrong answer (1–2 per 68), so they hedge rather than bluff; answers over Wispr Flow's notes do so more often (9). Granola's and Wispr Flow's notes support about the same number of correct answers. Decision questions score low everywhere because the answer key is strict and several decision annotations are wrong. The first judge had reported a significant gap between Chat and the on-demand transcript and a point-estimate lead for Granola's notes; neither holds under the reference reading. Track: [`docs/tracks/RETENTION.md`](docs/tracks/RETENTION.md); judge numbers: [`evals/reports/ami/deletion_ami.json`](evals/reports/ami/deletion_ami.json).
 
 ### Earlier private study
 
@@ -234,12 +319,13 @@ What TENOR's evidence could mean for product design (capture-health indicators, 
 
 What these results do and do not show.
 
-- **Mostly role-play meetings.** Six of the seven AMI meetings are role-play recorded around 2005 (five design-team scenario meetings and one staged meeting), mostly by non-native English speakers; one (EN2002b) is a naturally occurring meeting. Results describe this material, not typical work calls.
+- **Mostly role-play meetings.** Six of the first seven AMI meetings are role-play recorded around 2005 (five design-team scenario meetings and one staged meeting), mostly by non-native English speakers; one (EN2002b) is a naturally occurring meeting. The six meetings added for notes completeness are the same design-team scenario. Results describe this material, not typical work calls.
 - **Replay is not a live call.** Audio enters digitally as clean 16 kHz system audio, with no calendar invite, attendee names, call compression or meeting-app context. The comparison between products is fair (same input, same time); absolute numbers describe this condition only. A call-path condition is planned.
 - **Silent replay, no typed notes.** Nobody typed during the replays. Products that blend the user's typing into their notes are measured in their least favourable mode, so notes results are a lower bound for an engaged user. A typed-vs-silent test is designed.
 - **One human verifier,** who also designed the study. Agreement between humans is unmeasured until a second verifier labels a shared subset.
-- **Summary-level answer key.** Most gold answers are AMI annotators' summary sentences, which can drop nuance a product keeps; this inflates "partial" verdicts. Scoring against the transcript as well is part of the calibrated judge.
-- **Small n.** 7 meetings, 68 questions, 23 human labels. Most differences between products are within their intervals; where a difference is not significant, it is reported as a tie.
+- **Summary-level answer key.** Most gold answers are AMI annotators' summary sentences, which can drop nuance a product keeps, and a few are wrong (for example, two swapped task owners). The readers check items against AMI's transcript as well, and corrections are kept in a versioned errata file.
+- **Automated reader, small human check.** Notes and answers are scored by an agent reader of the same model family as the judge it replaced, checked against 15 human labels on disputed items only. Its verdicts are not seed-reproducible; each is stored with its evidence and versions instead ([How results are judged](#how-results-are-judged)).
+- **Small n.** 7 to 11 meetings per study, 68 questions, 38 human labels. Most differences between products are within their intervals; where a difference is not significant, it is reported as a tie.
 - **Contamination.** AMI has been public for about 20 years and is a standard speech benchmark; product and judge models may have seen it. WER is reported as a best case, and a closed-book control for questions is part of the protocol (not yet run).
 - **Account and settings effects.** Both products ran on the author's main accounts (one product accepts only work accounts); personal dictionaries are cleared for scored runs, but voice profiles and account names could not be removed.
 - **Terms-of-service constraints.** Some products' terms restrict publishing comparative results without consent; those products are excluded for now (see [Reproducing](#reproducing)), which limits how general the comparison can be.
@@ -286,7 +372,7 @@ What is needed before TENOR results can be compared across products and dates.
 2. **A frozen, versioned meeting set,** so that results from different dates and products are comparable, and nightly replay can detect regressions.
 3. **A public leaderboard,** per track, with intervals and status labels, never a single combined score.
 4. **A vendor response and dispute process:** products are shown their results before publication, can point out errors in method or data, and their responses are published alongside.
-5. **A technical report** covering the AMI results once the calibrated judge, about 100 human labels and the capture stress tests are complete.
+5. **A technical report** covering the AMI results once the agent reader has been checked against about 100 human labels and the capture stress tests are complete.
 
 ## Repository guide
 

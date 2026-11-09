@@ -2,23 +2,51 @@
 
 This page defines the retention track (what an answer loses when transcripts are deleted and only notes remain). It holds the AMI replication result, its design, and the earlier private-meeting study.
 
-**The earlier headline did not replicate.** On 4 private meetings, a kept transcript read on demand (D) recovered almost all of the loss: 87% against Granola's 89%. On 5 public AMI meetings it recovers part of the gap, but Granola Chat still beats D: 17–6 on not-wrong answers, p = 0.035.
+**Headline (reference reading, 2026-11-09).** Deleting transcripts roughly halves correct answers: Granola Chat 60%, Granola's notes only 32% (20–1, p < 0.001). A kept transcript read on demand (D) recovers most of the loss: on not-wrong answers D and Chat do not differ (85% vs 90%, 6–3, p = 0.51), though Chat is more often fully correct (60% vs 46%, 15–5, p = 0.04, not significant after Holm). This is close to the earlier private result (D 87% vs Granola 89%). The API judge had reported the opposite on not-wrong answers (17–6, p = 0.035); see [Reference reading](#reference-reading-2026-11-09).
 
 | | |
 |---|---|
 | **Question** | When transcripts are deleted, how much worse do answers get, on which questions, and does the product then decline or answer wrongly with confidence? |
 | **How measured** | A ladder of conditions on the same questions: the product with transcripts; an answer model over the product's notes only; plus a kept fact layer; plus a transcript read only when needed. Paired wins and losses, exact sign tests |
-| **AMI result (5 Nov 2026)** | 68 questions, 5 AMI meetings. Correct: Granola Chat 41%, Granola notes only 21% (paired 16–2, p = 0.001), plus fact layer 19% (n.s.), plus on-demand transcript 32%. [Results below](#ami-replication-5-nov-2026) |
+| **AMI result (5 Nov 2026; re-read 9 Nov)** | 68 questions, 5 AMI meetings. Correct, reference reading: Granola Chat 60%, Granola notes only 32% (paired 20–1, p < 0.001), plus fact layer 32% (n.s.), plus on-demand transcript 46%. API judge: 41%, 21%, 19%, 32%. [Reference reading](#reference-reading-2026-11-09), [judge results](#ami-replication-5-nov-2026) |
 | **Earlier result** | Author's 4 private Granola meetings, 47 DEV questions: 89% with transcripts, 57% from notes only (paired 2–17, p = 0.001); 87% with an on-demand transcript. Superseded |
-| **Status** | AMI result preliminary (automated judge, n = 68). Earlier result private and superseded |
+| **Status** | AMI result preliminary (agent re-read of the API judge, n = 68). Earlier result private and superseded |
 
 Code: [`evals/deletion_sim.py`](../../packages/tenor/evals/deletion_sim.py), CLI `tenor deletion-sim`.
 Tests: [`tests/test_deletion_sim.py`](../../tests/test_deletion_sim.py) (fakes only, no network).
 AMI replication: **run 5 Nov 2026** ([results](#ami-replication-5-nov-2026), [design](#ami-replication-design)).
 
+## Reference reading (2026-11-09)
+
+**Why.** The API judge (`judge.v1`, Sonnet 5.5, one pass) was re-read answer by answer. Blind agent readers (one Claude Code session per meeting, no API calls) read AMI's reference transcript in full and scored every answer with `judge.v1`'s criteria; the five conditions' answers were shuffled per question and labelled V–Z, so readers did not know which system wrote which. Every disagreement's rationale was then reviewed. The judge differed from the reference on **109 of 340 answers (32%; kappa 0.53)**, almost always harsher (106 vs 3). Main causes: literal reading of loosely worded gold (50 answers), true extra items treated as wrong because the judge had no transcript (37), names not mapped to roles even with the roster in the prompt (23), hedged answers read as abstentions (20). The errors were spread about evenly across conditions, so paired comparisons are less affected than levels, but enough to flip two of them.
+
+Reference = `v_gold`: the original rubric applied correctly against the gold as written. Counts recomputed from the re-read rows; Wilson 95% CIs.
+
+| Condition | Correct | Not wrong | Confident errors |
+|---|---|---|---|
+| A. Granola Chat, transcript kept | 41 / 68 = 60% [48, 71] | 61 = 90% [80, 95] | 7 |
+| B. Granola notes only | 22 = 32% [22, 44] | 44 = 65% [53, 75] | 2 |
+| B′. Wispr Flow notes only | 23 = 34% [24, 46] | 37 = 54% [43, 66] | 9 |
+| C. Granola notes + fact layer | 22 = 32% [22, 44] | 47 = 69% [57, 79] | 1 |
+| D. C + transcript read on abstain | 31 = 46% [34, 57] | 58 = 85% [75, 92] | 1 |
+
+| Comparison | Correct | Not wrong | vs API judge |
+|---|---|---|---|
+| A vs B: deletion (plus a model change) | 20–1, p < 0.001 | 17–0, p < 0.001 | holds |
+| B vs B′: Granola's notes vs Wispr Flow's | 9–10, p = 1.0 | 10–3, p = 0.09 | **flips to a tie** (judge 10–4 correct) |
+| C vs B: what the fact layer adds | 1–1 | 3–0, p = 0.25 | holds (nothing) |
+| D vs C: what the on-demand transcript adds | 10–1, p = 0.012 | 12–1, p = 0.003 | holds, now on both measures |
+| A vs D: the gap left | 15–5, p = 0.04 | 6–3, p = 0.51 | **not wrong flips to no difference** (judge 17–6, p = 0.035) |
+
+- **Holm correction** across the five tests per measure (computed on the reference counts): A vs B and D vs C stay significant on both measures (D vs C correct: adjusted p = 0.047); A vs D on correct does not (adjusted p = 0.12).
+- **Confident errors flip.** The judge counted 9 / 8 / 15 for B / C / D; the reference counts 2 / 1 / 1. "Hedges, doesn't bluff" holds for our reader over Granola's notes after all, but not over Wispr Flow's notes (9).
+- **Gold corrected against the transcript (`v_adj`)** gives the same directions: A vs B 24–2; D vs C 13–1 correct, 12–2 not wrong; A vs D 17–7 correct (p = 0.064), 7–2 not wrong.
+- **Decision questions** still score low for every condition; several decision gold items are wrong (IB4003 decision-02, IS1008b/c decision-02, IS1008d decision-03), listed as errata candidates.
+- **Caveats.** The readers share a model family with the judge, and this reference was not human-checked on this study (the method was, on notes completeness: 15 of 15). Some readers are generous on hedged answers; downgrading every such hedge one level shrinks the B′, C and D gains by a few points and changes no paired direction. Verdict rows stay local.
+
 ## AMI replication (5 Nov 2026)
 
-**Preliminary.** Public AMI meetings replayed into Granola and Wispr Flow; automated judge; n = 68 questions on 5 meetings (13 DEV, 55 TEST). Nothing was tuned on this run.
+**Preliminary; previously reported (API judge).** Superseded as the headline by the [reference reading](#reference-reading-2026-11-09). Public AMI meetings replayed into Granola and Wispr Flow; automated judge; n = 68 questions on 5 meetings (13 DEV, 55 TEST). Nothing was tuned on this run.
 
 - Run `20261105T211504Z`, git `48ef477` (working tree dirty), seed 42. Design: [below](#ami-replication-design).
 - Reader `claude-opus-5-5` for B–D (`answer.v1`; C and D add `extract.v2`, `entail.v2`). A is Granola's own Chat.
@@ -78,14 +106,14 @@ Wins–losses on questions where exactly one side meets the metric; exact two-si
 
 ### What did not replicate
 
-- **D does not close the gap.** Before, D reached 87% against Granola's 89%. Here Granola Chat beats D, 17–6 on not-wrong (p = 0.035, not significant after Holm) and 9–3 on correct (p = 0.15).
-- **"Hedges, doesn't bluff" did not hold.** Before, B and C made 0 confident errors. Here B made 9, C 8, D 15. The automated judge over-counts errors, so these are upper bounds.
-- **Granola's notes beat Wispr Flow's on the point estimate only.** 14 vs 8 correct; 10–4, not significant.
+- **(API judge; does not hold under the reference reading) D does not close the gap.** Before, D reached 87% against Granola's 89%. Here Granola Chat beats D, 17–6 on not-wrong (p = 0.035, not significant after Holm) and 9–3 on correct (p = 0.15).
+- **(API judge; flips under the reference reading: 2 / 1 / 1) "Hedges, doesn't bluff" did not hold.** Before, B and C made 0 confident errors. Here B made 9, C 8, D 15. The automated judge over-counts errors, so these are upper bounds.
+- **(API judge; a tie under the reference reading, 9–10) Granola's notes beat Wispr Flow's on the point estimate only.** 14 vs 8 correct; 10–4, not significant.
 
 ### Threats to validity
 
 - **A vs B–D use different answerers.** A is Granola's own Chat; B–D are our reader. So A − B mixes deletion with a model change, and so does A − D. B′ − B, C − B and D − C share the reader and are clean.
-- **The automated judge over-counts errors.** Human checks found most of its error verdicts did not hold ([CALIBRATED_JUDGING.md](../method/CALIBRATED_JUDGING.md)). It is applied equally to all five conditions, so paired differences are less affected than levels.
+- **The automated judge over-counts errors.** The reference reading above replaces it as the headline. Human checks found most of its error verdicts did not hold ([CALIBRATED_JUDGING.md](../method/CALIBRATED_JUDGING.md)). It is applied equally to all five conditions, so paired differences are less affected than levels.
 - **Templated questions, strict gold.** Questions come from fixed templates over AMI annotations; gold answers are annotators' summary sentences. Decision questions show the cost: 0–20% correct everywhere.
 - **Wispr Flow's notes use generic speaker labels** ("Speaker 1"), which hurts who-questions for B′ (action: who 4 vs B's 7; who said 1 vs 2).
 - **Small sample.** n = 68 questions on 5 meetings, four of them one design-team series. Questions within a meeting are not independent.

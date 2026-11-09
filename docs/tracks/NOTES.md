@@ -5,7 +5,7 @@ This page defines the notes track: whether a product's notes are faithful to wha
 | | |
 |---|---|
 | **Question** | Is every claim in the notes backed by what was said? Are the important things said present in the notes? |
-| **How measured** | Notes split into claims; each claim checked by the [grounding checker](../method/GROUNDING_CHECKER.md) against the product's own transcript and, on AMI, against AMI's human transcript ([`WRONG_FACTS.md`](../method/WRONG_FACTS.md) stage 2); a sample human-checked ([`HUMAN_VERIFICATION.md`](../method/HUMAN_VERIFICATION.md)). Completeness: recall of AMI's annotated decisions, actions and problems ([E3](#e3-notes-completeness-preliminary), Preliminary: weighted recall Granola 0.62, Wispr Flow 0.69 on 11 TEST meetings; Wispr Flow higher on 10 of 11, sign p = 0.01, no per-category difference significant) |
+| **How measured** | Notes split into claims; each claim checked by the [grounding checker](../method/GROUNDING_CHECKER.md) against the product's own transcript and, on AMI, against AMI's human transcript ([`WRONG_FACTS.md`](../method/WRONG_FACTS.md) stage 2); a sample human-checked ([`HUMAN_VERIFICATION.md`](../method/HUMAN_VERIFICATION.md)). Completeness: recall of AMI's annotated decisions, actions and problems ([E3](#e3-notes-completeness-preliminary), Preliminary). Headline, agent reader `notes_reader.v2` (frozen on DEV): weighted recall Granola 0.72, Wispr Flow 0.77 on 11 TEST meetings; Wispr Flow higher on 7, lower on 2, tied on 2 (sign p = 0.18). 291 of 298 items are in the product's own transcript. Previously reported with the API judge: 0.62 / 0.69, 10 of 11, p = 0.01 ([reference reading](#e3-reference-reading-agent-reader-preliminary)) |
 | **Current results, AMI** | Corrected automated run (2026-11-05, `352698f`; supersedes the first pass). Claims supported by both transcripts: Granola 195 of 216 (90.3%, 95% CI 85.6–93.6%), Wispr Flow 138 of 171 (80.7%, 74.1–85.9%). Other classes, Granola / Wispr Flow: `borderline` 12 / 19 (one-notch checker disagreements), `transcript_propagated` 4 / 6 (upper bound, not re-read by hand), `inferred` 4 / 5, `note_error` 0 / 2, `human_only` 1 / 1. Gap 9.6 points (CI 2.5–16.7 if claims were independent; wider, since they cluster in 7 meetings); counting `borderline` as fine, 95.8% vs 91.8%. Human check of 20 sampled claims: 12 judgeable, 0 wrong, 1 overreach. Full table: [`WRONG_FACTS.md` §3](../method/WRONG_FACTS.md#3-stage-2-corrected-run-headline) |
 | **Earlier result** | Author's 4 private meetings (Granola only): 84% supported, 14% inferred, 0% unsupported, 2% possibly contradicted (132 claims; §below) |
 | **Status** | Preliminary. The AMI comparison is not a ranking until human calibration is done (about 100 labels, a second verifier) |
@@ -222,7 +222,7 @@ These suggestions rest on the measurement above. They are not claims about Grano
 | **Unit** | One product's AI notes for one AMI meeting that AMI summarised and both products recorded with AI notes. Run 1: the 7 replay meetings minus EN2002b (no AMI abstractive summary): 6 meetings. Runs 2 and 3: the 6 extension meetings replayed on 2026-11-08/09 (TS3009c, ES2008b, ES2015c; then ES2006c, IS1000a, TS3006b once Granola's notes existed). 12 meetings x 2 products = 24 units. DEV: IS1008a; TEST: the other 11 |
 | **Gold** | AMI's human DECISIONS / ACTIONS / PROBLEMS sentences for the meeting, one item per sentence, plus the speaker roster |
 | **Notes items** | The note's `summary_markdown`, split by code (no LLM) into bullets, each tagged with its heading; sub-points keep their parent; a paragraph under a bullet joins it. A bullet can hold more than one claim |
-| **Judge** | Sonnet 5.5 (`notes_completeness.v4`), blind to the product, 3 passes per unit. First each bullet: kind (decision, action, problem, other), the gold items it states, and whether AMI's human transcript supports it (yes, partly, no). Then each gold item: covered fully, partly or not, by which bullets; if not fully, whether the product's own transcript has it, with a verbatim quote that code checks by string match |
+| **Judge (first reported; replaced as the headline on 2026-11-09)** | Sonnet 5.5 (`notes_completeness.v4`), blind to the product, 3 passes per unit. First each bullet: kind (decision, action, problem, other), the gold items it states, and whether AMI's human transcript supports it (yes, partly, no). Then each gold item: covered fully, partly or not, by which bullets; if not fully, whether the product's own transcript has it, with a verbatim quote that code checks by string match |
 
 - **Recall** per category: full = 1, partial = 0.5; full-only recall reported too. For an action, the owner is part of the item: no owner, or a label nobody can match to a person, is at most partial.
 - **Precision** of the notes' decision / action / problem bullets. Lenient: right = states a gold item or is fully supported. Strict: fully supported only, so a gold-matching bullet with a wrong detail counts as wrong. F1 = lenient precision with weighted recall.
@@ -234,7 +234,9 @@ These suggestions rest on the measurement above. They are not claims about Grano
 - **Prompt changes on DEV only** (v1 to v4). Bullets judged before gold items, after the two halves disagreed. Explicit rules for generic speaker labels ("Speaker 2"), which the notes may define themselves. One example of a non-match was replaced: it had been taken from the DEV meeting and made the judge reject a real match.
 - **Code:** `tenor ami notes-completeness` (`--meetings` to choose AMI meetings) and `tenor ami notes-completeness-pool` ([`notes_completeness.py`](../../packages/tenor/evals/notes_completeness.py)).
 
-### E3 results (Preliminary)
+### E3 results with the API judge (Preliminary; previously reported)
+
+**Superseded as the headline** by the [reference reading](#e3-reference-reading-agent-reader-preliminary), which disagreed with this judge on 26% of items; a human sided with the reference on all 15 disputed items checked. The tables below are kept unchanged as the first reported numbers.
 
 Real AMI meetings played into both products. Three runs used the same judge, prompt (v4), 3 passes and limits, and are pooled into one report. **Pooled TEST: 11 meetings, 149 gold items.** Run 1: 5 meetings, 58 items. Run 2: TS3009c, ES2008b, ES2015c, 55 items. Run 3: ES2006c, IS1000a, TS3006b, 36 items. DEV (IS1008a, used to fix the prompt) is reported apart. Recall and precision are means over meetings with 95% bootstrap CIs. Counts are summed over meetings and averaged over passes. Numbers: [`evals/reports/ami/notes_completeness.json`](../../evals/reports/ami/notes_completeness.json). `runs` holds each run with its own provenance; `pooled` holds the tables below.
 
@@ -284,8 +286,8 @@ Run 3 per category, Granola / Wispr Flow:
 
 **Run 1 (5 TEST meetings, first reported 2026-11-09).** Overall recall Granola 0.56 [0.48, 0.64], Wispr Flow 0.64 [0.58, 0.70]. Full only: 0.41 / 0.50. Strict precision: 0.76 / 0.86. Heard, not noted: 15.3 / 12.0. Per-category rows are under `runs[0]`.
 
-- **Both products' notes leave out about a third of what AMI's annotators wrote down.** Pooled weighted recall is 0.62 (Granola) and 0.69 (Wispr Flow). Fully stated: 49% and 56% of gold items. The six new meetings score higher than run 1 for both products (about 0.68 vs 0.73), mostly on decisions. Their gold is decision-heavy, and those decisions are explicit design choices.
-- **Wispr Flow's overall recall is higher on 10 of 11 TEST meetings (sign test p = 0.01).** Full-only recall: 8 wins, 1 loss, 2 ties (p = 0.04). F1: 11 of 11. The one recall loss is ES2015c. No per-category comparison is significant. Wispr Flow leads on decisions in 7 of 11 meetings; actions and problems are mixed. Read p = 0.01 with three cautions:
+- **(API judge) Both products' notes leave out about a third of what AMI's annotators wrote down.** Under the reference reading this becomes about a quarter (0.72 / 0.77). Pooled weighted recall is 0.62 (Granola) and 0.69 (Wispr Flow). Fully stated: 49% and 56% of gold items. The six new meetings score higher than run 1 for both products (about 0.68 vs 0.73), mostly on decisions. Their gold is decision-heavy, and those decisions are explicit design choices.
+- **(API judge) Wispr Flow's overall recall is higher on 10 of 11 TEST meetings (sign test p = 0.01).** Under the reference reading: 7 higher, 2 lower, 2 tied, p = 0.18, not significant. Full-only recall: 8 wins, 1 loss, 2 ties (p = 0.04). F1: 11 of 11. The one recall loss is ES2015c. No per-category comparison is significant. Wispr Flow leads on decisions in 7 of 11 meetings; actions and problems are mixed. Read p = 0.01 with three cautions:
   - The meeting set grew in three steps, and we tested after each. The meetings were added because they had been recorded, not because of earlier results, but repeated looks still inflate significance.
   - Several metrics and categories are tested; overall recall is the headline we set first.
   - Gold comes from one judge model with no human labels yet.
@@ -334,6 +336,47 @@ Run 3 per category, Granola / Wispr Flow:
   - Steps: a sandbox (IS1000a, pass 1, cap $0.16: $0.10, outputs checked), then TS3006b (cap $0.78), ES2006c (cap $0.65) and the rest of IS1000a (cap $0.40), each cap set after the spend before it. Then a $0 replay at `d582f67`.
   - Judge spend: **$0.77** for 18 calls. Cache: 465k read, 121k written; without it $1.54, so caching saved $0.78 (50%).
 - **Pooled report.** Built by `tenor ami notes-completeness-pool` over the three runs' result files, with no LLM calls. The judge calls under the pooled numbers cost $3.01.
+
+### E3 reference reading: agent reader (Preliminary)
+
+**Why.** An independent second reading of all 298 TEST items (a Claude Code agent session, no API calls, each item decided before opening the judge's verdict) disagreed with the v4 judge on 77 items (26%; kappa 0.55, linearly weighted 0.63). On the 15 most informative disagreements a human labelled each item without seeing either verdict or the product, and sided with the second reading on 15 of 15. Rationale and trade-offs: [`DESIGN.md`](../engineering/DESIGN.md#switching-the-notes-and-answers-judge-to-an-agent-reader-2026-11-09).
+
+**Method.** A deterministic packet per meeting and product (`scripts/reader_packets.py`): the gold items (AMI 1.6.2, the same 149 per product as the judge), linked AMI passages (3 turns before, 10 after; the full AMI transcript where an item has no links, as in IB4003), the notes bullets exactly as the judge saw them, and the numbered product transcript; no verdicts. A Claude Code agent (Opus 5.5) follows [`notes_reader.v2.md`](../../prompts/notes_reader.v2.md) and writes one JSONL row per item: notes verdict (full / partial / no), transcript verdict (yes / partly / no), evidence bullets, a verbatim quote, a reason and a confidence. Scoring by `scripts/reader_score.py` (no LLM): recall with full = 1, partial = 0.5, mean per meeting then over meetings; bootstrap CIs over meetings (2,000 resamples, seed 42).
+- **Instruction development on DEV only (IS1008a).** v1: two independent reader sessions agreed on 12 of 14 items (both misses one rule gap). v2: two fresh sessions agreed on 14 of 14. v2 was frozen before any TEST item was read.
+- **v3 is post hoc.** It was written after two v2 misses on the TEST human cards (owner labels matched through the notes' own bullets; a wrongly matched label = wrong owner; a rejected alternative = the opposite outcome). It is reported as a sensitivity row only.
+
+**Validation, TEST (298 items).**
+
+| Comparison | v2 (headline) | v3 (post hoc) |
+|---|---|---|
+| vs the second reading | 269 / 298 (90.3%), kappa 0.82, weighted 0.86 | 276 / 298 (92.6%), kappa 0.86, weighted 0.90 |
+| vs the human, 15 cards | 13 / 15 (misses: IS1000a Wispr Flow A1, IS1008d Granola D5) | 13 / 15 (misses: IB4003 Wispr Flow A6, IS1008b Wispr Flow D1) |
+| vs the v4 judge majority | 219 / 298 (73.5%), kappa 0.54 | 221 / 298 (74.2%) |
+
+v2 and v3 differ on 19 of 298 items, which mixes run-to-run variation with the rule changes.
+
+**Three-run majority (robustness; `test_consensus3.jsonl`).** Median per item of three independent full TEST runs: v2, v3 and a second v3 run (v3c). Unanimous on 270 of 298 (91%); pairwise differences v2–v3 19, v2–v3c 22, v3–v3c 15 (same instructions: 5%); each run vs the majority: v2 13, v3 6, v3c 9. Majority vs the second reading 278 / 298 (93.3%, kappa 0.87, weighted 0.91); vs the human cards 15 / 15. **Caveat:** v3's two rule changes were motivated by two of those cards, so 15 / 15 is not a clean held-out result; v2 alone, frozen before TEST, got 13 / 15. Recall: Granola 0.72 [0.66, 0.78], Wispr Flow 0.78 [0.72, 0.83]. The headline stays on v2 (0.72 / 0.77); item-level statements use the majority, because single runs vary on roughly 5–9% of items (5–7% between any two runs, 9% not unanimous). By category (v2 vs the second reading): decisions 94.6% (kappa 0.85), actions 84.0% (0.75), problems 90.5% (0.83).
+
+**Results, pooled TEST (11 meetings, 149 items per product).**
+
+| Product | Category | Gold | Reader v2 (headline) | Reader v3 (post hoc) | Second reading | API judge, majority (same files) |
+|---|---|---|---|---|---|---|
+| Granola | decision | 65 | 0.81 | 0.80 | 0.80 | 0.72 |
+| Granola | action | 47 | 0.61 | 0.62 | 0.60 | 0.57 |
+| Granola | problem | 37 | 0.62 | 0.67 | 0.58 | 0.49 |
+| **Granola** | **all** | **149** | **0.72 [0.67, 0.77]** | **0.73 [0.67, 0.79]** | **0.71** | **0.63** |
+| Wispr Flow | decision | 65 | 0.89 | 0.84 | 0.89 | 0.76 |
+| Wispr Flow | action | 47 | 0.57 | 0.60 | 0.59 | 0.60 |
+| Wispr Flow | problem | 37 | 0.74 | 0.74 | 0.72 | 0.56 |
+| **Wispr Flow** | **all** | **149** | **0.77 [0.71, 0.82]** | **0.77 [0.72, 0.82]** | **0.78** | **0.70** |
+
+- **Full-only recall (v2):** Granola 0.58 [0.51, 0.64], Wispr Flow 0.65 [0.55, 0.74].
+- **Per meeting (v2, Granola / Wispr Flow):** ES2006a 0.75 / 0.65, ES2006c 0.75 / 0.83, ES2008b 0.81 / 0.81, ES2015c 0.81 / 0.88, IB4003 0.62 / 0.83, IS1000a 0.70 / 0.80, IS1008b 0.75 / 0.62, IS1008c 0.88 / 0.88, IS1008d 0.59 / 0.64, TS3006b 0.61 / 0.64, TS3009c 0.67 / 0.86. Wispr Flow higher on 7, lower on 2, tied on 2: **sign test p = 0.18, not significant** (v3: 5 / 3 / 3, p = 0.73). The judge's 10 of 11 (p = 0.01) does not hold.
+- **Heard, not noted (v2).** The product's own transcript has 291 of 298 items (Granola 145 yes, 3 partly, 1 no; Wispr Flow 146 yes, 2 partly, 1 no). Items missing from the notes outright: Granola 23 (20 in its transcript, 2 partly, 1 not), Wispr Flow 16 (14, 1, 1). Every partly covered item is in the transcript (one per product only partly). Three-run majority: transcript verdicts identical (291 of 298); missing outright Granola 24 (23 in its transcript), Wispr Flow 19 (18). **Notes leave out about a quarter of what was decided, assigned or raised, while the products' own transcripts contain almost all of it.**
+- **Owner sensitivity (v2).** Counting actions whose only gap is the owner as full: Granola 0.763, Wispr Flow 0.827. **Limitation:** in replay there is no calendar invite and all audio arrives on the system channel, so Granola cannot use its usual sources for names; its owner credit may be understated relative to real meetings. Granola tends to omit owners (18 of 40 action bullets in the owner check); Wispr Flow uses "Speaker N" labels nobody can resolve (14 of 30).
+- **Not re-read:** precision of the notes' bullets (judge only: lenient 0.94 / 0.96) and the per-run tables above.
+- **Caveats.** The reader, the second reading and the judge are all Claude models, so shared blind spots do not show where they agree; the human check covers 15 disagreements only, from one verifier. Agent runs are not seed-reproducible, so each run is stored with its verdict rows (evidence quotes included), instruction version, model, date and git commit. Verdict rows quote product outputs and stay local (`data/private/reader/`, gitignored).
+- **Provenance.** Both TEST runs scored 2026-11-09 at `03360ac` (v2 instructions committed there; v3 committed afterwards as `b76ed42`). The score files' `reader_prompt` field reads `notes_reader.v1` because the scorer's default was not overridden; the runs used v2 and v3 as stated here. Reader: Claude Code agent sessions on `claude-opus-5-5`. Cost: no API spend.
 
 ### E3 v5 rubric and gold errata: post-hoc changes (not yet run)
 
@@ -395,6 +438,7 @@ Run 3 per category, Granola / Wispr Flow:
 
 - **Both products named every item and stated every outcome correctly**, including "postponed" and "passed as amended".
 - **The one split vote is where both went wrong, in the same way.** Both notes give the correct 6–3 count. But both list Councilmember Rinck among the three opposed and leave out Councilmember Lin, who voted no on the record. All 3 passes flagged this for both products. Granola also files Lin among those in favor, so its vote claim is judged "none"; Wispr Flow's is "partial". Both transcripts contain the roll call. For Wispr Flow, the judge reports the transcript itself has the same name. We have not checked the audio, so we cannot say whether the error is in transcription or in note-writing.
+- **Reference re-read (2026-11-09, agent reader, no API).** It agrees with 26 of the 27 majority verdicts. The exception is Granola's vote claim on CB 121282: **partial, not none.** Its notes give the correct 6–3 count, and two of the three named "no" voters match Legistar; Rinck and Lin are swapped, as in Wispr Flow's notes, which got partial for the same content. Two of the judge's passes also said Granola's transcript has the correct tally. It does not: it reads "Council Member Lin? Yes. … Council member Rink? No.", the same as the notes, so this is not a heard-but-not-noted case. Both products independently heard the same names against the official record; without listening to the audio, the record itself is not confirmed here. With the reference, Granola's vote row is 4 full / 1 partial / 0 none.
 - **The judge was stable.** 23 of 27 claim verdicts (3 claims x 9 units) were the same in all 3 passes. Three of the exceptions are one Granola pass on CB 121259 that returned no claim verdicts (3 parser repairs; the other two passes agree on full). The fourth is the Wispr Flow vote on CB 121282 (partial, none, partial).
 - **Caveats.** n = 5, one city, one body, items picked because the archive had clear chapter markers. Four of five votes were unanimous, so "the vote" was mostly an easy claim. One judge model, no human labels. On CB 121214, Wispr Flow writes "passed as amended". Legistar records the council action as "passed", with the committee's earlier "pass as amended"; the judge did not count this as a contradiction.
 - **Provenance and cost.** Run 2026-11-09 (UTC). Code at `0410265`; the run's working tree also had this prompt file, committed afterwards. Judge `claude-sonnet-5-5`, prompt `council_notes.v1`, 3 passes.
