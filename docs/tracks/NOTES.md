@@ -522,7 +522,7 @@ With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wron
   - Full TEST run (hard cap $1.80): $0.598 (Haiku $0.031, Sonnet $0.567).
   - **Total $0.75.**
 
-## E4: coverage head-to-head (designed; DEV pilot run, full run not run)
+## E4: coverage head-to-head (TEST run 2026-11-09, scored by agent readers; Preliminary)
 
 **Question.** Can a "+N missed items" line under a product's notes surface what the notes left out, precisely enough to be worth showing? And does it beat two simple alternatives: writing fuller notes, or asking Granola Chat? This decides whether "Coverage" is pitchable (go / no-go thresholds below, fixed before any TEST data).
 
@@ -569,3 +569,26 @@ With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wron
   - The E3 baseline (`notes_completeness.v5`, errata gold) adds up to $4.6 x1.5. It is $0 if the separately quoted E3 v5 re-judge runs first, because those are the same calls.
   - Cheaper options: 1 judge pass (about $11 without E3), or a Sonnet lister (not measured).
 - **Code:** `tenor ami coverage-e4` (`--quote`, `--ask-chat`, `--pilot`, `--stage pipeline`, `--e3-prompt`) and [`coverage_e4.py`](../../packages/tenor/evals/coverage_e4.py). Prompts `coverage_dedupe.v1`, `coverage_regen.v1`, `coverage_judge.v1`.
+
+**TEST result (2026-11-09; Preliminary).**
+
+- **Judge changed before TEST.** The API judge above was replaced by Claude Code reader agents (see "How results are judged" in the README): `prompts/e4_reader.v2.md`, condition-blind (all conditions' items pooled, exact duplicates merged, seeded shuffle; the key back to conditions is kept outside the packets). v1 → v2 on DEV only (two readers on v1: true 73/73, in_notes 69/73, gold match 70/73; on v2: true 73/73, in_notes 72/73). Three independent full TEST runs; labels are the median of the three (unanimous on `true` for 803 of 905 items, `in_notes` 799). "Missing gold" = gold items not fully in the notes per the E3 three-run majority (104 items over 22 units).
+- **Generation** (`--generate-only`, no API judge): **$3.67** under an $8 cap (quoted high $7.68); prompt-cache reads verified in a pilot first (dedupe: 206k cached vs 5k uncached input tokens). DEV candidates $0.01 (cached). Q: 11 Granola Chat answers via the read-only MCP, $0.
+- **Results, both products pooled** (cluster-bootstrap 95% CIs over meetings; Q is Granola only):
+
+| Condition | Items shown | True and new (not in notes) | Duplicates of the notes | False | Missing gold recovered |
+|---|---|---|---|---|---|
+| C3: Coverage, top 3 | 66 | 30% [20, 42] | 18% | 3% | 8/104 (8% [0, 16]) |
+| CU: Coverage, uncapped | 223 | 38% [27, 48] | 14% | 2% | 27/104 (26% [10, 41]) |
+| C3S: strict, top 3 | 48 | 60% [48, 73] | 0% | 4% | 1/104 (1%) |
+| CUS: strict, uncapped | 89 | 71% [59, 78] | 0% | 2% | 8/104 (8%) |
+| R: fuller notes (oracle-filtered) | 264 | 26% [22, 30] | 0% | 2% | 40/104 (38% [21, 57]) |
+| RD: fuller notes, real dedupe | 312 | 21% [18, 26] | 17% | 2% | 37/104 (36% [21, 50]) |
+| Q: ask Granola Chat | 59 | 12% [3, 22] | 36% | 3% | 7/61 (11% [4, 20]) |
+
+- **Go / no-go: no go for Coverage.** At K ≤ 3 it recovers 8% of missing gold (threshold 35%) with 18% duplicates (threshold 10%); the strict version has no duplicates but recovers 1%. Uncapped Coverage recovers 26% at 38% precision. It does not beat R or RD.
+- **Fuller notes recover the most and rarely invent.** Rewriting the notes from the transcript recovers 36–38% of the missing gold with 2% false items, but shows 12–14 items per meeting, most of them already in the notes.
+- **Asking Chat repeats the notes**: a third of its items are already there; it recovers 11%.
+- **Half the gap survives every condition.** Taking the union of all conditions, 49 of 104 missing items are fully recovered. Of the 55 that are not, 49 are in the product's own transcript, 39 are recovered partly, and **17 are action items short only of an owner**: the transcript does not say who spoke (all remote speech arrives on one "Them" channel), so no rewrite of the transcript can name them. Owner attribution, not summarisation, is the largest single residual.
+- **Caveats.** One run of generation (no seeds to vary on the models); R's filter uses the reader as an oracle (RD is the fair version); readers share a model family with the generators; the missing-gold set comes from post-hoc-validated E3 labels on the original gold; 11 meetings.
+- Data: `data/ami/results/e4/20261109T092238Z.candidates.json` (local), reader runs `data/private/reader/runs/e4_test_{a,b,c}/`, consensus and scores `data/private/reader/runs/e4_consensus_score.json`.
