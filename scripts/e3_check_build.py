@@ -32,7 +32,8 @@ POOLED = ROOT / "evals/reports/ami/notes_completeness.json"
 OUT_HTML = ROOT / "data/private/E3_CHECK.html"
 OUT_KEY = ROOT / "data/private/E3_CHECK_key.json"
 ADJUDICATION = ROOT / "data/private/E3_ADJUDICATION.jsonl"
-CONTEXT = 3  # utterances / lines either side
+CONTEXT = 3  # utterances / lines before the passage
+CONTEXT_AFTER = 10  # lines after: enough to reach the answer to a question
 STRATA = ("full", "partial", "none")
 ANSWER_OF = {"full": "Fully", "partial": "Partly", "none": "No"}
 SECTION_WORD = {"decision": "decisions", "action": "action items", "problem": "problems"}
@@ -236,7 +237,7 @@ def ami_passage(
     roles = {s.agent: ROLE_NAMES.get(s.role or "", f"Speaker {s.agent}") for s in m.speakers}
     rows: list[dict[str, Any]] = []
     for c in clusters:
-        lo, hi = max(0, c[0] - CONTEXT), min(len(das), c[-1] + CONTEXT + 1)
+        lo, hi = max(0, c[0] - CONTEXT), min(len(das), c[-1] + CONTEXT_AFTER + 1)
         if rows:
             rows.append({"gap": True})
         for i in range(lo, hi):
@@ -285,7 +286,7 @@ def product_window(
                 -abs(i - near[len(near) // 2]),
             ),
         )
-    lo, hi = max(0, centre - CONTEXT), min(len(lines), centre + CONTEXT + 1)
+    lo, hi = max(0, centre - CONTEXT), min(len(lines), centre + CONTEXT_AFTER + 1)
     rows = []
     for i in range(lo, hi):
         x = lines[i]
