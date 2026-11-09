@@ -50,6 +50,33 @@ class GranolaProduct(McpProduct):
         text, cited = parse_granola_answer(raw)
         return ProductAnswer(text=text, cited_ids=cited, latency_s=latency_s, raw=raw)
 
+    def ask_scoped(
+        self,
+        question: str,
+        note_ids: list[str],
+        *,
+        sleep: Any = None,
+        max_retries: int = 5,
+    ) -> ProductAnswer:
+        """Ask with the context limited to ``note_ids`` (the tool's ``document_ids``, VERIFIED
+        in its schema). A rate-limit error carrying ``retry_after`` is waited out and retried;
+        the latency excludes the waits."""
+        import time
+
+        wait = sleep or time.sleep
+        args = {"query": question, "document_ids": list(note_ids)}
+        for attempt in range(max_retries + 1):
+            start = self.clock()
+            try:
+                raw = self.caller.call(self.tool, args)
+            except McpToolError as exc:
+                if exc.retry_after is None or attempt == max_retries:
+                    raise
+                wait(exc.retry_after)
+                continue
+            return self.parse(raw, self.clock() - start)
+        raise AssertionError("unreachable")  # pragma: no cover
+
 
 # -- Concentrate's own MCP server (ask_memory) -----------------------------------------------------
 

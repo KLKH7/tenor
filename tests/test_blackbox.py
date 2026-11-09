@@ -167,6 +167,28 @@ def test_granola_adapter_asks_query_granola_meetings_and_parses_citations() -> N
     assert a.raw == GRANOLA_RAW
 
 
+def test_granola_scoped_ask_passes_document_ids_and_waits_out_rate_limits() -> None:
+    from tenor.sources.granola_mcp import McpToolError
+
+    class Limited(FakeMcp):
+        def call(self, tool: str, arguments: dict[str, Any]) -> str:
+            self.calls.append((tool, arguments))
+            if len(self.calls) == 1:
+                raise McpToolError(tool, "rate_limit", retry_after=7.0)
+            return self.reply
+
+    inner, waits = Limited(), []
+    ticks = iter([0.0, 10.0, 12.0])  # start (fails), start, end
+    a = GranolaProduct(inner, clock=lambda: next(ticks)).ask_scoped(
+        "What was decided?", ["n1"], sleep=waits.append
+    )
+    assert (
+        inner.calls
+        == [("query_granola_meetings", {"query": "What was decided?", "document_ids": ["n1"]})] * 2
+    )
+    assert waits == [7.0] and a.latency_s == 2.0 and a.cited_ids == [NOTE]
+
+
 def test_spec_adapter_maps_arguments_and_json_paths() -> None:
     reply = json.dumps({"result": {"text": " Alex. ", "sources": ["m1", "m2", "m1"]}})
     inner = FakeMcp(reply)

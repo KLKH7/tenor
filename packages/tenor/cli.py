@@ -3809,10 +3809,15 @@ class _E1Inputs:
 
 
 def _e1_inputs(
-    questions_file: Path, answers: Path, granola_db: Path, wispr_db: Path, overrides: Path
+    questions_files: Sequence[Path],
+    answers: Sequence[Path],
+    granola_db: Path,
+    wispr_db: Path,
+    overrides: Path,
 ) -> _E1Inputs:
     """The deletion run's question filter (meetings recorded by Granola and Wispr, answered by
-    Chat), narrowed to list questions, each with Granola's transcript, AMI's reference and gold."""
+    Chat), narrowed to list questions, each with Granola's transcript, AMI's reference and gold.
+    Several question and answer files are concatenated (IDs must not repeat)."""
     from tenor.ami.corpus import load_meeting, meeting_note
     from tenor.ami.questions import load_questions
     from tenor.core.store import read_notes
@@ -3822,10 +3827,14 @@ def _e1_inputs(
 
     recs = DA.load_recordings({"granola": granola_db, "wispr": wispr_db}, overrides, read_notes)
     notes = {p: DA.reader_notes(r, p) for p, r in recs.items()}
-    chat = {a.question_id: a.answer for a in load_answers(answers) if a.product == "granola"}
+    rows = [a for path in answers for a in load_answers(path) if a.product == "granola"]
+    chat = {a.question_id: a.answer for a in rows}
+    qs = [q for path in questions_files for q in load_questions(path)]
+    if len(chat) != len(rows) or len({q.id for q in qs}) != len(qs):
+        raise typer.BadParameter("a question or answer ID appears in more than one file")
     chat_text = {qid: clean_answer(a) for qid, a in chat.items()}  # as stage 3 judged it
     picked, skipped = DA.select_questions(
-        load_questions(questions_file), {p: list(r) for p, r in recs.items()}, chat, DA.CONDITIONS
+        qs, {p: list(r) for p, r in recs.items()}, chat, DA.CONDITIONS
     )
     full = E.list_questions(picked)
     by_title = {n.title: n for n in notes.get("granola", [])}
@@ -3850,6 +3859,73 @@ def _e1_inputs(
     return _E1Inputs(notes, chat_text, len(picked), skipped, full, [context(q) for q in full])
 
 
+@ami_app.command("chat-answers")
+def ami_chat_answers(
+    questions_file: Annotated[Path, typer.Option("--questions")] = Path(
+        "data/ami_questions/replay_extension.jsonl"
+    ),
+    out: Annotated[
+        Path, typer.Option(help="Appended JSONL (gitignored: holds product text).")
+    ] = Path("data/ami/results/facts/answers_granola_ext.jsonl"),
+    types: Annotated[
+        str, typer.Option(help="Question types to ask.")
+    ] = "decision,action_what,problem",
+    pause_s: Annotated[float, typer.Option(help="Seconds between calls.")] = 2.0,
+    limit: Annotated[int | None, typer.Option(help="Ask at most this many (a sandbox).")] = None,
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+) -> None:
+    """Record Granola Chat's answers to AMI questions through its public MCP
+    (``query_granola_meetings``, read-only, allowlisted), each scoped to the question's own
+    meeting note (``document_ids``). Sequential; rate limits waited out. Resumable: questions
+    already in ``out`` are skipped. Rows: question_id, product, answer (raw), latency_s, scope."""
+    import json
+    import time
+    from contextlib import ExitStack
+
+    from tenor.ami.questions import load_questions
+    from tenor.blackbox.products import GranolaProduct
+    from tenor.core.store import read_notes
+    from tenor.evals import deletion_ami as DA
+    from tenor.sources.mcp_transport import LiveMcpCaller
+
+    wanted = {t.strip() for t in types.split(",") if t.strip()}
+    recs = DA.load_recordings({"granola": granola_db}, overrides, read_notes).get("granola", {})
+    done: set[str] = set()
+    if out.is_file():
+        done = {json.loads(x)["question_id"] for x in out.read_text().splitlines() if x.strip()}
+    todo, skipped = [], []
+    for q in load_questions(questions_file):
+        if q.type not in wanted or q.id in done:
+            continue
+        if missing := [m for m in q.meetings if m not in recs]:
+            skipped.append(f"{q.id}: {', '.join(missing)} not recorded")
+            continue
+        todo.append(q)
+    todo = todo[:limit] if limit is not None else todo
+    typer.echo(f"{len(todo)} to ask, {len(done)} already in {out}; skipped {len(skipped)}")
+    for line in skipped:
+        typer.echo(f"  skipped {line}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with ExitStack() as stack:
+        product = GranolaProduct(stack.enter_context(LiveMcpCaller()))
+        for i, q in enumerate(todo):
+            scope = [recs[m].note_id for m in q.meetings]
+            a = product.ask_scoped(q.question, scope)
+            row = {
+                "question_id": q.id,
+                "product": "granola",
+                "answer": a.raw,
+                "latency_s": round(a.latency_s, 1),
+                "scope": scope,
+            }
+            with out.open("a") as fh:
+                fh.write(json.dumps(row) + "\n")
+            typer.echo(f"[{i + 1}/{len(todo)}] {q.id}: {len(a.text)} chars, {a.latency_s:.1f}s")
+            if i + 1 < len(todo):
+                time.sleep(pause_s)
+
+
 @ami_app.command("list-check")
 def ami_list_check(
     conditions: Annotated[
@@ -3866,7 +3942,7 @@ def ami_list_check(
     pilot_n: Annotated[int, typer.Option(help="--pilot: questions.")] = 3,
     only: Annotated[
         str | None,
-        typer.Option(help="--pilot: run only these pilot question IDs (comma-separated)."),
+        typer.Option(help="--pilot: run these question IDs instead (comma-separated)."),
     ] = None,
     max_usd: Annotated[
         float | None,
@@ -3889,15 +3965,15 @@ def ami_list_check(
         typer.Option("--exact/--heuristic", help="count_tokens (free) or chars/3.5 offline."),
     ] = True,
     seed: Annotated[int, typer.Option()] = 42,
-    answers: Annotated[Path, typer.Option(help="Granola Chat answers (question filter).")] = Path(
-        "data/ami/results/facts/answers_granola.clean.jsonl"
-    ),
+    answers: Annotated[
+        list[Path], typer.Option(help="Granola Chat answers (question filter; repeatable).")
+    ] = [Path("data/ami/results/facts/answers_granola.clean.jsonl")],  # noqa: B006
     granola_db: GranolaDbOpt = FACTS_DBS["granola"],
     wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
     overrides: OverridesOpt = FACTS_OVERRIDES,
-    questions_file: Annotated[Path, typer.Option("--questions")] = Path(
-        "data/ami_questions/questions.jsonl"
-    ),
+    questions_file: Annotated[
+        list[Path], typer.Option("--questions", help="Question files (repeatable).")
+    ] = [Path("data/ami_questions/questions.jsonl")],  # noqa: B006
     out_dir: OutDirOpt = AMI_RESULTS / "e1",
     commit_to: Annotated[
         Path | None,
@@ -3941,11 +4017,11 @@ def ami_list_check(
     inp = _e1_inputs(questions_file, answers, granola_db, wispr_db, overrides)
     notes, chat_text, full, full_ctx = inp.notes, inp.chat_text, inp.full, inp.contexts
     pilot_qs = E.pilot_questions(full, pilot_n, seed)
-    if only:
+    if only:  # any listed question; a sandbox on new meetings checks outputs, it tunes nothing
         wanted = {x.strip() for x in only.split(",") if x.strip()}
-        if missing := wanted - {q.id for q in pilot_qs}:
-            raise typer.BadParameter(f"--only: not pilot questions: {sorted(missing)}")
-        pilot_qs = [q for q in pilot_qs if q.id in wanted]
+        if missing := wanted - {q.id for q in full}:
+            raise typer.BadParameter(f"--only: not usable list questions: {sorted(missing)}")
+        pilot_qs = [q for q in full if q.id in wanted]
     n_dev = sum(1 for q in full if q.split == "dev")
     as_of = DA.as_of_day(n for ns in notes.values() for n in ns)  # as the deletion run
     reader = reader_model or DA.original_reader_model()
@@ -4186,15 +4262,15 @@ def ami_agreed_check(
         bool, typer.Option(help="Message Batches (half price, minutes of latency).")
     ] = False,
     seed: Annotated[int, typer.Option()] = 42,
-    answers: Annotated[Path, typer.Option(help="Granola Chat answers (question filter).")] = Path(
-        "data/ami/results/facts/answers_granola.clean.jsonl"
-    ),
+    answers: Annotated[
+        list[Path], typer.Option(help="Granola Chat answers (question filter; repeatable).")
+    ] = [Path("data/ami/results/facts/answers_granola.clean.jsonl")],  # noqa: B006
     granola_db: GranolaDbOpt = FACTS_DBS["granola"],
     wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
     overrides: OverridesOpt = FACTS_OVERRIDES,
-    questions_file: Annotated[Path, typer.Option("--questions")] = Path(
-        "data/ami_questions/questions.jsonl"
-    ),
+    questions_file: Annotated[
+        list[Path], typer.Option("--questions", help="Question files (repeatable).")
+    ] = [Path("data/ami_questions/questions.jsonl")],  # noqa: B006
     out_dir: OutDirOpt = AMI_RESULTS / "e2",
     commit_to: Annotated[
         Path | None,
