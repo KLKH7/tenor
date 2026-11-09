@@ -4734,6 +4734,79 @@ def ami_owner_check(
         raise typer.Exit(code)
 
 
+@ami_app.command("gap-check")
+def ami_gap_check(
+    quote_only: Annotated[bool, typer.Option("--quote", help="Price it; spends nothing.")] = False,
+    pilot: Annotated[bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a).")] = False,
+    max_usd: Annotated[float | None, typer.Option(help="Hard spend cap (approved amount).")] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    seed: Annotated[int, typer.Option()] = 42,
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+    readers: Annotated[
+        Path, typer.Option(help="Private reader folder (keys and consensus runs).")
+    ] = Path("data/private/reader"),
+    out_dir: OutDirOpt = AMI_RESULTS / "gap_check",
+    report: Annotated[Path, typer.Option(help="Numbers-only report (TEST).")] = Path(
+        "evals/reports/ami/gap_check.json"
+    ),
+) -> None:
+    """Gap check: G1 "diff, not rewrite" over E4's regenerated bullets and G2 owner suggestions
+    (S1 transcript, S2 + simulated invite), scored at $0 from the agent-reader consensus labels
+    (``tenor.evals.gap_check``). --quote, then --pilot, then TEST with --max-usd."""
+    import json
+
+    from tenor.evals import coverage_e4 as C4
+    from tenor.evals import gap_check as G
+
+    meetings = (G.PILOT_MEETING, *C4.TEST_MEETINGS)
+    units, skipped = _e3_units(granola_db, wispr_db, overrides, meetings)
+    _, gold_version = C4.load_gold_errata()
+    errata, _ = C4.load_gold_errata()
+    errata_units = (
+        _e3_units(granola_db, wispr_db, overrides, meetings, errata=errata)[0] if errata else []
+    )
+    typer.echo(f"{len(units)} units; skipped {skipped or 'none'}; errata for G2 sensitivity: "
+               f"{gold_version}")  # fmt: skip
+    e4 = AMI_RESULTS / "e4"
+    runs = readers / "runs"
+    candidates = {s: json.loads((e4 / f"{r}.candidates.json").read_text())
+                  for s, r in (("test", G.TEST_RUN), ("dev", G.DEV_RUN))}  # fmt: skip
+    keys = {s: json.loads((readers / "e4_keys" / f"{r}.key.json").read_text())
+            for s, r in (("test", G.TEST_RUN), ("dev", G.DEV_RUN))}  # fmt: skip
+    consensus = runs / "e4_test_consensus"
+    e4_labels = {
+        "test": [r for p in sorted(consensus.glob("*.jsonl")) for r in G.read_jsonl(p)],
+        "dev": G.read_jsonl(runs / "e4_dev_C_v2.jsonl"),
+    }
+    e3_labels = {"test": G.read_jsonl(runs / "test_consensus3.jsonl"),
+                 "dev": G.read_jsonl(runs / "dev_E_v3.jsonl")}  # fmt: skip
+    sources = {"e4_test": "e4_test_consensus (3-run median)",
+               "e4_dev": "e4_dev_C_v2 (one reader, sanity only)",
+               "e3_test": "test_consensus3 (3-run majority)",
+               "e3_dev": "dev_E_v3 (one reader, sanity only)"}  # fmt: skip
+    code = G.main(
+        units,
+        errata_units=errata_units,
+        candidates=candidates,
+        keys=keys,
+        e4_labels=e4_labels,
+        e3_labels=e3_labels,
+        out_dir=out_dir,
+        report=report,
+        quote_only=quote_only,
+        pilot=pilot,
+        max_usd=max_usd,
+        seed=seed,
+        confirm=(lambda _t: True) if yes else (lambda t: typer.confirm(t)),
+        echo=typer.echo,
+        label_sources=sources,
+    )
+    if code:
+        raise typer.Exit(code)
+
+
 @ami_app.command("council-notes")
 def ami_council_notes(
     quote_only: Annotated[bool, typer.Option("--quote", help="Price only; no spend.")] = False,
