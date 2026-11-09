@@ -4307,6 +4307,180 @@ def ami_agreed_check(
         )
 
 
+# -- E3: notes completeness (docs/tracks/NOTES.md, "E3") ------------------------------------
+
+
+def _e3_units(granola_db: Path, wispr_db: Path, overrides: Path) -> tuple[list[Any], list[str]]:
+    """One unit per product per AMI_SET meeting both products recorded and AMI summarised."""
+    from tenor.ami.corpus import load_meeting
+    from tenor.ami.products import AMI_SET
+    from tenor.core.store import read_notes
+    from tenor.evals import deletion_ami as DA
+    from tenor.evals import notes_completeness as N
+    from tenor.evals.wrong_facts import roster
+
+    recs = DA.load_recordings({"granola": granola_db, "wispr": wispr_db}, overrides, read_notes)
+    notes = {
+        p: {(n.title or "").removeprefix("AMI "): n for n in DA.reader_notes(r, p)}
+        for p, r in recs.items()
+    }
+    units: list[Any] = []
+    skipped: list[str] = []
+    for mid in AMI_SET:
+        m = load_meeting(mid)
+        if not N.gold_items(m.sentences):
+            skipped.append(f"{mid}: no AMI decisions/actions/problems")
+            continue
+        if missing := [p for p in N.PRODUCTS if mid not in notes.get(p, {})]:
+            skipped.append(f"{mid}: not recorded by {', '.join(missing)}")
+            continue
+        r = roster([mid])
+        units += [N.make_unit(m, notes[p][mid], p, r) for p in N.PRODUCTS]
+    return units, skipped
+
+
+@ami_app.command("notes-completeness")
+def ami_notes_completeness(
+    quote_only: Annotated[
+        bool, typer.Option("--quote", help="Price the full run and the pilot; spends nothing.")
+    ] = False,
+    pilot: Annotated[
+        bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a), both products.")
+    ] = False,
+    max_usd: Annotated[
+        float | None,
+        typer.Option(help="Hard spend cap (the approved amount); a pilot defaults to $0.50."),
+    ] = None,
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    judge_model: Annotated[str, typer.Option(help="Judge (E1's).")] = "claude-sonnet-5-5",
+    seed: Annotated[int, typer.Option()] = 42,
+    granola_db: GranolaDbOpt = FACTS_DBS["granola"],
+    wispr_db: WisprDbOpt = FACTS_DBS["wispr"],
+    overrides: OverridesOpt = FACTS_OVERRIDES,
+    out_dir: OutDirOpt = AMI_RESULTS / "e3",
+) -> None:
+    """E3: how much of AMI's human decisions / actions / problems each product's notes contain,
+    and whether the notes' decision / action / problem bullets are true. One judge call per
+    product per meeting. Start with --quote, then --pilot. Reads synced DBs only (no sync)."""
+    import functools
+    from datetime import UTC, datetime
+
+    from tenor.blackbox.kit import check_committable
+    from tenor.evals import list_check as E
+    from tenor.evals import notes_completeness as N
+    from tenor.evals.runner import _git
+    from tenor.llm.client import BudgetExceeded, Ledger, count_tokens
+
+    if pilot and quote_only:
+        raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
+    units, skipped = _e3_units(granola_db, wispr_db, overrides)
+    pilot_units = [u for u in units if u.meeting_id == N.PILOT_MEETING]
+    typer.echo(
+        f"{len(units)} units ({len(units) // 2} meetings x {len(N.PRODUCTS)} products); "
+        f"skipped: {skipped or 'none'}; pilot: {[u.key for u in pilot_units]}; judge {judge_model}"
+    )
+    cap = max_usd if max_usd is not None else (N.PILOT_MAX_USD if pilot else None)
+    if cap is None and not quote_only:
+        raise typer.BadParameter("paid runs need --max-usd (the approved amount); --pilot first")
+    ledger = Ledger()
+    judge_c = LLMClient(model=judge_model, ledger=ledger, max_usd=cap, offline=quote_only)
+    counter = functools.partial(count_tokens, model=judge_model, cache_dir=judge_c.cache_dir)
+    fq, pq = N.quote(units, judge_c, counter), N.quote(pilot_units, judge_c, counter)
+    for label, q in (("full", fq), ("pilot (DEV)", pq)):
+        typer.echo(
+            f"{label}: {q.calls} judge calls ({q.cached} cached), {q.input_tokens:,} input "
+            f"tokens (exact) -> ${q.usd_expected:.3f} expected, ${q.usd_high:.3f} high "
+            f"({judge_model}; output ASSUMED {N.ASSUMED_OUT_BASE} + {N.ASSUMED_OUT_PER_ITEM}"
+            f"/item)"
+        )
+    if quote_only:
+        typer.echo("no money spent (token counting is free)")
+        return
+    assert cap is not None
+    run = pilot_units if pilot else units
+    high = (pq if pilot else fq).usd_high
+    if high > cap:
+        typer.echo(f"high estimate ${high:.2f} exceeds the cap ${cap:.2f}", err=True)
+        raise typer.Exit(1)
+    if not yes:
+        typer.confirm(
+            f"{'PILOT: ' if pilot else ''}Judge {len(run)} units (hard cap ${cap:.2f}, quoted "
+            f"high ${high:.2f})?",
+            abort=True,
+        )
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    records: list[dict[str, Any]] = []
+    stopped = None
+    try:
+        for u in run:
+            records.append(N.run_unit(u, judge_c))
+            a = records[-1]["scores"]["all"]
+            typer.echo(
+                f"{u.key}: recall {a['recall']}, precision {a['precision']}, "
+                f"repairs {len(records[-1]['repairs'])} (spent ${ledger.spent_usd():.4f})"
+            )
+    except BudgetExceeded as e:
+        stopped = str(e)
+
+    def counted(us: list[Any]) -> tuple[int, int]:
+        """Exact input tokens (+ overhead) and items over ``us``, cached or not."""
+        reqs = [N.judge_request(u) for u in us]
+        tin = sum(counter([f"{r.system}\n\n{r.user}" for r in reqs])) + N.OVERHEAD * len(us)
+        return tin, sum(N.items_of(u) for u in us)
+
+    reprice = None
+    if pilot:
+        (pin, pit), (fin, fit) = counted(pilot_units), counted(units)
+        rest = [u for u in units if not judge_c.is_cached(N.judge_request(u))]
+        rin, rit = counted(rest) if rest else (0, 0)
+        reprice = {
+            "all_units": N.reprice(ledger.to_json(), pin, pit, fin, fit),
+            "uncached_units": {
+                "n": len(rest),
+                **N.reprice(ledger.to_json(), pin, pit, rin, rit),
+            },
+        }
+    result = {
+        "meta": {
+            "date": stamp,
+            "git": _git(),
+            "seed": seed,
+            "judge_model": judge_model,
+            "prompt": N.PROMPT,
+            "pilot": pilot,
+            "max_usd": cap,
+            "units": [u.key for u in run],
+            "skipped": skipped,
+            "max_product_chars": N.MAX_PRODUCT_CHARS,
+            "paragraph_chars": N.PARAGRAPH_CHARS,
+            "stopped_early": stopped,
+            "spent_usd": ledger.spent_usd(),
+            "ledger_by_stage": ledger.by_stage(),
+        },
+        "summary": N.summarize(records, seed),
+        "reprice": reprice,
+        "records": records,
+        "ledger": ledger.to_json(),
+    }
+    suffix = ".pilot" if pilot else ""
+    path = out_dir / f"{stamp}{suffix}.json"
+    E.write_json(path, result)
+    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}) · {path}")
+    agg = N.aggregate(result)
+    check_committable(agg, N.private_texts(records))
+    E.write_json(out_dir / f"{stamp}{suffix}.aggregate.json", agg)
+    if stopped:
+        typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
+        raise typer.Exit(1)
+    if reprice is not None:
+        for k, r in reprice.items():
+            typer.echo(
+                f"full run re-priced from the pilot ledger ({k}): ${r['full_usd']:.2f}, "
+                f"${r['full_usd_with_margin']:.2f} with x{N.MARGIN} margin. Ask before any "
+                "run over $2."
+            )
+
+
 # -- MCP contract check (packages/tenor/sources/contract.py) -----------------------------
 
 CONTRACT_BASELINE = Path("evals/contracts/granola_mcp.json")
