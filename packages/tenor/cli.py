@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -5186,6 +5186,21 @@ def ami_coverage_e4(
             "run's Granola units not yet in --chat-file. No LLM spend.",
         ),
     ] = False,
+    generate_only: Annotated[
+        bool,
+        typer.Option(
+            "--generate-only",
+            help="Every generation stage (list, check, dedupe, regenerate, RD's dedupe), no "
+            "judge: saves each condition's candidates to <run_id>.candidates.json for Claude "
+            "Code reader agents. With --quote: price these stages only.",
+        ),
+    ] = False,
+    meetings_opt: Annotated[
+        str | None,
+        typer.Option(
+            "--meetings", help="Comma-separated TEST meetings to run (e.g. a 1-meeting pilot)."
+        ),
+    ] = None,
     passes: Annotated[int, typer.Option(help="E4 judge passes per unit.")] = 3,
     full_passes: Annotated[int, typer.Option(help="Judge passes the full run is priced at.")] = 3,
     max_usd: Annotated[
@@ -5244,6 +5259,13 @@ def ami_coverage_e4(
     pilot_units = [u for u in units if u.meeting_id == C4.PILOT_MEETING]
     full_units = [u for u in units if u.split == "test"]
     run = pilot_units if pilot else full_units
+    if meetings_opt:
+        want = [m.strip() for m in meetings_opt.split(",") if m.strip()]
+        if bad := [m for m in want if m not in C4.TEST_MEETINGS]:
+            raise typer.BadParameter(f"not E4 TEST meetings: {bad}")
+        run = [u for u in full_units if u.meeting_id in want]
+    if generate_only and pilot:
+        raise typer.BadParameter("--generate-only pilots with --meetings (a TEST meeting)")
     typer.echo(
         f"{len(full_units)} TEST units, pilot {[u.key for u in pilot_units]}; skipped "
         f"{skipped or 'none'}; gold {gold_version}; E3 prompt {e3_prompt or N.PROMPT}"
@@ -5291,6 +5313,10 @@ def ami_coverage_e4(
         m: functools.partial(count_tokens, model=m, cache_dir=cache_dir)
         for m in {list_model, check_model, judge_model}
     }
+    if generate_only:
+        _e4_generate(C4, run, clients, counters, chat, ledger, cap, quote_only, yes, seed,
+                     skipped, out_dir)  # fmt: skip
+        return
     fq = C4.quote(full_units, clients, counters, chat, full_passes, seed, e3_prompt)
     pq = C4.quote(pilot_units, clients, counters, chat, passes, seed, e3_prompt)
     md = C4.quote_markdown(
@@ -5393,3 +5419,86 @@ def ami_coverage_e4(
             f"${reprice['full_usd_with_margin']:.2f} with x{C4.MARGIN} margin "
             f"({reprice['full_usd_by_group']}). Ask before any run over $2."
         )
+
+
+def _e4_generate(
+    C4: Any,
+    run: Sequence[Any],
+    clients: Any,
+    counters: Mapping[str, Any],
+    chat: Mapping[str, str],
+    ledger: Any,
+    cap: float | None,
+    quote_only: bool,
+    yes: bool,
+    seed: int,
+    skipped: Sequence[str],
+    out_dir: Path,
+) -> None:
+    """``coverage-e4 --generate-only``: quote the generation stages for ``run``, then (not
+    ``--quote``) run them under ``cap`` and save every unit's candidates per condition."""
+    from datetime import UTC, datetime
+
+    from tenor.evals import agreed_check as A
+    from tenor.evals import list_check as E
+    from tenor.evals.runner import _git
+    from tenor.llm.client import BudgetExceeded
+
+    rows = C4.generation_rows(C4.quote(run, clients, counters, chat, 1, seed))
+    md = C4.quote_markdown([(f"Generation only: {len(run)} TEST units, no judge", rows)])
+    typer.echo(md)
+    t = C4.totals(rows)
+    high = t["usd_high"]  # without prompt-cache savings
+    if quote_only:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "quote_generate.md").write_text(md)
+        typer.echo(f"expected ${t['usd_expected']:.2f}, high ${high:.2f}; no money spent")
+        return
+    assert cap is not None
+    if high > cap:
+        typer.echo(f"high estimate ${high:.2f} exceeds the cap ${cap:.2f}", err=True)
+        raise typer.Exit(1)
+    if missing := [u.key for u in run if u.product == "granola" and u.key not in chat]:
+        typer.echo(f"no Chat answer recorded for {missing}: Q skipped there (--ask-chat)")
+    if not yes:
+        typer.confirm(
+            f"Generate E4 candidates for {len(run)} units (hard cap ${cap:.2f}, quoted high "
+            f"${high:.2f})?",
+            abort=True,
+        )
+    now = datetime.now(UTC)
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    records: list[dict[str, Any]] = []
+    stopped = None
+    try:
+        for u in run:
+            rec = C4.generate_unit(u, clients, chat.get(u.key))
+            records.append(rec)
+            counts = {c: len(v) for c, v in rec["conditions"].items()}
+            typer.echo(f"{u.key}: {counts} (spent ${ledger.spent_usd():.4f})")
+    except BudgetExceeded as e:
+        stopped = str(e)
+    result = {
+        "meta": {
+            "run_id": stamp, "date": now.isoformat(timespec="seconds"), "git": _git(),
+            "seed": seed, "max_usd": cap,
+            "models": {"list": clients.lister.model, "check": clients.checker.model,
+                       "dedupe": clients.checker.model, "regen": clients.regen.model},
+            "prompts": {"list": [E.ENUMERATE_PROMPT, E.MERGE_PROMPT], "check": A.PROMPT,
+                        "dedupe": C4.DEDUPE_PROMPT, "regen": C4.REGEN_PROMPT},
+            "k": C4.K, "chat_question": C4.CHAT_QUESTION,
+            "list_question": C4.list_question("<meeting>"), "units": [u.key for u in run],
+            "skipped": list(skipped), "stopped_early": stopped,
+            "spent_usd": ledger.spent_usd(), "quote": t,
+            "ledger_by_stage": ledger.by_stage(),
+        },
+        "records": records,
+        "ledger": ledger.to_json(),
+    }  # fmt: skip
+    path = out_dir / f"{stamp}.candidates.json"
+    C4.write_json(path, result)
+    by = {k: round(v["usd"], 4) for k, v in ledger.by_stage().items()}
+    typer.echo(f"spent ${ledger.spent_usd():.4f} (cap ${cap:.2f}); {by} · {path}")
+    if stopped:
+        typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
+        raise typer.Exit(1)

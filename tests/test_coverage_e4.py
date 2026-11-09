@@ -432,3 +432,43 @@ def test_run_meeting_end_to_end_and_replay(tmp_path: Path) -> None:
     agg = C4.aggregate({"meta": {"ledger_by_stage": {}, "date": "x"}, "summary": summary})
     assert "ledger_by_stage" not in agg["meta"]
     assert "Bo sends the slides" in C4.private_texts(recs)
+
+
+# -- generation only (reader agents score the candidates) --------------------------------------
+
+
+def test_generate_unit_saves_every_condition_without_a_judge(tmp_path: Path) -> None:
+    fake = Fake()
+
+    def mk(model: str) -> LLMClient:
+        return LLMClient(fake, model=model, cache_dir=tmp_path, ledger=Ledger())
+
+    clients = C4.Clients(mk(C4.LIST_MODEL), mk(C4.CHECK_MODEL), mk(C4.REGEN_MODEL),
+                         mk(C4.JUDGE_MODEL))  # fmt: skip
+    g = C4.generate_unit(_unit("granola"), clients, "- Bo sends the slides\n- Room booked")
+    w = C4.generate_unit(_unit("wispr"), clients, None)
+    assert not [c for c in fake.calls if c.prompt_id == C4.JUDGE_PROMPT]
+    conds = g["conditions"]
+    assert set(conds) == {C4.C3, C4.CU, C4.C3S, C4.CUS, C4.R, C4.RD, C4.Q}
+    assert C4.Q not in w["conditions"]
+    assert [x["text"] for x in conds[C4.CU]] == ["Bo sends slides", "Too little time"]
+    assert [x["src"] for x in conds[C4.R]] == ["regen:R1", "regen:R2"]  # every bullet
+    assert [x["text"] for x in conds[C4.RD]] == ["Bo sends the slides"]  # rubber deduped
+    assert [x["src"] for x in conds[C4.Q]] == ["chat:1", "chat:2"]
+    assert g["bullets_sha"] == C4.bullets_sha(_unit("wispr"))
+    assert json.loads(json.dumps(g))["conditions"] == conds  # JSON-ready
+
+
+def test_condition_items_caps_and_strict() -> None:
+    cov = [_cov(1, in_notes="partly"), _cov(2), _cov(3), _cov(4), _cov(5, in_notes="yes")]
+    out = C4.condition_items(cov, [], {}, None, k=2)
+    assert [x["src"] for x in out[C4.CU]] == ["cov:I2", "cov:I3", "cov:I4", "cov:I1"]
+    assert [x["src"] for x in out[C4.C3]] == ["cov:I2", "cov:I3"]
+    assert [x["src"] for x in out[C4.CUS]] == ["cov:I2", "cov:I3", "cov:I4"]
+    assert out[C4.R] == out[C4.RD] == [] and C4.Q not in out
+
+
+def test_generation_rows_drop_judge_and_e3() -> None:
+    rows = [{"stage": "L map (e1.enumerate)"}, {"stage": "judge x3 (e4.judge)"},
+            {"stage": "E3 baseline x3 (v5)"}, {"stage": "R regenerate (e4.regen)"}]  # fmt: skip
+    assert [r["stage"][:5] for r in C4.generation_rows(rows)] == ["L map", "R reg"]

@@ -24,6 +24,10 @@ condition, in a seeded order; per item its kind, the gold items it states, wheth
 transcript supports it, whether the notes already have it, and, for actions, whether its owner is
 right. Several passes, combined per item by majority (:func:`majority`).
 
+**Generation only** (:func:`generate_unit`): every stage but the judge, saving each
+condition's candidates for Claude Code reader agents (``prompts/e4_reader.v1.md``,
+``tenor.evals.e4_reader``), which replace the API judge.
+
 **Metrics** (:func:`score_items`): precision of shown items as true omissions (lenient: not
 already in the notes, a decision / action / problem, and states a missing gold item or is fully
 supported; strict: states a missing gold item), recall of missing gold, duplicates of notes
@@ -821,6 +825,80 @@ def run_meeting(
             f"{c} {s['true']}/{s['n_shown']} true, rec {s['recovered']}/{s['n_missing']}"
             for c, s in scores.items()))  # fmt: skip
     return records
+
+
+# -- generation only (scored by Claude Code reader agents, prompts/e4_reader.v1.md) -----------
+
+GENERATION_STAGES = (*LIST_STAGES, A.STAGE, DEDUPE_STAGE, REGEN_STAGE)
+
+
+def generation_rows(rows: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    """Quote rows of the generation stages only (no E4 judge, no E3 baseline)."""
+    return [r for r in rows if not str(r["stage"]).startswith(("judge", "E3"))]
+
+
+def bullets_sha(unit: N.Unit) -> str:
+    """Fingerprint of the notes' bullets as the dedupe saw them (packets check it)."""
+    import hashlib
+
+    text = "\n".join(b.render() for b in unit.bullets)
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+def condition_items(
+    cov: Sequence[CovItem],
+    regen_bullets: Sequence[N.Bullet],
+    regen_dedupe: Mapping[str, str],
+    chat: Sequence[str] | None,
+    k: int = K,
+) -> dict[str, list[dict[str, str]]]:
+    """Each condition's items in display order, as ``{"src", "text"}``, with no judge.
+    C3 / CU / C3S / CUS as :func:`shown_ids`. ``R`` holds every regenerated bullet: R's
+    oracle filter (a decision / action / problem not already in the notes) is applied to the
+    reader's verdicts at scoring. RD: :func:`dedupe_regen`'s survivors. Q only when Chat was
+    asked (Granola)."""
+    ranked = rank(cov)
+    strict = [c for c in ranked if c.shown_strict]
+
+    def cv(items: Sequence[CovItem]) -> list[dict[str, str]]:
+        return [{"src": f"cov:{c.id}", "text": c.text} for c in items]
+
+    out = {CU: cv(ranked), C3: cv(ranked[:k]), CUS: cv(strict), C3S: cv(strict[:k])}
+    out[R] = [{"src": f"regen:{b.id}", "text": b.text} for b in regen_bullets]
+    out[RD] = [
+        {"src": f"regen:{b.id}", "text": b.text}
+        for b in regen_dap(regen_bullets)
+        if regen_dedupe.get(b.id, "yes") != "yes"
+    ]
+    if chat is not None:
+        out[Q] = [{"src": f"chat:{i}", "text": t} for i, t in enumerate(chat, 1)]
+    return out
+
+
+def generate_unit(
+    unit: N.Unit, clients: Clients, chat_raw: str | None, k: int = K
+) -> dict[str, Any]:
+    """Every generation stage on one unit (list, check, dedupe, regenerate, RD's dedupe) and
+    the candidates each condition shows; no judge. JSON-ready (holds product text: local
+    only)."""
+    cov = coverage(unit, clients.lister, clients.checker)
+    md, rb = regen(unit, clients.regen)
+    rd = dedupe_regen(unit, rb, clients.checker)
+    chat = chat_items(chat_raw) if chat_raw is not None else None
+    return {
+        "meeting_id": unit.meeting_id,
+        "product": unit.product,
+        "split": unit.split,
+        "n_bullets": len(unit.bullets),
+        "bullets_sha": bullets_sha(unit),
+        "coverage_items": [asdict(c) for c in cov],
+        "regen_markdown": md,
+        "regen_bullets": [asdict(b) for b in rb],
+        "regen_dedupe": rd,
+        "chat_raw": chat_raw,
+        "chat_items": chat,
+        "conditions": condition_items(cov, rb, rd, chat, k),
+    }
 
 
 # -- summary ----------------------------------------------------------------------------------
