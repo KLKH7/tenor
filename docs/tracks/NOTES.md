@@ -334,3 +334,38 @@ Run 3 per category, Granola / Wispr Flow:
   - Steps: a sandbox (IS1000a, pass 1, cap $0.16: $0.10, outputs checked), then TS3006b (cap $0.78), ES2006c (cap $0.65) and the rest of IS1000a (cap $0.40), each cap set after the spend before it. Then a $0 replay at `d582f67`.
   - Judge spend: **$0.77** for 18 calls. Cache: 465k read, 121k written; without it $1.54, so caching saved $0.78 (50%).
 - **Pooled report.** Built by `tenor ami notes-completeness-pool` over the three runs' result files, with no LLM calls. The judge calls under the pooled numbers cost $3.01.
+
+### Real meetings (Seattle council) (Preliminary)
+
+**Question.** When a real public meeting decides something, do the notes record the official outcome? Five Seattle City Council agenda items (2024–2026), each a segment of the public video played into both products. **n = 5 items, one city.** Gold is the city's official record, not an annotator's summary.
+
+- **Gold, built by code from Legistar JSON (no LLM).** Three claims per item:
+  - G1, the item: matter number and title.
+  - G2, the outcome: Legistar's action, e.g. passed, passed as amended, adopted, postponed.
+  - G3, the vote: tally and named voters, from the votes endpoint.
+  Four items were unanimous (9–0). One was split, 6–3.
+- **Judge.** E3's machinery: the same notes splitter, judge model (Sonnet 5.5), 3 passes and prompt caching. Prompt `council_notes.v1`, derived from `notes_completeness.v4`. Changes: gold = the official claims; no reference transcript, so no precision over the other bullets. The judge also lists every bullet about the outcome or vote and says whether it contradicts the record. Per item, the passes are combined by median coverage. A bullet counts as contradicting if most passes say so.
+- **Units.** Granola's notes exist for all 5 items: 3 were generated only after Kian opened the recordings. Wispr Flow's recording of CB 121259 was still reported as not finalized (`finalized: false`) at two read-only re-syncs after Kian opened it, so it was not synced and Wispr Flow has 4 items. The per-product counts below have different denominators.
+- **Code:** `tenor ami council-notes` ([`council_notes.py`](../../packages/tenor/evals/council_notes.py)). Numbers: [`evals/reports/council/notes_outcomes.json`](../../evals/reports/council/notes_outcomes.json).
+
+| Product | Items | Item named (full) | Outcome stated (full) | Vote: full / partial / none | Items with a contradicting bullet |
+|---|---|---|---|---|---|
+| Granola | 5 | 5 / 5 | 5 / 5 | 4 / 0 / 1 | 1 |
+| Wispr Flow | 4 | 4 / 4 | 4 / 4 | 3 / 1 / 0 | 1 |
+
+| Item | Official outcome | Vote | Granola: item / outcome / vote | Wispr Flow: item / outcome / vote |
+|---|---|---|---|---|
+| Res 32142 (2024-09-17) | postponed | 9–0 | full / full / full | full / full / full |
+| Res 32202 (2026-06-02) | adopted | 9–0 | full / full / full | full / full / full |
+| CB 121214 (2026-06-09) | passed | 9–0 | full / full / full | full / full / full |
+| CB 121259 (2026-08-04) | passed as amended | 9–0 | full / full / full | not synced |
+| CB 121282 (2026-10-20) | passed | 6–3 | full / full / **none** (contradiction) | full / full / **partial** (contradiction) |
+
+- **Both products named every item and stated every outcome correctly**, including "postponed" and "passed as amended".
+- **The one split vote is where both went wrong, in the same way.** Both notes give the correct 6–3 count. But both list Councilmember Rinck among the three opposed and leave out Councilmember Lin, who voted no on the record. All 3 passes flagged this for both products. Granola also files Lin among those in favor, so its vote claim is judged "none"; Wispr Flow's is "partial". Both transcripts contain the roll call. For Wispr Flow, the judge reports the transcript itself has the same name. We have not checked the audio, so we cannot say whether the error is in transcription or in note-writing.
+- **The judge was stable.** 23 of 27 claim verdicts (3 claims x 9 units) were the same in all 3 passes. Three of the exceptions are one Granola pass on CB 121259 that returned no claim verdicts (3 parser repairs; the other two passes agree on full). The fourth is the Wispr Flow vote on CB 121282 (partial, none, partial).
+- **Caveats.** n = 5, one city, one body, items picked because the archive had clear chapter markers. Four of five votes were unanimous, so "the vote" was mostly an easy claim. One judge model, no human labels. On CB 121214, Wispr Flow writes "passed as amended". Legistar records the council action as "passed", with the committee's earlier "pass as amended"; the judge did not count this as a contradiction.
+- **Provenance and cost.** Run 2026-11-09 (UTC). Code at `0410265`; the run's working tree also had this prompt file, committed afterwards. Judge `claude-sonnet-5-5`, prompt `council_notes.v1`, 3 passes.
+  - Quoted beforehand: $0.61 expected / $0.84 high without prompt caching; $0.39 / $0.61 with it.
+  - Sandbox: CB 121282, pass 1, both products, cap $0.20. Spent $0.04; outputs checked.
+  - Full run: hard cap $0.60, spent $0.25 (the sandbox calls replayed at $0). **Total $0.29.**

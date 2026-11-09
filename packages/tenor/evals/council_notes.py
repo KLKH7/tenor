@@ -88,6 +88,7 @@ def short_title(title: str, clauses: int = 2) -> str:
     return "; ".join(" ".join(c.split()) for c in title.split(";")[:clauses])
 
 
+_RTF_PAR = re.compile(r"\\par(?![a-z])")
 _RTF_CTRL = re.compile(r"\\[a-z]+-?\d* ?|\\'[0-9a-f]{2}|[{}]")
 
 
@@ -95,7 +96,7 @@ def rtf_text(rtf: str | None) -> str:
     """Plain text of a Legistar RTF minutes note (control words and the font table dropped)."""
     if not rtf:
         return ""
-    body = _RTF_CTRL.sub("", rtf.replace("\\par", "\n"))
+    body = _RTF_CTRL.sub("", _RTF_PAR.sub("\n", rtf))
     lines = [ln.strip() for ln in body.splitlines()]
     return "\n".join(ln for ln in lines if ln and not ln.endswith(";")).strip()
 

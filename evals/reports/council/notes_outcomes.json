@@ -1,0 +1,422 @@
+{
+ "meta": {
+  "date": "20261109T075156Z",
+  "git": {
+   "dirty": true,
+   "sha": "0410265"
+  },
+  "gold_source": "Legistar event item + votes JSON, built by code (no LLM)",
+  "judge_model": "claude-sonnet-5-5",
+  "max_usd": 0.6,
+  "passes": 3,
+  "pilot": false,
+  "prompt": "council_notes.v1",
+  "skipped": [
+   "seattle_6847_124992:wispr: not synced"
+  ],
+  "spent_usd": 0.24856020000000004,
+  "stopped_early": null,
+  "units": [
+   "seattle_6018_110005:granola",
+   "seattle_6018_110005:wispr",
+   "seattle_6735_123444:granola",
+   "seattle_6735_123444:wispr",
+   "seattle_6749_123656:granola",
+   "seattle_6749_123656:wispr",
+   "seattle_6847_124992:granola",
+   "seattle_6910_126474:granola",
+   "seattle_6910_126474:wispr"
+  ]
+ },
+ "segments": [
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "granola",
+   "segment": "seattle_6018_110005"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "wispr",
+   "segment": "seattle_6018_110005"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "granola",
+   "segment": "seattle_6735_123444"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "wispr",
+   "segment": "seattle_6735_123444"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "granola",
+   "segment": "seattle_6749_123656"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "full",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "wispr",
+   "segment": "seattle_6749_123656"
+  },
+  {
+   "contradicting_bullets": 0,
+   "contradiction_flags_per_pass": [
+    0,
+    0,
+    0
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "full"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "none",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "none",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "none",
+     "full",
+     "full"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "n/a"
+   },
+   "product": "granola",
+   "segment": "seattle_6847_124992"
+  },
+  {
+   "contradicting_bullets": 1,
+   "contradiction_flags_per_pass": [
+    1,
+    1,
+    1
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "none"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "none",
+     "none",
+     "none"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "yes"
+   },
+   "product": "granola",
+   "segment": "seattle_6910_126474"
+  },
+  {
+   "contradicting_bullets": 1,
+   "contradiction_flags_per_pass": [
+    1,
+    1,
+    1
+   ],
+   "coverage": {
+    "item": "full",
+    "outcome": "full",
+    "tally": "partial"
+   },
+   "coverage_per_pass": {
+    "item": [
+     "full",
+     "full",
+     "full"
+    ],
+    "outcome": [
+     "full",
+     "full",
+     "full"
+    ],
+    "tally": [
+     "partial",
+     "none",
+     "partial"
+    ]
+   },
+   "heard": {
+    "item": "n/a",
+    "outcome": "n/a",
+    "tally": "yes"
+   },
+   "product": "wispr",
+   "segment": "seattle_6910_126474"
+  }
+ ],
+ "summary": {
+  "granola": {
+   "item": {
+    "full": 5,
+    "none": 0,
+    "not_full_but_heard": 0,
+    "partial": 0,
+    "unanimous_across_passes": 4
+   },
+   "n_segments": 5,
+   "outcome": {
+    "full": 5,
+    "none": 0,
+    "not_full_but_heard": 0,
+    "partial": 0,
+    "unanimous_across_passes": 4
+   },
+   "repairs": 3,
+   "segments_with_any_pass_flagging_contradiction": 1,
+   "segments_with_contradiction": 1,
+   "tally": {
+    "full": 4,
+    "none": 1,
+    "not_full_but_heard": 1,
+    "partial": 0,
+    "unanimous_across_passes": 4
+   }
+  },
+  "wispr": {
+   "item": {
+    "full": 4,
+    "none": 0,
+    "not_full_but_heard": 0,
+    "partial": 0,
+    "unanimous_across_passes": 4
+   },
+   "n_segments": 4,
+   "outcome": {
+    "full": 4,
+    "none": 0,
+    "not_full_but_heard": 0,
+    "partial": 0,
+    "unanimous_across_passes": 4
+   },
+   "repairs": 0,
+   "segments_with_any_pass_flagging_contradiction": 1,
+   "segments_with_contradiction": 1,
+   "tally": {
+    "full": 3,
+    "none": 0,
+    "not_full_but_heard": 1,
+    "partial": 1,
+    "unanimous_across_passes": 3
+   }
+  }
+ }
+}
