@@ -1,0 +1,95 @@
+{
+  "version": "gold_errata.v1",
+  "gold_version": "ami-1.6.2+errata.v1",
+  "base": "ami-1.6.2",
+  "source": "AMI Meeting Corpus, manual annotations v1.6.2 (University of Edinburgh and the AMI Consortium), CC BY 4.0. Corrections and quotes are derived from it.",
+  "date": "2026-11-09",
+  "status": "Post hoc. Made after seeing E3 results (prompt notes_completeness.v4), prompted by an independent re-read of the E3 TEST verdicts. Applied to E3 only; E1/E2 questions listed under affects_questions should get the same errata later.",
+  "line_ids": "Lnnnn = line index in AMI's reference transcript as the E3 judge reads it: tenor.ami.corpus.meeting_note, one utterance per dialogue act, consecutive same-speaker acts merged (tenor.evals.list_check.merge_turns, transcript_lines). Speakers are AMI scenario roles. Quotes are verbatim from that line.",
+  "item_ids": "E3 gold item ids (tenor.evals.notes_completeness.gold_items): D/A/P + position within the category in AMI's summary order, numbered before errata, so a drop does not renumber other items.",
+  "corrections": [
+    {
+      "meeting_id": "ES2006a",
+      "item_id": "A2",
+      "sentence_id": "ES2006a.elana.s.9",
+      "original_text": "The interface specialist will look at the working design.",
+      "action": "correct_owner",
+      "corrected_text": "The industrial designer will look at the working design.",
+      "evidence": [
+        {"line": "L0226", "speaker": "Industrial Designer", "quote": "my role in the project is um uh the industrial designer, so I'm supposed to design all the details of of the product um how it works"},
+        {"line": "L0415", "speaker": "Project Manager", "quote": "but basically you're looking at the working design,"},
+        {"line": "L0425", "speaker": "Industrial Designer", "quote": "Alright."}
+      ],
+      "reason": "The gold swaps the two designers' tasks (see A3). The Industrial Designer describes the working design (how it works) as his role and acknowledges the Project Manager's 'working design' assignment."
+    },
+    {
+      "meeting_id": "ES2006a",
+      "item_id": "A3",
+      "sentence_id": "ES2006a.elana.s.10",
+      "original_text": "The industrial designer will work on the technical functions design.",
+      "action": "correct_owner",
+      "corrected_text": "The interface specialist will work on the technical functions design.",
+      "evidence": [
+        {"line": "L0189", "speaker": "User Interface Designer", "quote": "at first I will be responsible for um for yeah, designing the technical functions of the um um of the remote control"},
+        {"line": "L0426", "speaker": "Project Manager", "quote": "you're looking at the technical functions design, and for you it's the user requirements specification,"}
+      ],
+      "reason": "The User Interface Designer states in the meeting that the technical functions design is his task; the gold gives it to the Industrial Designer."
+    },
+    {
+      "meeting_id": "TS3009c",
+      "item_id": "D9",
+      "sentence_id": "TS3009c.vkaraisk.s.22",
+      "original_text": "The chip is going to be a standard one.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {"line": "L0310", "speaker": "Industrial Designer", "quote": "But we do use an L_C_D_ screen, so we uh we do have to consider uh of we have to use a more advanced chip"},
+        {"line": "L0767", "speaker": "Project Manager", "quote": "Well uh all the all the inside work of our remote is uh standard work."},
+        {"line": "L0771", "speaker": "Project Manager", "quote": "The chip is normal silicon."}
+      ],
+      "reason": "Contradicts gold D2 (an advanced chip, for the LCD). D2 rests on an explicit statement tied to the LCD the team keeps (L0310). D9's only summary link is L0767 ('inside work is standard'), and L0771 speaks of the chip's material (silicon), not its type. Nothing in the meeting reverses the advanced chip, so D2 is kept and D9 dropped."
+    },
+    {
+      "meeting_id": "ES2006c",
+      "item_id": "P1",
+      "sentence_id": "ES2006c.elana.s.23",
+      "original_text": "*NA*.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [],
+      "reason": "Not a gold item: the annotator's placeholder for 'no problems' (no summary links). No notes can state it, so it lowers every product's recall equally."
+    }
+  ],
+  "not_applied": [
+    {
+      "meeting_id": "IS1000a",
+      "item_id": "A2",
+      "sentence_id": "IS1000a.elana.s.12",
+      "original_text": "The industrial designer will work on the technica function design.",
+      "proposed_action": "correct_owner",
+      "proposed_text": "The interface designer will work on the technical function design.",
+      "evidence": [
+        {"line": "L0584", "speaker": "Project Manager", "quote": "you yes, work on a design, keep it general,"},
+        {"line": "L0589", "speaker": "Industrial Designer", "quote": "Mm-hmm."},
+        {"line": "L0590", "speaker": "Project Manager", "quote": "So Um you will be working on on technical function design, so"},
+        {"line": "L0592", "speaker": "User Interface Designer", "quote": "Yeah, sure."}
+      ],
+      "reason": "Weak evidence, not applied. In IS1000a the Project Manager says 'you' without a name or role; who is meant can only be read from back-channels ('Mm-hmm', 'Yeah, sure'), which listeners also give to remarks addressed to others. The next session points the same way as the proposal (IS1000b L0291: the Industrial Designer presents 'the working design'; L0462: the User Interface Designer presents 'the technical function'), so A1/A2 may be the same swap as ES2006a, but that is another meeting's transcript. Left for a human decision."
+    }
+  ],
+  "affects_questions": {
+    "note": "E1/E2 questions (data/ami_questions) built from these AMI sentences. Not changed yet: they should get the same errata in a later, versioned regeneration.",
+    "applied": {
+      "ES2006a.elana.s.9": ["ami-ES2006a-action_who-02", "ami-ES2006a-action_what-02"],
+      "ES2006a.elana.s.10": ["ami-ES2006a-action_who-03", "ami-ES2006a-action_what-03"],
+      "TS3009c.vkaraisk.s.22": [],
+      "ES2006c.elana.s.23": ["ami-ES2006c-problem-01"]
+    },
+    "related": {
+      "TS3009c.vkaraisk.s.15": ["ami-TS3009b-TS3009c-what_changed-01"],
+      "IS1000a.elana.s.11": ["ami-IS1000a-action_who-01", "ami-IS1000a-action_what-01"],
+      "IS1000a.elana.s.12": ["ami-IS1000a-action_who-02", "ami-IS1000a-action_what-02"]
+    },
+    "related_note": "TS3009c.vkaraisk.s.15 is gold D2, kept; the question is listed only because its sentence is half of the D2/D9 pair. The IS1000a questions belong to the not-applied proposal. ami-ES2006c-problem-01 is in both questions.jsonl and replay_extension.jsonl (same id and content)."
+  }
+}

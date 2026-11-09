@@ -4418,10 +4418,14 @@ def ami_agreed_check(
 
 
 def _e3_units(
-    granola_db: Path, wispr_db: Path, overrides: Path, meetings: Sequence[str] = ()
+    granola_db: Path,
+    wispr_db: Path,
+    overrides: Path,
+    meetings: Sequence[str] = (),
+    errata: Any = None,
 ) -> tuple[list[Any], list[str]]:
     """One unit per product per meeting (default AMI_SET) that AMI summarised and both products
-    recorded with AI notes."""
+    recorded with AI notes; gold with ``errata`` (``tenor.ami.errata.Errata``) if given."""
     from tenor.ami.corpus import load_meeting
     from tenor.ami.products import AMI_SET
     from tenor.core.store import read_notes
@@ -4438,7 +4442,7 @@ def _e3_units(
     skipped: list[str] = []
     for mid in meetings or AMI_SET:
         m = load_meeting(mid)
-        if not N.gold_items(m.sentences):
+        if not N.gold_items(m.sentences, errata, mid):
             skipped.append(f"{mid}: no AMI decisions/actions/problems")
             continue
         if missing := [p for p in N.PRODUCTS if mid not in notes.get(p, {})]:
@@ -4448,7 +4452,7 @@ def _e3_units(
             skipped.append(f"{mid}: no AI notes from {', '.join(bare)}")
             continue
         r = roster([mid])
-        units += [N.make_unit(m, notes[p][mid], p, r) for p in N.PRODUCTS]
+        units += [N.make_unit(m, notes[p][mid], p, r, errata) for p in N.PRODUCTS]
     return units, skipped
 
 
@@ -4482,6 +4486,17 @@ def ami_notes_completeness(
         str,
         typer.Option(help="Comma-separated AMI meeting IDs (default: the AMI_SET replay set)."),
     ] = "",
+    prompt: Annotated[
+        str,
+        typer.Option(help="Judge prompt version (v4: the first reported results; v5: post hoc)."),
+    ] = "notes_completeness.v5",
+    gold: Annotated[
+        str,
+        typer.Option(
+            help="Gold: 'errata.v1' (AMI + data/ami_questions/gold_errata.v1.json, post hoc) or "
+            "'original' (AMI as published, as the v4 results). Recorded as gold_version."
+        ),
+    ] = "errata.v1",
 ) -> None:
     """E3: how much of AMI's human decisions / actions / problems each product's notes contain,
     and whether the notes' decision / action / problem bullets are true. --passes judge calls
@@ -4490,6 +4505,7 @@ def ami_notes_completeness(
     import functools
     from datetime import UTC, datetime
 
+    from tenor.ami.errata import ERRATA_V1, load_errata
     from tenor.blackbox.kit import check_committable
     from tenor.evals import list_check as E
     from tenor.evals import notes_completeness as N
@@ -4500,13 +4516,18 @@ def ami_notes_completeness(
         raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
     if passes < 1:
         raise typer.BadParameter("--passes must be at least 1")
+    if prompt not in N.PROMPTS:
+        raise typer.BadParameter(f"--prompt must be one of {N.PROMPTS}")
+    if gold not in ("errata.v1", "original"):
+        raise typer.BadParameter("--gold must be 'errata.v1' or 'original'")
+    errata = load_errata(ERRATA_V1) if gold == "errata.v1" else None
     chosen = [m.strip() for m in meetings.split(",") if m.strip()]
-    units, skipped = _e3_units(granola_db, wispr_db, overrides, chosen)  # meeting by meeting
+    units, skipped = _e3_units(granola_db, wispr_db, overrides, chosen, errata)  # by meeting
     pilot_units = [u for u in units if u.meeting_id == N.PILOT_MEETING]
     typer.echo(
         f"{len(units)} units ({len(units) // 2} meetings x {len(N.PRODUCTS)} products) x "
         f"{passes} passes; skipped: {skipped or 'none'}; pilot: {[u.key for u in pilot_units]}; "
-        f"judge {judge_model}"
+        f"judge {judge_model}, prompt {prompt}, gold {N.gold_version(errata)}"
     )
     cap = max_usd if max_usd is not None else (N.PILOT_MAX_USD if pilot else None)
     if cap is None and not quote_only:
@@ -4514,8 +4535,8 @@ def ami_notes_completeness(
     ledger = Ledger()
     judge_c = LLMClient(model=judge_model, ledger=ledger, max_usd=cap, offline=quote_only)
     counter = functools.partial(count_tokens, model=judge_model, cache_dir=judge_c.cache_dir)
-    fq = N.quote(units, judge_c, counter, passes)
-    pq = N.quote(pilot_units, judge_c, counter, passes)
+    fq = N.quote(units, judge_c, counter, passes, prompt)
+    pq = N.quote(pilot_units, judge_c, counter, passes, prompt)
     for label, q in (("full", fq), ("pilot (DEV)", pq)):
         typer.echo(
             f"{label}: {q.calls} judge calls ({q.cached} cached), {q.input_tokens:,} input "
@@ -4547,7 +4568,7 @@ def ami_notes_completeness(
         for u in run:
             done = []
             for k in range(1, passes + 1):
-                done.append(N.run_unit(u, judge_c, k))
+                done.append(N.run_unit(u, judge_c, k, prompt))
                 a = done[-1]["scores"]["all"]
                 typer.echo(
                     f"{u.key} pass {k}: recall {a['recall']:.3f}, precision "
@@ -4560,7 +4581,7 @@ def ami_notes_completeness(
 
     def counted(us: list[Any]) -> tuple[int, int]:
         """Exact input tokens (+ overhead) and items over every pass of ``us``."""
-        reqs = [N.judge_request(u, k) for u in us for k in range(1, passes + 1)]
+        reqs = [N.judge_request(u, k, prompt) for u in us for k in range(1, passes + 1)]
         tin = sum(counter([f"{r.system}\n\n{r.user}" for r in reqs])) + N.OVERHEAD * len(reqs)
         return tin, passes * sum(N.items_of(u) for u in us)
 
@@ -4575,7 +4596,20 @@ def ami_notes_completeness(
             "git": _git(),
             "seed": seed,
             "judge_model": judge_model,
-            "prompt": N.PROMPT,
+            "prompt": prompt,
+            "gold_version": N.gold_version(errata),
+            "gold_errata": (
+                {
+                    "file": str(ERRATA_V1),
+                    "applied": [
+                        f"{c.meeting_id} {c.item_id}: {c.action}"
+                        for c in errata.corrections
+                        if any(u.meeting_id == c.meeting_id for u in run)
+                    ],
+                }
+                if errata
+                else None
+            ),
             "passes": passes,
             "pass_marker": "Judging pass k. (after the prompt-cache breakpoints)",
             "aggregate": "mean over passes (headline); majority vote per item (alternative)",

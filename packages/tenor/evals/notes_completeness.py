@@ -6,7 +6,8 @@ What share of what was decided, assigned and raised in a meeting appears in a pr
 * **Unit**: one product's notes for one AMI meeting (the replay set, both products recorded,
   and AMI has an abstractive summary for it).
 * **Gold**: AMI's human DECISIONS / ACTIONS / PROBLEMS sentences for the meeting, one item per
-  sentence (``D1``, ``A1``, ``P1``, ...), plus the speaker roster.
+  sentence (``D1``, ``A1``, ``P1``, ...), plus the speaker roster; optionally with versioned
+  errata (:mod:`tenor.ami.errata`), recorded as ``gold_version``.
 * **Notes items**: the product's AI notes (``summary_markdown``) split deterministically into
   bullets (:func:`split_notes`), each with the heading it sat under; a sub-point keeps its
   parent. No LLM in the split, so a bullet may hold more than one claim.
@@ -33,6 +34,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from tenor.ami.errata import GOLD_ORIGINAL, Errata
 from tenor.core.models import Channel, MeetingNote
 from tenor.evals.list_check import (
     Line,
@@ -59,8 +61,13 @@ from tenor.llm.client import (
 # and marked bullets "partly" for an unmatched label; v3 says how to read labels. v3 (pilot): its
 # example of a non-match was taken from the DEV meeting and made the judge reject a real match
 # there, and "an owner nobody confirmed" still sent unmatched labels to "partly"; v4 uses a
-# neutral example and drops that phrase.
-PROMPT = "notes_completeness.v4"
+# neutral example and drops that phrase. v5 (post hoc, after the v4 TEST results and an independent
+# re-read of them, data/private/E3_ADJUDICATION.md; decided by Kian): a gold problem is covered when
+# the notes record the issue, also together with how it was resolved (v4's judge often wanted it
+# framed as an open question); the existing owner rules restated as a list (names count as roles,
+# joint owners, gold with no owner, a wrong owner gives "none"), meaning unchanged.
+PROMPT = "notes_completeness.v5"
+PROMPTS = ("notes_completeness.v4", "notes_completeness.v5")  # v4: the first reported results
 STAGE = "e3.judge"
 JUDGE_MODEL = "claude-sonnet-5-5"  # E1's judge
 PILOT_MEETING = "IS1008a"  # the one DEV meeting (ami/questions.DEV_MEETINGS)
@@ -197,18 +204,37 @@ class GoldItem:
     text: str
 
 
-def gold_items(sentences: Iterable[Any]) -> list[GoldItem]:
+def gold_items(
+    sentences: Iterable[Any], errata: Errata | None = None, meeting_id: str = ""
+) -> list[GoldItem]:
     """AMI's DECISIONS / ACTIONS / PROBLEMS sentences (``corpus.SummarySentence``-like: has
-    ``.section`` and ``.text``) as gold items, one per sentence, numbered per category in
-    document order. ABSTRACT sentences are not gold."""
+    ``.section`` and ``.text``; ``.sentence_id`` when ``errata`` is given) as gold items, one per
+    sentence, numbered per category in document order. ABSTRACT sentences are not gold.
+
+    With ``errata``, ``meeting_id``'s corrections apply after numbering, so a dropped item does
+    not renumber the others: ``drop`` removes the item, ``correct_owner`` replaces its text. A
+    correction whose item id or original text does not match raises ``ValueError``."""
+    fixes = errata.for_meeting(meeting_id) if errata else {}
     out: list[GoldItem] = []
     count: dict[str, int] = {}
+    used: set[str] = set()
     for s in sentences:
         if s.section not in SECTIONS:
             continue
         cat, prefix = SECTIONS[s.section]
         count[cat] = count.get(cat, 0) + 1
-        out.append(GoldItem(f"{prefix}{count[cat]}", cat, " ".join(s.text.split())))
+        item = GoldItem(f"{prefix}{count[cat]}", cat, " ".join(s.text.split()))
+        fix = fixes.get(getattr(s, "sentence_id", ""))
+        if fix is not None:
+            if (fix.item_id, fix.original_text) != (item.id, item.text):
+                raise ValueError(f"errata {meeting_id} {fix.item_id} does not match {item}")
+            used.add(fix.sentence_id)
+            if fix.corrected_text is None:
+                continue
+            item = GoldItem(item.id, cat, fix.corrected_text)
+        out.append(item)
+    if missing := set(fixes) - used:
+        raise ValueError(f"errata for {meeting_id} name unknown sentences: {sorted(missing)}")
     order = {c: i for i, c in enumerate(CATEGORIES)}
     return sorted(out, key=lambda g: (order[g.category], int(g.id[1:])))
 
@@ -279,11 +305,18 @@ def has_notes(note: MeetingNote) -> bool:
     return bool((note.summary_markdown or note.summary_text or "").strip())
 
 
-def make_unit(meeting: Any, note: MeetingNote, product: str, roster: str = "") -> Unit:
+def make_unit(
+    meeting: Any,
+    note: MeetingNote,
+    product: str,
+    roster: str = "",
+    errata: Errata | None = None,
+) -> Unit:
     """One unit from an AMI meeting (``corpus.AmiMeeting``) and a product's note for it. The
     note's transcript should already be the one scored elsewhere (``deletion_ami.reader_notes``:
     Granola's microphone turns and Wispr's banner dropped). Notes = ``summary_markdown`` (else
-    ``summary_text``); typed private notes are not the product's notes and are left out."""
+    ``summary_text``); typed private notes are not the product's notes and are left out. Gold:
+    :func:`gold_items`, with ``errata`` if given (see :func:`gold_version`)."""
     from tenor.ami.corpus import meeting_note
     from tenor.ami.questions import DEV_MEETINGS
 
@@ -293,7 +326,7 @@ def make_unit(meeting: Any, note: MeetingNote, product: str, roster: str = "") -
         product=product,
         split="dev" if meeting.meeting_id in DEV_MEETINGS else "test",
         bullets=split_notes(note.summary_markdown or note.summary_text or ""),
-        gold=gold_items(meeting.sentences),
+        gold=gold_items(meeting.sentences, errata, meeting.meeting_id),
         roster=roster,
         reference=ref,
         transcript=transcript_lines(note, _speaker),
@@ -392,14 +425,20 @@ SCHEMA: dict[str, Any] = _obj(
 )
 
 
-def judge_request(unit: Unit, pass_no: int = 1) -> LLMRequest:
-    """Pass ``pass_no`` of the judge on ``unit``. Breakpoints after the shared meeting part and
-    after the product part (:func:`judge_parts`), plus the system prompt: 3 of the API's 4."""
+def gold_version(errata: Errata | None) -> str:
+    """What the gold was: AMI as published, or AMI with that errata version."""
+    return errata.gold_version if errata else GOLD_ORIGINAL
+
+
+def judge_request(unit: Unit, pass_no: int = 1, prompt: str = PROMPT) -> LLMRequest:
+    """Pass ``pass_no`` of the judge (system prompt ``prompt``) on ``unit``. Breakpoints after
+    the shared meeting part and after the product part (:func:`judge_parts`), plus the system
+    prompt: 3 of the API's 4."""
     user, breaks = breaks_after(*judge_parts(unit, pass_no))
     return LLMRequest(
         stage=STAGE,
-        prompt_id=PROMPT,
-        system=load_prompt(PROMPT),
+        prompt_id=prompt,
+        system=load_prompt(prompt),
         user=user,
         schema=SCHEMA,
         max_tokens=MAX_TOKENS,
@@ -607,10 +646,12 @@ def score_unit(v: Verdicts) -> dict[str, dict[str, Any]]:
     return {c: score_category(v, c).row() for c in (*CATEGORIES, ALL)}
 
 
-def run_unit(unit: Unit, judge: LLMClient, pass_no: int = 1) -> dict[str, Any]:
-    """Judge (pass ``pass_no``) and score one unit; a JSON-ready record (holds notes and gold
-    text: local only)."""
-    out = judge.structured(judge_request(unit, pass_no), JudgeOut)
+def run_unit(
+    unit: Unit, judge: LLMClient, pass_no: int = 1, prompt: str = PROMPT
+) -> dict[str, Any]:
+    """Judge (pass ``pass_no``, prompt ``prompt``) and score one unit; a JSON-ready record
+    (holds notes and gold text: local only)."""
+    out = judge.structured(judge_request(unit, pass_no, prompt), JudgeOut)
     v = parse(out, unit)
     return {
         "meeting_id": unit.meeting_id,
@@ -904,7 +945,16 @@ def aggregate(result: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-POOL_KEYS = ("judge_model", "prompt", "passes", "max_product_chars", "paragraph_chars")
+POOL_KEYS = (
+    "judge_model", "prompt", "gold_version", "passes", "max_product_chars", "paragraph_chars",
+)  # fmt: skip
+
+
+def _pool_meta(meta: Mapping[str, Any], key: str) -> Any:
+    """A run's value for a pool key; runs from before errata existed used the original gold."""
+    if key == "gold_version":
+        return meta.get(key, GOLD_ORIGINAL)
+    return meta.get(key)
 
 
 def pool(results: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]:
@@ -917,7 +967,7 @@ def pool(results: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]
     for r in results:
         if r["meta"].get("pilot") or r["meta"].get("stopped_early"):
             raise ValueError(f"run {r['meta']['date']} is a pilot or stopped early")
-        if diff := [k for k in POOL_KEYS if r["meta"].get(k) != first.get(k)]:
+        if diff := [k for k in POOL_KEYS if _pool_meta(r["meta"], k) != _pool_meta(first, k)]:
             raise ValueError(f"run {r['meta']['date']} differs in {diff}; not poolable")
     records = [rec for r in results for rec in r["records"]]
     keys = [(rec["meeting_id"], rec["product"]) for rec in records]
@@ -933,7 +983,7 @@ def pool(results: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]
         }
     )
     pooled["meta"] = {
-        **{k: first.get(k) for k in POOL_KEYS},
+        **{k: _pool_meta(first, k) for k in POOL_KEYS},
         "seed": seed,
         "runs": [r["meta"]["date"] for r in results],
         "units": [f"{m}:{p}" for m, p in keys],
@@ -1011,7 +1061,9 @@ def items_of(unit: Unit) -> int:
     return len(unit.gold) + len(unit.bullets)
 
 
-def quote(units: Sequence[Unit], judge: LLMClient, counter: Any, passes: int = 1) -> Quote:
+def quote(
+    units: Sequence[Unit], judge: LLMClient, counter: Any, passes: int = 1, prompt: str = PROMPT
+) -> Quote:
     """Price ``passes`` judge passes on each of ``units``, in run order (unit by unit, passes
     back to back; order ``units`` meeting by meeting). Input exact (``counter``: count_tokens,
     free) plus :data:`OVERHEAD`; output ASSUMED (:data:`ASSUMED_OUT_BASE` + per item).
@@ -1020,13 +1072,13 @@ def quote(units: Sequence[Unit], judge: LLMClient, counter: Any, passes: int = 1
     (:func:`judge_parts`); the pass marker is never cached."""
     q = Quote()
     shapes: list[PromptShape] = []
-    sys_tokens = counter([load_prompt(PROMPT)])[0] + OVERHEAD
+    sys_tokens = counter([load_prompt(prompt)])[0] + OVERHEAD
     for u in units:
         shared, product, _ = judge_parts(u)
         t_shared, t_product = counter([shared, product])
         n = items_of(u)
         for k in range(1, passes + 1):
-            req = judge_request(u, k)
+            req = judge_request(u, k, prompt)
             q.calls += 1
             if judge.is_cached(req):
                 q.cached += 1

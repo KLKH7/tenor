@@ -335,6 +335,38 @@ Run 3 per category, Granola / Wispr Flow:
   - Judge spend: **$0.77** for 18 calls. Cache: 465k read, 121k written; without it $1.54, so caching saved $0.78 (50%).
 - **Pooled report.** Built by `tenor ami notes-completeness-pool` over the three runs' result files, with no LLM calls. The judge calls under the pooled numbers cost $3.01.
 
+### E3 v5 rubric and gold errata: post-hoc changes (not yet run)
+
+**Disclosure.** Everything in this subsection was decided **after seeing the v4 results above**. An independent agent re-read all 298 TEST verdicts (same model family as the judge, so not human calibration). It agreed with the judge on 74% of items (Cohen's kappa 0.55) and found two things: a rubric dispute on problems, and errors in the AMI gold. The v4 / original-gold numbers above remain the first reported results. Any v5 / errata number will be shown next to them, never in their place.
+
+- **Rubric, prompt `notes_completeness.v5`.** A gold problem is covered if the notes record the issue, also together with how it was resolved; no open-question framing needed. v4's judge often wanted the open question, and the re-read counted 18 disagreements of that kind. The owner rules are restated, same meaning (names count as roles; joint owners; gold with no owner; wrong owner = none). Examples in the prompt are neutral, not from DEV or TEST.
+- **Gold errata, [`gold_errata.v1.json`](../../data/ami_questions/gold_errata.v1.json)** (`gold_version` `ami-1.6.2+errata.v1`). Each correction has the AMI transcript line and a quote, checked against AMI:
+
+| Meeting | Item | Original | Action | Evidence |
+|---|---|---|---|---|
+| ES2006a | A2 | The interface specialist will look at the working design. | correct owner: industrial designer | L0226, ID: "I'm supposed to design all the details of of the product um how it works" |
+| ES2006a | A3 | The industrial designer will work on the technical functions design. | correct owner: interface specialist | L0189, UI: "at first I will be responsible for ... designing the technical functions" |
+| TS3009c | D9 | The chip is going to be a standard one. | drop (contradicts D2) | L0310, ID: "we have to use a more advanced chip" (for the LCD); D9 rests on L0767, "the inside work ... is standard work" |
+| ES2006c | P1 | `*NA*.` | drop | Placeholder, no summary links |
+| IS1000a | A2 | The industrial designer will work on the technica function design. | **not applied** (weak evidence) | Only back-channels show who was addressed (L0589–L0592) |
+
+- **Applied to E3 only.** E1/E2 questions built from the same sentences should get the same errata later: `ami-ES2006a-action_who-02`, `-03`, `ami-ES2006a-action_what-02`, `-03`, `ami-ES2006c-problem-01`.
+- **What can be computed without new calls.** The two drops applied to the v4 verdicts: pooled TEST recall Granola 0.62 → 0.63, Wispr Flow 0.69 → 0.70. Problems rise from 0.48 → 0.53 and 0.54 → 0.60, mostly because ES2006c no longer has a problem category. Sign test unchanged (10 / 1 / 0, p = 0.01). The owner corrections and the new problem rule need a re-judge.
+- **Re-judge quote.** 12 meetings (11 TEST + DEV) x 2 products x 3 passes = 72 calls: $2.83 expected / $4.29 high with prompt caching ($5.50 / $6.96 without). That is above the $2.00 limit, so it has not been run. It waits for approval.
+
+| Product | Category | v4, original gold (reported) | v4 verdicts, errata drops only | v5, errata v1 |
+|---|---|---|---|---|
+| Granola | decision | 0.70 | 0.70 | not run |
+| Granola | action | 0.56 | 0.56 | not run |
+| Granola | problem | 0.48 | 0.53 | not run |
+| **Granola** | **all** | **0.62** | **0.63** | not run |
+| Wispr Flow | decision | 0.75 | 0.75 | not run |
+| Wispr Flow | action | 0.61 | 0.61 | not run |
+| Wispr Flow | problem | 0.54 | 0.60 | not run |
+| **Wispr Flow** | **all** | **0.69** | **0.70** | not run |
+
+- **Code.** `tenor ami notes-completeness --prompt {notes_completeness.v4,notes_completeness.v5} --gold {errata.v1,original}`. The defaults are v5 and errata.v1. `prompt`, `gold_version` and the applied corrections are recorded in each result's meta, and pooling refuses mixed gold versions. `--prompt notes_completeness.v4 --gold original` replays all 72 v4 calls from cache at $0.
+
 ### Real meetings (Seattle council) (Preliminary)
 
 **Question.** When a real public meeting decides something, do the notes record the official outcome? Five Seattle City Council agenda items (2024–2026), each a segment of the public video played into both products. **n = 5 items, one city.** Gold is the city's official record, not an annotator's summary.
