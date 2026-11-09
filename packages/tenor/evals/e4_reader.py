@@ -58,14 +58,17 @@ class PoolItem:
 
 
 def pool(
-    conditions: Mapping[str, Sequence[Mapping[str, str]]], seed: int, key: str
+    conditions: Mapping[str, Sequence[Mapping[str, str]]],
+    seed: int,
+    key: str,
+    order: Sequence[str] = CONDITIONS,
 ) -> list[PoolItem]:
     """One unit's candidates: the union of every condition's items, texts equal after
-    ``normalize`` merged (the first text seen, in :data:`CONDITIONS` order, is shown), ids
-    ``K1``.. in an order shuffled by ``seed`` and the unit ``key`` (blind to the condition).
-    Empty texts are dropped."""
+    ``normalize`` merged (the first text seen, in ``order`` (default :data:`CONDITIONS`), is
+    shown), ids ``K1``.. in an order shuffled by ``seed`` and the unit ``key`` (blind to the
+    condition). Empty texts are dropped."""
     by: dict[str, tuple[str, list[Source]]] = {}
-    for cond in CONDITIONS:
+    for cond in order:
         for rank, it in enumerate(conditions.get(cond, ())):
             k = E.normalize(it["text"])
             if k:
@@ -75,13 +78,13 @@ def pool(
     return [PoolItem(f"K{n}", by[k][0], tuple(by[k][1])) for n, k in enumerate(keys, 1)]
 
 
-def shown(items: Sequence[PoolItem]) -> dict[str, list[str]]:
+def shown(items: Sequence[PoolItem], order: Sequence[str] = CONDITIONS) -> dict[str, list[str]]:
     """Condition -> K ids in its display order (a condition's own duplicates once)."""
     out: dict[str, list[tuple[int, str]]] = {}
     for it in items:
         for s in it.sources:
             out.setdefault(s.condition, []).append((s.rank, it.id))
-    return {c: list(dict.fromkeys(i for _, i in sorted(out[c]))) for c in CONDITIONS if c in out}
+    return {c: list(dict.fromkeys(i for _, i in sorted(out[c]))) for c in order if c in out}
 
 
 def key_unit(

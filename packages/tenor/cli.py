@@ -4807,6 +4807,58 @@ def ami_gap_check(
         raise typer.Exit(code)
 
 
+@ami_app.command("bullet-cues")
+def ami_bullet_cues(
+    quote_only: Annotated[bool, typer.Option("--quote", help="Price it; spends nothing.")] = False,
+    pilot: Annotated[bool, typer.Option(help="Sandbox: the DEV meeting (IS1008a).")] = False,
+    max_usd: Annotated[float | None, typer.Option(help="Hard spend cap (approved amount).")] = None,
+    model: Annotated[str, typer.Option(help="Comma-separated: haiku,sonnet.")] = "haiku",
+    yes: Annotated[bool, typer.Option(help="Skip the confirmation prompt.")] = False,
+    seed: Annotated[int, typer.Option()] = 42,
+    readers: Annotated[
+        Path, typer.Option(help="Private reader folder (packets, keys, consensus runs).")
+    ] = Path("data/private/reader"),
+    maps: Annotated[Path, typer.Option(help="Meeting-map files (hand alignment).")] = Path(
+        "data/private/feature_tests/map"
+    ),
+    out_dir: OutDirOpt = AMI_RESULTS / "bullet_cues",
+    report: Annotated[Path, typer.Option(help="Numbers-only report (TEST).")] = Path(
+        "evals/reports/ami/bullet_cues.json"
+    ),
+) -> None:
+    """Bullet cues: per notes bullet, decisions / actions / problems said in its transcript span
+    but missing from the notes, with verified quotes (``tenor.evals.bullet_cues``). Writes
+    condition-blind reader packets for Claude Code readers. --quote, --pilot, then --max-usd."""
+    import json
+
+    from tenor.evals import bullet_cues as B
+    from tenor.evals import coverage_e4 as C4
+    from tenor.evals import gap_check as G
+
+    units = B.load_units(readers / "packets", (B.PILOT_MEETING, *C4.TEST_MEETINGS))
+    key = json.loads((readers / "e4_keys" / f"{G.TEST_RUN}.key.json").read_text())
+    consensus = readers / "runs" / "e4_test_consensus"
+    code = B.main(
+        units,
+        maps=B.load_maps(maps),
+        e4_key_units=key["units"],
+        e4_consensus=[r for p in sorted(consensus.glob("*.jsonl")) for r in G.read_jsonl(p)],
+        models=[m.strip() for m in model.split(",") if m.strip()],
+        out_dir=out_dir,
+        packets_dir=readers / "cue_packets",
+        key_dir=readers / "cue_keys",
+        report=report,
+        quote_only=quote_only,
+        pilot=pilot,
+        max_usd=max_usd,
+        seed=seed,
+        confirm=(lambda _t: True) if yes else (lambda t: typer.confirm(t)),
+        echo=typer.echo,
+    )
+    if code:
+        raise typer.Exit(code)
+
+
 @ami_app.command("council-notes")
 def ami_council_notes(
     quote_only: Annotated[bool, typer.Option("--quote", help="Price only; no spend.")] = False,
