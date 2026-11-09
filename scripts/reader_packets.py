@@ -1,14 +1,15 @@
 """Write one markdown packet per (AMI meeting, product) for an E3 "second reader" agent.
 
     uv run --no-sync python scripts/reader_packets.py --meetings IS1008a \
-        [--gold original|errata] [--out data/private/reader/packets/] [--e3-results DIR]
+        [--gold original|errata|errata2] [--out data/private/reader/packets/] [--e3-results DIR]
 
 A packet holds everything the reader (prompts/notes_reader.v1.md) needs to decide, per gold
 item, whether the product's notes cover it and whether the product's transcript has it:
 
 1. meeting background (AMI speakers and roles, the roster the E3 judge saw, meeting stage);
 2. the gold items (id, category, text): AMI 1.6.2 as published by default, or with
-   ``data/ami_questions/gold_errata.v1.json`` (``--gold errata``, gold ami-1.6.2+errata.v1);
+   ``data/ami_questions/gold_errata.v1.json`` (``--gold errata``, gold ami-1.6.2+errata.v1)
+   or ``gold_errata.v2.json`` (``--gold errata2``, gold ami-1.6.2+errata.v2);
 3. per gold item, the AMI reference-transcript passage its summary links point to: the turns
    holding a linked dialogue act (marked ``>>``), 3 turns before and 10 after. A meeting whose
    items have no links (IB4003) says so and gets the full AMI reference transcript once;
@@ -345,10 +346,24 @@ def write_packets(inputs: Sequence[PacketInput], out_dir: Path) -> list[tuple[st
     return rows
 
 
+ERRATA_FILES = {"errata": "ERRATA_V1", "errata2": "ERRATA_V2"}  # --gold -> tenor.ami.errata name
+
+
+def load_gold_errata(gold: str) -> Any:
+    """The errata for ``--gold`` (``None`` for ``original``): v1 for ``errata``, v2 for
+    ``errata2``."""
+    if gold == "original":
+        return None
+    sys.path.insert(0, str(ROOT / "packages"))
+    from tenor.ami import errata as E
+
+    return E.load_errata(ROOT / getattr(E, ERRATA_FILES[gold]))
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--meetings", required=True, help="Comma-separated AMI meeting ids.")
-    ap.add_argument("--gold", choices=("original", "errata"), default="original")
+    ap.add_argument("--gold", choices=("original", *ERRATA_FILES), default="original")
     ap.add_argument("--out", type=Path, default=OUT_DIR)
     ap.add_argument(
         "--e3-results",
@@ -362,12 +377,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="E3 run stamps to check bullets against (with --e3-results).",
     )
     a = ap.parse_args(argv)
-    errata = None
-    if a.gold == "errata":
-        sys.path.insert(0, str(ROOT / "packages"))
-        from tenor.ami.errata import ERRATA_V1, load_errata
-
-        errata = load_errata(ROOT / ERRATA_V1)
+    errata = load_gold_errata(a.gold)
     meetings = sorted({m.strip() for m in a.meetings.split(",") if m.strip()})
     inputs = load_inputs(meetings, errata)
     if a.e3_results is not None:

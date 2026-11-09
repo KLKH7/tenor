@@ -226,3 +226,11 @@ def test_human_cards_and_adjudication_labels(tmp_path: Path) -> None:
     assert s["vs_adjudication"]["agree"] == 1
     assert s["vs_judge"]["agree"] == 0
     assert s["vs_other_reader"]["agreement"] == 1.0
+
+
+def test_gold_errata_choices() -> None:
+    assert P.load_gold_errata("original") is None
+    assert P.load_gold_errata("errata").gold_version == "ami-1.6.2+errata.v1"
+    assert P.load_gold_errata("errata2").gold_version == "ami-1.6.2+errata.v2"
+    with pytest.raises(SystemExit):
+        P.main(["--meetings", "XX0001a", "--gold", "errata3"])
