@@ -273,6 +273,12 @@ def _speaker(u: Any) -> str:
     return str(u.speaker_name or ("Me" if u.channel is Channel.ME else "Them"))
 
 
+def has_notes(note: MeetingNote) -> bool:
+    """Whether the product wrote AI notes for this recording (Granola leaves a recording that
+    stopped on inactivity without a summary until someone opens it)."""
+    return bool((note.summary_markdown or note.summary_text or "").strip())
+
+
 def make_unit(meeting: Any, note: MeetingNote, product: str, roster: str = "") -> Unit:
     """One unit from an AMI meeting (``corpus.AmiMeeting``) and a product's note for it. The
     note's transcript should already be the one scored elsewhere (``deletion_ami.reader_notes``:
@@ -896,6 +902,45 @@ def aggregate(result: Mapping[str, Any]) -> dict[str, Any]:
         if all("passes" in r for r in result["records"]):
             out["pass_agreement"] = pass_agreement(result["records"])
     return out
+
+
+POOL_KEYS = ("judge_model", "prompt", "passes", "max_product_chars", "paragraph_chars")
+
+
+def pool(results: Sequence[Mapping[str, Any]], seed: int = 42) -> dict[str, Any]:
+    """Several full runs (same judge, prompt, passes and limits; no meeting twice) as one
+    numbers-only report: ``runs`` = each run's own :func:`aggregate` (its provenance kept),
+    ``pooled`` = summary, majority, spread, agreement and unit rows over all their records."""
+    if not results:
+        raise ValueError("nothing to pool")
+    first = results[0]["meta"]
+    for r in results:
+        if r["meta"].get("pilot") or r["meta"].get("stopped_early"):
+            raise ValueError(f"run {r['meta']['date']} is a pilot or stopped early")
+        if diff := [k for k in POOL_KEYS if r["meta"].get(k) != first.get(k)]:
+            raise ValueError(f"run {r['meta']['date']} differs in {diff}; not poolable")
+    records = [rec for r in results for rec in r["records"]]
+    keys = [(rec["meeting_id"], rec["product"]) for rec in records]
+    if len(set(keys)) != len(keys):
+        raise ValueError("a unit appears in more than one run")
+    merged = {"meta": {}, "records": records}
+    pooled = aggregate(
+        merged
+        | {
+            "summary": summarize(records, seed),
+            "summary_majority": summarize(records, seed, key="majority"),
+            "pass_spread": pass_spread(records),
+        }
+    )
+    pooled["meta"] = {
+        **{k: first.get(k) for k in POOL_KEYS},
+        "seed": seed,
+        "runs": [r["meta"]["date"] for r in results],
+        "units": [f"{m}:{p}" for m, p in keys],
+        # every judge call the pooled results rest on, at what it cost when first made
+        "judge_usd_all_calls": sum(float(r["meta"]["cost"]["all_calls"]["usd"]) for r in results),
+    }
+    return {"runs": [aggregate(r) for r in results], "pooled": pooled}
 
 
 def _costs(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:

@@ -20,6 +20,7 @@ from tenor.sources.base import NoteNotReady
 from tenor.sources.granola_mcp import (
     GranolaMCPSource,
     McpToolError,
+    parse_meeting_rows,
     parse_participants,
     passages_to_transcript,
     rendered_to_passages,
@@ -152,6 +153,19 @@ def mcp() -> FakeMcp:
 @pytest.fixture
 def source(mcp: FakeMcp) -> GranolaMCPSource:
     return GranolaMCPSource(mcp, clock=FakeClock())
+
+
+@pytest.mark.parametrize("status", ["transcript_only", "empty"])
+def test_placeholder_summary_is_no_summary(status: str) -> None:
+    """A note with no AI summary carries a placeholder sentence in ``<summary>``: not notes."""
+    text = (
+        '<meeting id="m" title="t" meeting_at="2026-11-08T21:00:40-05:00">\n'
+        f'  <summary status="{status}">\nNo AI summary has been generated for this meeting.'
+        "\n</summary>\n</meeting>"
+    )
+    assert parse_meeting_rows(text)[0]["summary"] is None
+    real = text.replace(f' status="{status}"', "").replace("No AI", "# Notes\n- No AI")
+    assert parse_meeting_rows(real)[0]["summary"].startswith("# Notes")
 
 
 def test_participants_parse_names_handles_and_creator() -> None:

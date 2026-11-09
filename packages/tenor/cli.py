@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -4329,8 +4329,11 @@ def ami_agreed_check(
 # -- E3: notes completeness (docs/tracks/NOTES.md, "E3") ------------------------------------
 
 
-def _e3_units(granola_db: Path, wispr_db: Path, overrides: Path) -> tuple[list[Any], list[str]]:
-    """One unit per product per AMI_SET meeting both products recorded and AMI summarised."""
+def _e3_units(
+    granola_db: Path, wispr_db: Path, overrides: Path, meetings: Sequence[str] = ()
+) -> tuple[list[Any], list[str]]:
+    """One unit per product per meeting (default AMI_SET) that AMI summarised and both products
+    recorded with AI notes."""
     from tenor.ami.corpus import load_meeting
     from tenor.ami.products import AMI_SET
     from tenor.core.store import read_notes
@@ -4345,13 +4348,16 @@ def _e3_units(granola_db: Path, wispr_db: Path, overrides: Path) -> tuple[list[A
     }
     units: list[Any] = []
     skipped: list[str] = []
-    for mid in AMI_SET:
+    for mid in meetings or AMI_SET:
         m = load_meeting(mid)
         if not N.gold_items(m.sentences):
             skipped.append(f"{mid}: no AMI decisions/actions/problems")
             continue
         if missing := [p for p in N.PRODUCTS if mid not in notes.get(p, {})]:
             skipped.append(f"{mid}: not recorded by {', '.join(missing)}")
+            continue
+        if bare := [p for p in N.PRODUCTS if not N.has_notes(notes[p][mid])]:
+            skipped.append(f"{mid}: no AI notes from {', '.join(bare)}")
             continue
         r = roster([mid])
         units += [N.make_unit(m, notes[p][mid], p, r) for p in N.PRODUCTS]
@@ -4384,6 +4390,10 @@ def ami_notes_completeness(
         Path | None,
         typer.Option(help="Also write the numbers-only aggregate here (checked). Not a pilot."),
     ] = None,
+    meetings: Annotated[
+        str,
+        typer.Option(help="Comma-separated AMI meeting IDs (default: the AMI_SET replay set)."),
+    ] = "",
 ) -> None:
     """E3: how much of AMI's human decisions / actions / problems each product's notes contain,
     and whether the notes' decision / action / problem bullets are true. --passes judge calls
@@ -4402,7 +4412,8 @@ def ami_notes_completeness(
         raise typer.BadParameter("--quote already prices the pilot; drop --pilot")
     if passes < 1:
         raise typer.BadParameter("--passes must be at least 1")
-    units, skipped = _e3_units(granola_db, wispr_db, overrides)  # meeting by meeting
+    chosen = [m.strip() for m in meetings.split(",") if m.strip()]
+    units, skipped = _e3_units(granola_db, wispr_db, overrides, chosen)  # meeting by meeting
     pilot_units = [u for u in units if u.meeting_id == N.PILOT_MEETING]
     typer.echo(
         f"{len(units)} units ({len(units) // 2} meetings x {len(N.PRODUCTS)} products) x "
@@ -4528,6 +4539,36 @@ def ami_notes_completeness(
             f"${reprice['full_usd_with_margin']:.2f} with x{N.MARGIN} margin (prompt caching "
             "as in the pilot). Ask before any run over $2."
         )
+
+
+@ami_app.command("notes-completeness-pool")
+def ami_notes_completeness_pool(
+    results: Annotated[
+        list[Path], typer.Argument(help="Full-run result JSONs (gitignored), oldest first.")
+    ],
+    out: Annotated[
+        Path, typer.Option(help="Numbers-only pooled report (checked; committed).")
+    ] = Path("evals/reports/ami/notes_completeness.json"),
+    seed: Annotated[int, typer.Option()] = 42,
+    note: Annotated[
+        list[str] | None, typer.Option(help="Provenance note to record (repeatable).")
+    ] = None,
+) -> None:
+    """E3: pool several full runs (same judge, prompt and passes) into one numbers-only report,
+    each run's provenance kept under ``runs``. No LLM calls."""
+    import json
+
+    from tenor.blackbox.kit import check_committable
+    from tenor.evals import list_check as E
+    from tenor.evals import notes_completeness as N
+
+    loaded = [json.loads(p.read_text()) for p in results]
+    report = N.pool(loaded, seed)
+    report["pooled"]["meta"]["notes"] = list(note or [])
+    check_committable(report, N.private_texts([r for x in loaded for r in x["records"]]))
+    E.write_json(out, report)
+    meta = report["pooled"]["meta"]
+    typer.echo(f"pooled {len(meta['units'])} units from {len(loaded)} runs -> {out}")
 
 
 # -- MCP contract check (packages/tenor/sources/contract.py) -----------------------------

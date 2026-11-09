@@ -51,6 +51,8 @@ class McpToolError(SourceError):
 
 # -- parsing ------------------------------------------------------------------------------------
 
+# ``<summary status="...">`` values meaning "no AI summary" (observed 2026-11-05 and -09).
+NO_SUMMARY = frozenset({"transcript_only", "empty"})
 _ATTR = re.compile(r'([\w-]+)="([^"]*)"')
 _MEETING = re.compile(r"<meeting\s([^>]*)>(.*?)</meeting>", re.S)
 _PARTICIPANT = re.compile(
@@ -91,7 +93,10 @@ def parse_meeting_rows(text: str) -> list[dict[str, Any]]:
     for attrs, body in _MEETING.findall(text):
         row: dict[str, Any] = _attrs(attrs)
         row["participants"] = parse_participants(_section(body, "known_participants") or "")
-        row["summary"] = _section(body, "summary")
+        tag = re.search(r"<summary(\s[^>]*)?>", body)
+        status = _attrs(tag.group(1) or "").get("status") if tag else None
+        # A note with no AI summary carries a placeholder sentence, not notes (VERIFIED).
+        row["summary"] = None if status in NO_SUMMARY else _section(body, "summary")
         row["private_notes"] = _section(body, "private_notes")
         row["folders"] = [_attrs(a) for a in re.findall(r"<folder\s([^>]*?)/?>", body)]
         rows.append(row)

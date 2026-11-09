@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from tenor.ami.corpus import AmiMeeting, DialogueAct, Speaker, SummarySentence, Word, meeting_note
 from tenor.evals import list_check as E
 from tenor.evals import notes_completeness as N
@@ -393,6 +395,8 @@ def test_make_unit_from_ami_meeting() -> None:
     assert [x.speaker for x in u.transcript] == ["Project Manager", "Project Manager"]
     other = m.model_copy(update={"meeting_id": "IS1008b"})
     assert N.make_unit(other, note, "granola").split == "test"
+    assert N.has_notes(note)
+    assert not N.has_notes(note.model_copy(update={"summary_markdown": None, "summary_text": ""}))
 
 
 # -- passes, prompt-cache breakpoints, combining ------------------------------------------------
@@ -485,6 +489,35 @@ def test_summaries_over_combined_units(tmp_path: Path) -> None:
     assert (pa["gold_items"], pa["gold_unanimous"], pa["gold_three_labels"]) == (4, 3, 0)
     assert pa["bullets"] == 5 and pa["kind_unanimous"] == 5 and pa["dap_bullets"] == 4
     assert "Ana: write the plan" in N.private_texts(recs)
+
+
+def test_pool_keeps_runs_and_pools_records(tmp_path: Path) -> None:
+    judge = LLMClient(Fake(), model=N.JUDGE_MODEL, cache_dir=tmp_path, ledger=Ledger())
+    base = N.run_unit(_unit(), judge, 1)
+
+    def run(date: str, mid: str, **meta: Any) -> dict[str, Any]:
+        recs = [
+            N.combine([{**base, "meeting_id": mid, "product": p, "split": "test"}])
+            for p in N.PRODUCTS
+        ]
+        m = {"date": date, "judge_model": N.JUDGE_MODEL, "prompt": N.PROMPT, "passes": 1}
+        m |= {"cost": {"all_calls": {"usd": 0.5}}, "pilot": False, "stopped_early": None} | meta
+        return {"meta": m, "summary": N.summarize(recs), "records": recs}
+
+    a, b = run("d1", "M1"), run("d2", "M2")
+    out = N.pool([a, b], seed=3)
+    assert [r["meta"]["date"] for r in out["runs"]] == ["d1", "d2"]
+    p = out["pooled"]
+    assert p["meta"]["runs"] == ["d1", "d2"] and p["meta"]["judge_usd_all_calls"] == 1.0
+    assert p["summary"]["test"]["products"]["granola"]["all"]["n_meetings"] == 2
+    assert len(p["units"]) == 4 and "pass_agreement" in p
+    assert N.pool([a, b], seed=3) == out  # deterministic
+    with pytest.raises(ValueError, match="differs"):
+        N.pool([a, run("d3", "M3", prompt="notes_completeness.v3")])
+    with pytest.raises(ValueError, match="more than one run"):
+        N.pool([a, run("d4", "M1")])
+    with pytest.raises(ValueError, match="pilot"):
+        N.pool([run("d5", "M5", pilot=True)])
 
 
 def test_cost_summary_counts_live_calls_and_cache_saving() -> None:

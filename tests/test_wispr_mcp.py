@@ -122,6 +122,19 @@ def test_long_transcript_and_content_follow_continuation_offsets(fake: FakeWispr
     )
 
 
+def test_live_ranges_rejoin_without_repeated_banners(fake: FakeWispr) -> None:
+    """The live server opens every range with the banner and closes a truncated one with the
+    marker plus ``<<<END TRANSCRIPT>>>``: the whole transcript comes back, one banner only."""
+    fake.char_limit, fake.live_banners = 50, True
+    note = WisprMCPSource(fake, clock=FakeClock()).get_note("m-1")
+    texts = [i.text for i in note.transcript or []]
+    assert sum("<<<" in t and "END" not in t for t in texts) == 1
+    assert not any("truncated" in t for t in texts)
+    rejoined = " ".join(texts).replace("<<<END TRANSCRIPT>>>", "")
+    words = "".join(line.split(": ", 1)[-1] for line in meeting()["transcript"].splitlines())
+    assert words.replace(" ", "") in rejoined.replace(" ", "")
+
+
 def test_unfinished_and_missing_meetings_are_not_ready(fake: FakeWispr) -> None:
     fake.meetings.append(meeting("m-new", finalized=False))
     src = WisprMCPSource(fake, clock=FakeClock())
@@ -185,6 +198,11 @@ def test_lines_without_any_speaker_become_one_turn_each() -> None:
         ("abc", ("abc", None)),
         ("abc\n[truncated: continue with start_char=120]", ("abc", 120)),
         ("abc (more: start_char 40000)", ("abc", 40000)),
+        (  # observed shape (2026-11-09): marker, then the closing banner
+            "The f (...truncated, 5359 chars remaining; continue with "
+            "view_transcript.start_char=40000...) <<<END TRANSCRIPT>>>",
+            ("The f", 40000),
+        ),
         ({"text": "abc", "next_start_char": 7}, ("abc", 7)),
         (None, ("", None)),
     ],

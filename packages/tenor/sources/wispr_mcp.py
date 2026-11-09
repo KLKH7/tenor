@@ -113,16 +113,27 @@ def _rows(page: dict[str, Any]) -> list[dict[str, Any]]:
     return [r for r in rows if isinstance(r, dict)]
 
 
+# The marker may be followed by the transcript's closing ``<<<END TRANSCRIPT>>>`` banner
+# (observed 2026-11-09); the banner of a truncated range is dropped with the marker.
 _MARKER = re.compile(
-    r"\s*[\[(<][^\[\]()<>]*?\bstart_char\b\D{0,24}(?P<next>\d+)[^\[\]()<>]*[\])>]\s*\Z", re.I
+    r"\s*[\[(<][^\[\]()<>]*?\bstart_char\b\D{0,24}(?P<next>\d+)[^\[\]()<>]*[\])>]"
+    r"(?:\s*<<<[^<>]*>>>)?\s*\Z",
+    re.I,
 )
+
+
+# Every range of a transcript starts with the ``<<<…>>>`` safety banner (VERIFIED 2026-11-09),
+# so a continuation range's copy would split the line the previous range ended in.
+_BANNER_HEAD = re.compile(r"\A<<<[^<>\n]*>>>\n?")
 
 
 def split_range(value: Any) -> tuple[str, int | None]:
     """A bounded content/transcript range → (text, next start_char or None when complete).
 
-    The continuation offset is ASSUMED to be either a field (``{"text", "next_start_char"}``)
-    or a bracketed marker appended to the text that names ``start_char`` and a number.
+    The continuation offset is either a field (``{"text", "next_start_char"}``, ASSUMED) or a
+    bracketed marker appended to the text that names ``start_char`` and a number (VERIFIED:
+    ``(...truncated, N chars remaining; continue with view_transcript.start_char=40000...)``,
+    then the ``<<<END TRANSCRIPT>>>`` banner).
     """
     if isinstance(value, dict):
         text = str(_first(value, "text", "content", "transcript") or "")
@@ -339,7 +350,7 @@ class WisprMCPSource:
                 {"meeting_id": meeting_id, view: {"start_char": nxt, "char_limit": MAX_CHARS}},
             )
             text, following = split_range(page.get(field))
-            parts.append(text)
+            parts.append(_BANNER_HEAD.sub("", text, count=1))
             if following is not None and following <= nxt:
                 log.warning("%s: %s offset did not advance; stopping", meeting_id, field)
                 break
