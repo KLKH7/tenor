@@ -3829,9 +3829,21 @@ def _e1_inputs(
     notes = {p: DA.reader_notes(r, p) for p, r in recs.items()}
     rows = [a for path in answers for a in load_answers(path) if a.product == "granola"]
     chat = {a.question_id: a.answer for a in rows}
-    qs = [q for path in questions_files for q in load_questions(path)]
-    if len(chat) != len(rows) or len({q.id for q in qs}) != len(qs):
-        raise typer.BadParameter("a question or answer ID appears in more than one file")
+    qs: list[Any] = []
+    seen: dict[str, Any] = {}
+    for q in (q for path in questions_files for q in load_questions(path)):
+        if q.id not in seen:
+            seen[q.id] = q
+            qs.append(q)
+        elif (seen[q.id].question, seen[q.id].gold_sentence_ids) != (
+            q.question,
+            q.gold_sentence_ids,
+        ):
+            raise typer.BadParameter(f"{q.id}: two different questions with one ID")
+    # The same question in two files (e.g. questions.jsonl's annotation_only copy of a meeting
+    # later replayed) is kept once, from the first file.
+    if len(chat) != len(rows):
+        raise typer.BadParameter("an answer ID appears in more than one file")
     chat_text = {qid: clean_answer(a) for qid, a in chat.items()}  # as stage 3 judged it
     picked, skipped = DA.select_questions(
         qs, {p: list(r) for p, r in recs.items()}, chat, DA.CONDITIONS
