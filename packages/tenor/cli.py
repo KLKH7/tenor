@@ -5264,8 +5264,6 @@ def ami_coverage_e4(
         if bad := [m for m in want if m not in C4.TEST_MEETINGS]:
             raise typer.BadParameter(f"not E4 TEST meetings: {bad}")
         run = [u for u in full_units if u.meeting_id in want]
-    if generate_only and pilot:
-        raise typer.BadParameter("--generate-only pilots with --meetings (a TEST meeting)")
     typer.echo(
         f"{len(full_units)} TEST units, pilot {[u.key for u in pilot_units]}; skipped "
         f"{skipped or 'none'}; gold {gold_version}; E3 prompt {e3_prompt or N.PROMPT}"
