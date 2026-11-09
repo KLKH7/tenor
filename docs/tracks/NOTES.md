@@ -5,7 +5,7 @@ This page defines the notes track: whether a product's notes are faithful to wha
 | | |
 |---|---|
 | **Question** | Is every claim in the notes backed by what was said? Are the important things said present in the notes? |
-| **How measured** | Notes split into claims; each claim checked by the [grounding checker](../method/GROUNDING_CHECKER.md) against the product's own transcript and, on AMI, against AMI's human transcript ([`WRONG_FACTS.md`](../method/WRONG_FACTS.md) stage 2); a sample human-checked ([`HUMAN_VERIFICATION.md`](../method/HUMAN_VERIFICATION.md)). Completeness: recall of AMI's annotated decisions, actions and problems ([E3](#e3-notes-completeness-designed-pilot-run), designed) |
+| **How measured** | Notes split into claims; each claim checked by the [grounding checker](../method/GROUNDING_CHECKER.md) against the product's own transcript and, on AMI, against AMI's human transcript ([`WRONG_FACTS.md`](../method/WRONG_FACTS.md) stage 2); a sample human-checked ([`HUMAN_VERIFICATION.md`](../method/HUMAN_VERIFICATION.md)). Completeness: recall of AMI's annotated decisions, actions and problems ([E3](#e3-notes-completeness-preliminary), Preliminary: weighted recall Granola 0.56, Wispr Flow 0.64 on 5 TEST meetings, not significant) |
 | **Current results, AMI** | Corrected automated run (2026-11-05, `352698f`; supersedes the first pass). Claims supported by both transcripts: Granola 195 of 216 (90.3%, 95% CI 85.6–93.6%), Wispr Flow 138 of 171 (80.7%, 74.1–85.9%). Other classes, Granola / Wispr Flow: `borderline` 12 / 19 (one-notch checker disagreements), `transcript_propagated` 4 / 6 (upper bound, not re-read by hand), `inferred` 4 / 5, `note_error` 0 / 2, `human_only` 1 / 1. Gap 9.6 points (CI 2.5–16.7 if claims were independent; wider, since they cluster in 7 meetings); counting `borderline` as fine, 95.8% vs 91.8%. Human check of 20 sampled claims: 12 judgeable, 0 wrong, 1 overreach. Full table: [`WRONG_FACTS.md` §3](../method/WRONG_FACTS.md#3-stage-2-corrected-run-headline) |
 | **Earlier result** | Author's 4 private meetings (Granola only): 84% supported, 14% inferred, 0% unsupported, 2% possibly contradicted (132 claims; §below) |
 | **Status** | Preliminary. The AMI comparison is not a ranking until human calibration is done (about 100 labels, a second verifier) |
@@ -213,7 +213,7 @@ These suggestions rest on the measurement above. They are not claims about Grano
 | Cost | Granola $0.26 (Haiku $0.01, Sonnet sample $0.15, Sonnet strict $0.10); synthetic $0.13; quoted beforehand with exact input tokens |
 | Prompt caching | the transcript is a cache breakpoint (`LLMRequest.cache_system`). With one call per meeting per model nothing is reused, so here caching cost the 1.25x write premium on input. It pays off on retries or repeat checks of a meeting |
 
-## E3: notes completeness (designed; pilot run)
+## E3: notes completeness (Preliminary)
 
 **Question.** What share of what was decided, assigned and raised in a meeting appears in each product's notes (not Chat)? And is what the notes say about it true?
 
@@ -222,13 +222,60 @@ These suggestions rest on the measurement above. They are not claims about Grano
 | **Unit** | One product's AI notes for one AMI meeting: the 7 replay meetings both products recorded, minus EN2002b (AMI has no abstractive summary for it). 6 meetings x 2 products = 12 units. DEV: IS1008a; TEST: the other 5 |
 | **Gold** | AMI's human DECISIONS / ACTIONS / PROBLEMS sentences for the meeting, one item per sentence, plus the speaker roster |
 | **Notes items** | The note's `summary_markdown`, split by code (no LLM) into bullets, each tagged with its heading; sub-points keep their parent; a paragraph under a bullet joins it. A bullet can hold more than one claim |
-| **Judge** | One Sonnet 5.5 call per unit (`notes_completeness.v4`), blind to the product. First each bullet: kind (decision, action, problem, other), the gold items it states, and whether AMI's human transcript supports it (yes, partly, no). Then each gold item: covered fully, partly or not, by which bullets; if not fully, whether the product's own transcript has it, with a verbatim quote that code checks by string match |
+| **Judge** | Sonnet 5.5 (`notes_completeness.v4`), blind to the product, 3 passes per unit. First each bullet: kind (decision, action, problem, other), the gold items it states, and whether AMI's human transcript supports it (yes, partly, no). Then each gold item: covered fully, partly or not, by which bullets; if not fully, whether the product's own transcript has it, with a verbatim quote that code checks by string match |
 
 - **Recall** per category: full = 1, partial = 0.5; full-only recall reported too. For an action, the owner is part of the item: no owner, or a label nobody can match to a person, is at most partial.
-- **Precision** of the notes' decision / action / problem bullets: right = states a gold item or is fully supported. Strict precision counts fully supported bullets only, so a gold-matching bullet with a wrong detail counts as wrong. F1 = lenient precision with weighted recall.
-- **Said, not noted.** Gold items absent from the notes that the product's own transcript has: what a better note-writer could recover with no transcription fix. Counted as judged and as quote-verified.
-- **Pooling.** Means over meetings with 95% bootstrap CIs, plus micro totals; Granola vs Wispr Flow paired per meeting (sign test). Only 6 meetings, so only large effects can show.
-- **Checks.** The judge's two link lists (bullet to gold, gold to bullet) must agree; disagreements and any parser repairs are counted in every result.
+- **Precision** of the notes' decision / action / problem bullets. Lenient: right = states a gold item or is fully supported. Strict: fully supported only, so a gold-matching bullet with a wrong detail counts as wrong. F1 = lenient precision with weighted recall.
+- **Heard, not noted.** Gold items absent from the notes that the product's own transcript has: what a better note-writer could recover with no transcription fix. Counted as judged and as quote-verified.
+- **Passes.** Each pass ends with a neutral marker ("Judging pass k."), so the disk cache does not replay pass 1. Headline = mean over passes. Alternative = majority vote per item (median coverage, voted kind and links). Spread = range and SD across passes, per unit and pooled.
+- **Prompt caching.** Breakpoints after the meeting part (gold + AMI transcript: shared by both products and all passes) and after the product part (transcript + notes: shared by that product's passes). Units run meeting by meeting, passes back to back.
+- **Pooling.** Means over meetings with 95% bootstrap CIs; Granola vs Wispr Flow paired per meeting (sign test, wins = Wispr Flow higher).
+- **Checks.** Parser repairs and disagreements between the judge's two link lists are counted in every result.
 - **Prompt changes on DEV only** (v1 to v4). Bullets judged before gold items, after the two halves disagreed. Explicit rules for generic speaker labels ("Speaker 2"), which the notes may define themselves. One example of a non-match was replaced: it had been taken from the DEV meeting and made the judge reject a real match.
-- **Known limits.** One judge, one sample: on DEV, single full / partial / none flips moved a meeting's recall by 0.07 to 0.14 between prompt versions. AMI's summaries are one annotator's choice of what mattered, so true notes items outside them score through the transcript, not the gold. Granola's transcripts label every line "Them", so owners in the notes cannot be checked against its own speaker labels.
-- **Status.** Pilot on DEV done ($0.34 for four prompt versions); full run quoted, not run. Code: `tenor ami notes-completeness` ([`notes_completeness.py`](../../packages/tenor/evals/notes_completeness.py)).
+- **Code:** `tenor ami notes-completeness` ([`notes_completeness.py`](../../packages/tenor/evals/notes_completeness.py)).
+
+### E3 results (Preliminary)
+
+Real AMI meetings played into both products. **TEST: 5 meetings, 58 gold items** (DEV, 1 meeting, used to fix the prompt). 3 judge passes, mean over passes. Recall and precision are means over meetings with 95% bootstrap CIs. Counts are summed over meetings and averaged over passes. Numbers: [`evals/reports/ami/notes_completeness.json`](../../evals/reports/ami/notes_completeness.json).
+
+| Product | Category | Gold | Recall (partial = 0.5) | Recall, full only | Precision lenient | Precision strict | F1 | Heard, not noted |
+|---|---|---|---|---|---|---|---|---|
+| Granola | decision | 17 | 0.55 [0.35, 0.80] | 0.36 | 1.00 | 0.69 | 0.65 | 2.7 |
+| Granola | action | 22 | 0.54 [0.28, 0.80] | 0.42 | 0.99 | 0.60 | 0.65 | 6.3 |
+| Granola | problem | 19 | 0.60 [0.49, 0.73] | 0.49 | 1.00 | 0.96 | 0.65 | 6.3 |
+| **Granola** | **all** | **58** | **0.56 [0.48, 0.64]** | **0.41 [0.24, 0.56]** | **0.99** | **0.76 [0.68, 0.83]** | **0.71** | **15.3** |
+| Wispr Flow | decision | 17 | 0.56 [0.34, 0.79] | 0.42 | 0.97 | 0.94 | 0.60 | 3.7 |
+| Wispr Flow | action | 22 | 0.67 [0.51, 0.86] | 0.57 | 0.94 | 0.82 | 0.76 | 5.3 |
+| Wispr Flow | problem | 19 | 0.66 [0.62, 0.71] | 0.48 | 1.00 | 0.95 | 0.79 | 3.0 |
+| **Wispr Flow** | **all** | **58** | **0.64 [0.58, 0.70]** | **0.50 [0.41, 0.58]** | **0.97** | **0.86 [0.78, 0.95]** | **0.77** | **12.0** |
+
+- **Both products' notes leave out about 40% of what AMI's annotators wrote down.** Weighted recall 0.56 (Granola) and 0.64 (Wispr Flow). Fully stated: 41% and 50% of gold items.
+- **Wispr Flow's recall is higher on every TEST meeting, but not significantly.** Overall recall: 5 wins of 5, sign p = 0.06. Full-only recall: 3 wins, 2 ties (p = 0.25). Per category: no difference reaches significance. With DEV included it is 6 of 6 (p = 0.03), but DEV was used for tuning.
+- **What the notes do say as a decision, action or problem is almost never wrong.** Lenient precision is 0.97–0.99 for both.
+- **The strict-precision gap (Granola 0.76, Wispr Flow 0.86) is mostly a judge artifact. Don't read it as a difference.** Granola's bullets got 12.7 "partly" verdicts per pass on TEST; Wispr Flow's got 6.7. Of Granola's, 5.0 give a missing or unassigned owner as the only or main reason. The prompt says that alone is not wrong, so the judge broke its own rule. Counting those as supported puts Granola at about 0.85. The rest are real overstatements: a suggestion written as agreed, an added deadline, a wrong day. Strict precision was not sign-tested.
+- **Most missing items were heard.** Of the gold items missing outright from the notes, the product's own transcript had 15.3 (Granola) and 12.0 (Wispr Flow) per pass on TEST. Nearly all were quote-verified (15.3 and 11.3). Another 8.7 and 11.3 were partly noted and heard. A better note-writer could recover these with no change to transcription. The counts are lower bounds: on 6.3 and 4.0 not-fully-covered items the judge left "heard" unassessed (mostly in IB4003).
+- **The majority-vote aggregate agrees with the mean.** TEST overall recall: Granola 0.57 vs 0.56, Wispr Flow 0.64 vs 0.64.
+
+**Between-pass spread (all 6 meetings).**
+
+| | Granola | Wispr Flow |
+|---|---|---|
+| Overall recall, mean range per unit (max) | 0.08 (0.14) | 0.06 (0.14) |
+| Overall recall pooled, pass 1 / 2 / 3 | 0.50 / 0.53 / 0.55 | 0.59 / 0.62 / 0.63 |
+| Lenient precision pooled, pass 1 / 2 / 3 | 0.98 / 0.98 / 0.97 | 0.95 / 0.91 / 0.94 |
+| Gold items with the same coverage in all 3 passes | 55 of 65 | 52 of 65 |
+| Bullets with the same kind in all 3 passes | 180 of 194 | 135 of 142 |
+| Decision / action / problem bullets with the same support verdict in all 3 passes | 46 of 57 | 52 of 61 |
+
+- **A single pass would move a meeting's recall by up to 0.14.** Disagreements sit where expected: none vs partial on half-captured items (a decision noted only as an option, one side of an either/or problem), partial vs full on owner phrasing. Only 1 of 130 gold items got three different labels.
+- **The ranking holds in every pass.** Pooled recall is higher for Wispr Flow in each of the 3 passes.
+
+**Threats to validity.**
+- **6 meetings, 5 of them TEST.** Four are sessions of one remote-control design scenario with the same team (IS1008a–d); one is the same scenario with another team (ES2006a); one is a real research-group meeting (IB4003). Only large effects can reach significance.
+- **One automated judge model** (Sonnet 5.5). 3 passes measure its noise, not its bias; no human labels yet. It does not always follow its rubric (the owner rule above).
+- **Notes parsed by a heuristic splitter.** A bullet with two claims gets one kind and one support verdict.
+- **Gold = AMI summary sentences.** One annotator's choice of what mattered. True notes items outside the gold score through the transcript, not the gold, so recall can only fall short where the annotator wrote something down.
+- **Judge consistency.** 26 gold-to-bullet links on TEST appear on one side of the judge's output only (0 on DEV). Recall uses the gold side, precision the bullet side. 38 parser repairs over 36 calls; 35 are the unassessed "heard" verdicts above.
+- **Labels.** Granola's transcripts label every line "Them", so owners in its notes cannot be checked against its own speaker labels.
+
+**Provenance and cost.** Run 2026-11-09 (UTC), code at `6eb02fa` plus the E3 passes change, committed as `43c5dea` (its item-level pass agreement was added after the run and recomputed from the saved result; judge requests unchanged); judge `claude-sonnet-5-5`, prompt `notes_completeness.v4`, 3 passes, seed 42 (bootstrap). Judge spend: **$1.29** for 36 calls. That is $0.155 for the IS1008a passes run first as a sandbox, which the full run replayed, plus $1.13 in the full run. Prompt cache: 614k tokens read and 164k written; without it the same calls would have cost $2.31, so caching saved $1.02 (44%). Quoted beforehand: $2.23 expected / $2.93 high without caching; $1.23 / $1.94 with it. Hard cap $3.50. Prompt development on DEV (v1–v4, single pass): a further $0.34.
