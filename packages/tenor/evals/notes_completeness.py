@@ -212,8 +212,9 @@ def gold_items(
     sentence, numbered per category in document order. ABSTRACT sentences are not gold.
 
     With ``errata``, ``meeting_id``'s corrections apply after numbering, so a dropped item does
-    not renumber the others: ``drop`` removes the item, ``correct_owner`` replaces its text. A
-    correction whose item id or original text does not match raises ``ValueError``."""
+    not renumber the others: ``drop`` removes the item, ``correct_owner`` and ``correct_content``
+    replace its text. A correction whose item id or original text does not match raises
+    ``ValueError``."""
     fixes = errata.for_meeting(meeting_id) if errata else {}
     out: list[GoldItem] = []
     count: dict[str, int] = {}

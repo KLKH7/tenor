@@ -1,0 +1,668 @@
+{
+  "version": "gold_errata.v2",
+  "gold_version": "ami-1.6.2+errata.v2",
+  "base": "ami-1.6.2",
+  "supersedes": "gold_errata.v1",
+  "source": "AMI Meeting Corpus, manual annotations v1.6.2 (University of Edinburgh and the AMI Consortium), CC BY 4.0. Corrections and quotes are derived from it.",
+  "date": "2026-11-09",
+  "status": "Post hoc. A superset of v1: v1's corrections and proposals are kept unchanged (added_in says which version made each entry). The v2 entries were made after seeing E1, E2, deletion-study and E3 results, prompted by an independent re-read of the E1 and deletion-study judge verdicts that listed gold problems; each was re-checked against AMI's full reference transcript before applying, and proposals without clear evidence are listed under not_applied. E3 still defaults to errata.v1; E1/E2/deletion results were not re-run under v2 (the offline recomputation of the re-read's reference headlines is in a private note).",
+  "line_ids": "Lnnnn = line index in AMI's reference transcript as the E3 judge reads it: tenor.ami.corpus.meeting_note, one utterance per dialogue act, consecutive same-speaker acts merged (tenor.evals.list_check.merge_turns, transcript_lines). Speakers are AMI scenario roles. Quotes are verbatim from that line.",
+  "item_ids": "E3 gold item ids (tenor.evals.notes_completeness.gold_items): D/A/P + position within the category in AMI's summary order, numbered before errata, so a drop does not renumber other items.",
+  "question_rules": "A question is affected when one of its gold_sentence_ids is corrected. (1) what_changed questions pair a sentence from session k with one from session k+1; any correction to either breaks the pair: exclude. (2) action_who questions quote the task and answer with its owner; any correction changes one of the two: exclude (a regenerated question would be a new question). (3) List questions (decision, action_what, problem): a drop removes the sentence; correct_content replaces its text; correct_owner removes it from an action_what question (the question names the old owner) and replaces its text elsewhere. A list question left with no gold sentence is excluded; otherwise it is regolded. (4) Excluded questions are left out of every metric and paired test under these errata. Regolded questions are re-scored against the new gold; an answer item credited only through a dropped gold item keeps credit only if it is true and answers the question.",
+  "corrections": [
+    {
+      "meeting_id": "ES2006a",
+      "item_id": "A2",
+      "sentence_id": "ES2006a.elana.s.9",
+      "original_text": "The interface specialist will look at the working design.",
+      "action": "correct_owner",
+      "corrected_text": "The industrial designer will look at the working design.",
+      "evidence": [
+        {
+          "line": "L0226",
+          "speaker": "Industrial Designer",
+          "quote": "my role in the project is um uh the industrial designer, so I'm supposed to design all the details of of the product um how it works"
+        },
+        {
+          "line": "L0415",
+          "speaker": "Project Manager",
+          "quote": "but basically you're looking at the working design,"
+        },
+        {
+          "line": "L0425",
+          "speaker": "Industrial Designer",
+          "quote": "Alright."
+        }
+      ],
+      "reason": "The gold swaps the two designers' tasks (see A3). The Industrial Designer describes the working design (how it works) as his role and acknowledges the Project Manager's 'working design' assignment.",
+      "added_in": "ami-1.6.2+errata.v1",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-ES2006a-action_what-02",
+        "ami-ES2006a-action_who-02"
+      ]
+    },
+    {
+      "meeting_id": "ES2006a",
+      "item_id": "A3",
+      "sentence_id": "ES2006a.elana.s.10",
+      "original_text": "The industrial designer will work on the technical functions design.",
+      "action": "correct_owner",
+      "corrected_text": "The interface specialist will work on the technical functions design.",
+      "evidence": [
+        {
+          "line": "L0189",
+          "speaker": "User Interface Designer",
+          "quote": "at first I will be responsible for um for yeah, designing the technical functions of the um um of the remote control"
+        },
+        {
+          "line": "L0426",
+          "speaker": "Project Manager",
+          "quote": "you're looking at the technical functions design, and for you it's the user requirements specification,"
+        }
+      ],
+      "reason": "The User Interface Designer states in the meeting that the technical functions design is his task; the gold gives it to the Industrial Designer.",
+      "added_in": "ami-1.6.2+errata.v1",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-ES2006a-action_what-03",
+        "ami-ES2006a-action_who-03"
+      ]
+    },
+    {
+      "meeting_id": "TS3009c",
+      "item_id": "D9",
+      "sentence_id": "TS3009c.vkaraisk.s.22",
+      "original_text": "The chip is going to be a standard one.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {
+          "line": "L0310",
+          "speaker": "Industrial Designer",
+          "quote": "But we do use an L_C_D_ screen, so we uh we do have to consider uh of we have to use a more advanced chip"
+        },
+        {
+          "line": "L0767",
+          "speaker": "Project Manager",
+          "quote": "Well uh all the all the inside work of our remote is uh standard work."
+        },
+        {
+          "line": "L0771",
+          "speaker": "Project Manager",
+          "quote": "The chip is normal silicon."
+        }
+      ],
+      "reason": "Contradicts gold D2 (an advanced chip, for the LCD). D2 rests on an explicit statement tied to the LCD the team keeps (L0310). D9's only summary link is L0767 ('inside work is standard'), and L0771 speaks of the chip's material (silicon), not its type. Nothing in the meeting reverses the advanced chip, so D2 is kept and D9 dropped.",
+      "added_in": "ami-1.6.2+errata.v1",
+      "date": "2026-11-09",
+      "question_ids": []
+    },
+    {
+      "meeting_id": "ES2006c",
+      "item_id": "P1",
+      "sentence_id": "ES2006c.elana.s.23",
+      "original_text": "*NA*.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [],
+      "reason": "Not a gold item: the annotator's placeholder for 'no problems' (no summary links). No notes can state it, so it lowers every product's recall equally.",
+      "added_in": "ami-1.6.2+errata.v1",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-ES2006c-problem-01"
+      ]
+    },
+    {
+      "meeting_id": "IS1008d",
+      "item_id": "D2",
+      "sentence_id": "IS1008d.JacquelinePalmer.s.14",
+      "original_text": "The Project Manager decided to negotiate the cost of production to allow the integration of the display into the design.",
+      "action": "correct_content",
+      "corrected_text": "The Project Manager decided to negotiate with the vendors and management to lower the production cost, so that the savings could go to marketing and promotion.",
+      "evidence": [
+        {
+          "line": "L0148",
+          "speaker": "Project Manager",
+          "quote": "our budget was uh twelve point five Euro, but uh it's coming to nine point nine five Euro, so we are under uh below the budget"
+        },
+        {
+          "line": "L0186",
+          "speaker": "Marketing Expert",
+          "quote": "if we add approximately two to three Euro per remote, now we're up around about twelve, twelve and a half as to what uh the company had initially uh requested"
+        },
+        {
+          "line": "L0187",
+          "speaker": "Industrial Designer",
+          "quote": "So that means we can put the uh the L_C_D_ in, yeah."
+        },
+        {
+          "line": "L0217",
+          "speaker": "Project Manager",
+          "quote": "I will try to negotiate with the vendors, okay, to get uh the production cost less, okay, so then we can save some money, okay, to put into our marketing or uh you know the promotions"
+        }
+      ],
+      "reason": "The display fits the budget without any negotiation: 9.95 Euro against 12.5 (L0148), about 12 to 12.5 with the LCD (L0186), 'so that means we can put the LCD in' (L0187). The Project Manager's stated purpose for negotiating is to free money for marketing and promotion (L0217). Nothing in the meeting ties the negotiation to the display. Gold A1 (the negotiation itself) is unaffected.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008c-IS1008d-what_changed-03",
+        "ami-IS1008d-decision-02"
+      ]
+    },
+    {
+      "meeting_id": "IS1008d",
+      "item_id": "D5",
+      "sentence_id": "IS1008d.JacquelinePalmer.s.17",
+      "original_text": "The product evaluation will occur at a later time, after the production of some real units have been produced, rather than evaluating the prototype.",
+      "action": "correct_content",
+      "corrected_text": "The product will be evaluated later, in a prototype evaluation done outside the company's own factory over two to four weeks; real production starts after the evaluation is approved.",
+      "evidence": [
+        {
+          "line": "L0363",
+          "speaker": "Project Manager",
+          "quote": "let's wait for the production, okay, then uh you can evaluate the product"
+        },
+        {
+          "line": "L0375",
+          "speaker": "Industrial Designer",
+          "quote": "Prototypes, you mean."
+        },
+        {
+          "line": "L0376",
+          "speaker": "Project Manager",
+          "quote": "Yes, the prototype uh prototype product evaluation."
+        },
+        {
+          "line": "L0386",
+          "speaker": "Project Manager",
+          "quote": "So you can take a minimum two weeks to a maximum four weeks."
+        },
+        {
+          "line": "L0391",
+          "speaker": "Project Manager",
+          "quote": "we we are not going to do it in uh our factory"
+        },
+        {
+          "line": "L0394",
+          "speaker": "Project Manager",
+          "quote": "the real production we will start once we product evaluation"
+        },
+        {
+          "line": "L0525",
+          "speaker": "Project Manager",
+          "quote": "is the product evaluated, okay, so that will uh come soon"
+        }
+      ],
+      "reason": "The gold reverses the order. L0363 on its own could mean evaluating after production, but asked 'Prototypes, you mean.' the Project Manager confirms 'the prototype product evaluation' (L0375-L0376), and says real production starts only once the evaluation is approved (L0394). The evaluation takes two to four weeks outside the factory (L0386, L0391). 'At a later time' stands (L0525).",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008d-decision-03"
+      ]
+    },
+    {
+      "meeting_id": "IS1008d",
+      "item_id": "A4",
+      "sentence_id": "IS1008d.JacquelinePalmer.s.12",
+      "original_text": "The group will evaluate the product after real units have been produced.",
+      "action": "correct_content",
+      "corrected_text": "The group will evaluate the prototype outside the company's own factory, over two to four weeks, before real production starts.",
+      "evidence": [
+        {
+          "line": "L0376",
+          "speaker": "Project Manager",
+          "quote": "Yes, the prototype uh prototype product evaluation."
+        },
+        {
+          "line": "L0386",
+          "speaker": "Project Manager",
+          "quote": "So you can take a minimum two weeks to a maximum four weeks."
+        },
+        {
+          "line": "L0391",
+          "speaker": "Project Manager",
+          "quote": "we we are not going to do it in uh our factory"
+        },
+        {
+          "line": "L0394",
+          "speaker": "Project Manager",
+          "quote": "the real production we will start once we product evaluation"
+        }
+      ],
+      "reason": "Same error as D5 (IS1008d.JacquelinePalmer.s.17): the evaluation is of the prototype and comes before real production, not after it (L0376, L0394).",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008d-action_what-03"
+      ]
+    },
+    {
+      "meeting_id": "IS1008d",
+      "item_id": "P1",
+      "sentence_id": "IS1008d.JacquelinePalmer.s.18",
+      "original_text": "The group will have to make many changes to their original budget plans after the final cost analysis showed that their current budget would not cover the cost of all components and that the current price point would not meet the expected profit goal.",
+      "action": "correct_content",
+      "corrected_text": "The final cost analysis put the components within the 12.5 Euro budget (about 12 to 12.5 Euro with the LCD display), but the sales projection suggested that the current price point would probably not meet the expected profit goal.",
+      "evidence": [
+        {
+          "line": "L0148",
+          "speaker": "Project Manager",
+          "quote": "our budget was uh twelve point five Euro, but uh it's coming to nine point nine five Euro, so we are under uh below the budget"
+        },
+        {
+          "line": "L0186",
+          "speaker": "Marketing Expert",
+          "quote": "if we add approximately two to three Euro per remote, now we're up around about twelve, twelve and a half as to what uh the company had initially uh requested"
+        },
+        {
+          "line": "L0187",
+          "speaker": "Industrial Designer",
+          "quote": "So that means we can put the uh the L_C_D_ in, yeah."
+        },
+        {
+          "line": "L0201",
+          "speaker": "Marketing Expert",
+          "quote": "So to come up with what the company wants is a fifty million Pound profit, we're gonna have to go a long ways."
+        },
+        {
+          "line": "L0259",
+          "speaker": "Marketing Expert",
+          "quote": "if we have a target of two million would the company has to take twenty five percent of the market in the first year"
+        }
+      ],
+      "reason": "The components came to 9.95 Euro against a 12.5 Euro budget (L0148) and about 12 to 12.5 with the LCD (L0186-L0187), so the budget does cover them, and no change to the budget plans is discussed. Only the profit-goal half of the sentence is supported (L0201, L0259). Gold P2 is unaffected.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008d-problem-01"
+      ]
+    },
+    {
+      "meeting_id": "IB4003",
+      "item_id": "D2",
+      "sentence_id": "IB4003.rdhillon.s.16",
+      "original_text": "Gisella will get an office for two people, where the second spot in the office will be filled by a visitor.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {
+          "line": "L0623",
+          "speaker": "Speaker A",
+          "quote": "Gisella could take one of the the two person rooms and the other place would be for some kind of visitor,"
+        },
+        {
+          "line": "L0625",
+          "speaker": "Speaker D",
+          "quote": "Yeah, but that's not realistic either."
+        },
+        {
+          "line": "L0638",
+          "speaker": "Speaker D",
+          "quote": "But you can't take a senior visitor and uh him in the in the secretary."
+        },
+        {
+          "line": "L0643",
+          "speaker": "Speaker A",
+          "quote": "Okay so this sets a bit the stage for uh for Gisella then. Uh yeah we'll try to to find out."
+        }
+      ],
+      "reason": "No decision about Gisella was taken. The two-person room with a visitor was proposed (L0623) and rejected as unrealistic (L0625, L0638); only junior visitors were thought possible (L0631-L0636), and the chair closes with 'we'll try to find out' (L0643). Placing her with the school's other admin was left for the chair to ask about (gold A2, L0575). Not a gold decision.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IB4003-decision-02"
+      ]
+    },
+    {
+      "meeting_id": "IB4003",
+      "item_id": "D3",
+      "sentence_id": "IB4003.rdhillon.s.17",
+      "original_text": "There will not be a cafeteria.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {
+          "line": "L0749",
+          "speaker": "Speaker B",
+          "quote": "I mean, we have a cafeteria or we don't eat at all?"
+        },
+        {
+          "line": "L0751",
+          "speaker": "Speaker D",
+          "quote": "We don't have cafeteria."
+        },
+        {
+          "line": "L0772",
+          "speaker": "Speaker C",
+          "quote": "No, there's the cafeteria is downstairs,"
+        }
+      ],
+      "reason": "A question answered with a fact as the meeting closes (L0749-L0751), not a decision; the building's cafeteria is downstairs (L0772). Not a gold decision. (The same re-read noted that the gold omits the own-desk agreement, L0231-L0237; errata never add items, see notes.)",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IB4003-decision-01"
+      ]
+    },
+    {
+      "meeting_id": "IS1008b",
+      "item_id": "D2",
+      "sentence_id": "IS1008b.JacquelinePalmer.s.15",
+      "original_text": "The remote will have a slim shape and a simple interface, include a locator function and voice recognition, and be made of a hard material.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {
+          "line": "L0534",
+          "speaker": "User Interface Designer",
+          "quote": "Should we maybe make a decision about what features we actually want to include,"
+        },
+        {
+          "line": "L0560",
+          "speaker": "Industrial Designer",
+          "quote": "and eliminate them later in the process, that's my suggestion."
+        },
+        {
+          "line": "L0571",
+          "speaker": "User Interface Designer",
+          "quote": "Yes, now I'm objecting."
+        },
+        {
+          "line": "L0580",
+          "speaker": "Industrial Designer",
+          "quote": "I think we should take that as an action item for after the meeting,"
+        },
+        {
+          "line": "L0591",
+          "speaker": "Project Manager",
+          "quote": "then uh we can discuss furthermore, okay, with our areas, and uh then we will come back again in the in the next meeting."
+        }
+      ],
+      "reason": "Feature selection was raised and explicitly deferred (L0534-L0591), as AMI's own gold D1 and abstract say ('the group decided to postpone it'), so this sentence contradicts D1. The slim shape (L0530), voice recognition (L0415), the locator (L0505) and the unbreakable material (L0150) were suggestions or offers of help, not decisions.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008b-IS1008c-what_changed-04",
+        "ami-IS1008b-decision-02"
+      ]
+    },
+    {
+      "meeting_id": "IS1008c",
+      "item_id": "D4",
+      "sentence_id": "IS1008c.JacquelinePalmer.s.13",
+      "original_text": "The group decided to contact another company to manufacture the product that could do it cheaply yet still paid fair wages.",
+      "action": "drop",
+      "corrected_text": null,
+      "evidence": [
+        {
+          "line": "L0345",
+          "speaker": "Industrial Designer",
+          "quote": "we might wanna um learn about um labour laws."
+        },
+        {
+          "line": "L0354",
+          "speaker": "Project Manager",
+          "quote": "yes, yes, countries like India or China or Malaysia, so you can go a better features and better price and you can sell more."
+        },
+        {
+          "line": "L0364",
+          "speaker": "Marketing Expert",
+          "quote": "Where Where it would be manufactured is is another step."
+        },
+        {
+          "line": "L0369",
+          "speaker": "Project Manager",
+          "quote": "that that we can that we can talk about the production later"
+        },
+        {
+          "line": "L0373",
+          "speaker": "Project Manager",
+          "quote": "so we can have a tie-up with who the do the fabric"
+        }
+      ],
+      "reason": "No decision on manufacturing. The Industrial Designer raised fair wages (L0345), the Project Manager answered with low-cost countries (L0352-L0354), and production was put off (L0364, L0369); a tie-up was only floated (L0373). AMI's own abstract says the group 'quickly talked about finding a manufacturer'.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008c-decision-01"
+      ]
+    }
+  ],
+  "not_applied": [
+    {
+      "meeting_id": "IS1000a",
+      "item_id": "A2",
+      "sentence_id": "IS1000a.elana.s.12",
+      "original_text": "The industrial designer will work on the technica function design.",
+      "proposed_action": "correct_owner",
+      "proposed_text": "The interface designer will work on the technical function design.",
+      "evidence": [
+        {
+          "line": "L0584",
+          "speaker": "Project Manager",
+          "quote": "you yes, work on a design, keep it general,"
+        },
+        {
+          "line": "L0589",
+          "speaker": "Industrial Designer",
+          "quote": "Mm-hmm."
+        },
+        {
+          "line": "L0590",
+          "speaker": "Project Manager",
+          "quote": "So Um you will be working on on technical function design, so"
+        },
+        {
+          "line": "L0592",
+          "speaker": "User Interface Designer",
+          "quote": "Yeah, sure."
+        }
+      ],
+      "reason": "Weak evidence, not applied. In IS1000a the Project Manager says 'you' without a name or role; who is meant can only be read from back-channels ('Mm-hmm', 'Yeah, sure'), which listeners also give to remarks addressed to others. The next session points the same way as the proposal (IS1000b L0291: the Industrial Designer presents 'the working design'; L0462: the User Interface Designer presents 'the technical function'), so A1/A2 may be the same swap as ES2006a, but that is another meeting's transcript. Left for a human decision.",
+      "added_in": "ami-1.6.2+errata.v1",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1000a-action_what-02",
+        "ami-IS1000a-action_who-02"
+      ]
+    },
+    {
+      "meeting_id": "IS1008b",
+      "item_id": "A3",
+      "sentence_id": "IS1008b.JacquelinePalmer.s.12",
+      "original_text": "The Marketing Expert will present the marketing concept.",
+      "proposed_action": "correct_content",
+      "proposed_text": "The Marketing Expert will keep watching the trends.",
+      "evidence": [
+        {
+          "line": "L0553",
+          "speaker": "Industrial Designer",
+          "quote": "so I'm supposed to do the components concept, supposed to work on the user interface concept,"
+        },
+        {
+          "line": "L0556",
+          "speaker": "Industrial Designer",
+          "quote": "and you're supposed to keep watching the trends."
+        }
+      ],
+      "reason": "Weak evidence, not applied; consistent with v1, which neither applied nor listed it although E3's re-read flagged it as a gold gloss. The meeting's only assignment for the Marketing Expert is the closing slide read aloud: 'keep watching the trends' (L0556). 'Present the marketing concept' is AMI's gloss of that task rather than a contradiction: his presentation in IS1008c is the trend watch (IS1008c L0261), which AMI's IS1008c summary also calls the marketing concept. Notes saying 'watch the trends' should get credit; that is a judging rule (same fact, not same words), not a gold change.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008b-IS1008c-what_changed-03",
+        "ami-IS1008b-action_what-03",
+        "ami-IS1008b-action_who-03"
+      ]
+    },
+    {
+      "meeting_id": "IS1008c",
+      "item_id": "D2",
+      "sentence_id": "IS1008c.JacquelinePalmer.s.11",
+      "original_text": "The remote will have customized wood casing and ergonomic sizing, voice recognition, a locator function, rubber buttons in a simple arrangement, an advanced chip, and a battery life indicator.",
+      "proposed_action": "correct_content",
+      "proposed_text": "The remote will have an advanced chip on print, a customisable wooden case and rubber buttons, in a simple design without a display for now.",
+      "evidence": [
+        {
+          "line": "L0373",
+          "speaker": "Project Manager",
+          "quote": "let's decide first about the components concept and uh interface concept, okay, if is acceptable for both of you"
+        },
+        {
+          "line": "L0201",
+          "speaker": "User Interface Designer",
+          "quote": "so I thought maybe we could put a little battery life-light on it"
+        },
+        {
+          "line": "L0411",
+          "speaker": "Industrial Designer",
+          "quote": "So the the advanced chip on print is what um what we've we've we've determined"
+        },
+        {
+          "line": "L0420",
+          "speaker": "Industrial Designer",
+          "quote": "I think they could be rubber like they are now,"
+        },
+        {
+          "line": "L0424",
+          "speaker": "Project Manager",
+          "quote": "we will stick with the the simple design for time being"
+        }
+      ],
+      "reason": "Weak evidence, not applied. Only the chip, the wooden case, rubber buttons and the simple design are agreed explicitly (L0411-L0424). Voice recognition, the locator, the battery light and ergonomic sizing come from the two concept presentations (L0025-L0041, L0184-L0201), which the Project Manager puts to the group (L0373) and then asks the designers to prototype (L0429); nobody objects, and the IS1008d prototype keeps voice control. Unlike IS1008b, feature choice was not deferred. Whether 'presented and not objected to' counts as decided is a judgement call; left for a human decision.",
+      "added_in": "ami-1.6.2+errata.v2",
+      "date": "2026-11-09",
+      "question_ids": [
+        "ami-IS1008b-IS1008c-what_changed-04",
+        "ami-IS1008c-decision-02"
+      ]
+    }
+  ],
+  "notes": [
+    "Errata correct or drop existing gold items; they never add one. Additions suggested by the same re-read (e.g. the own-desk agreement in IB4003, L0231-L0237) are not made.",
+    "IB4003 has no speaker roster in AMI; mapping speaker A (the chair) to the project manager is unverified. That is not a gold-text matter and is not handled here.",
+    "question_ids lists every question (questions.jsonl, replay_extension.jsonl) whose gold holds the sentence; question_changes says what the corrections do to each, by question_rules (derived by tenor.ami.errata.question_changes; a test checks it)."
+  ],
+  "question_changes": [
+    {
+      "qid": "ami-IS1008b-decision-02",
+      "effect": "exclude",
+      "sentence_ids": [
+        "IS1008b.JacquelinePalmer.s.15"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-IS1008c-decision-01",
+      "effect": "regold",
+      "sentence_ids": [
+        "IS1008c.JacquelinePalmer.s.13"
+      ],
+      "gold_answer": "The group decided on the features that will be included in the final design of the prototype. The group discussed including a display on the remote, but the prototype will be designed without a display until the Marketing Expert finds out how much it would cost to add it."
+    },
+    {
+      "qid": "ami-IS1008d-decision-02",
+      "effect": "regold",
+      "sentence_ids": [
+        "IS1008d.JacquelinePalmer.s.14"
+      ],
+      "gold_answer": "The Project Manager decided to negotiate with the vendors and management to lower the production cost, so that the savings could go to marketing and promotion. The Project Manager decided that no additional changes will be made to the remote."
+    },
+    {
+      "qid": "ami-IS1008d-decision-03",
+      "effect": "regold",
+      "sentence_ids": [
+        "IS1008d.JacquelinePalmer.s.17"
+      ],
+      "gold_answer": "The product will be evaluated later, in a prototype evaluation done outside the company's own factory over two to four weeks; real production starts after the evaluation is approved."
+    },
+    {
+      "qid": "ami-IS1008d-action_what-03",
+      "effect": "regold",
+      "sentence_ids": [
+        "IS1008d.JacquelinePalmer.s.12"
+      ],
+      "gold_answer": "The group will evaluate the prototype outside the company's own factory, over two to four weeks, before real production starts."
+    },
+    {
+      "qid": "ami-IS1008d-problem-01",
+      "effect": "regold",
+      "sentence_ids": [
+        "IS1008d.JacquelinePalmer.s.18"
+      ],
+      "gold_answer": "The final cost analysis put the components within the 12.5 Euro budget (about 12 to 12.5 Euro with the LCD display), but the sales projection suggested that the current price point would probably not meet the expected profit goal. The group had problems agreeing on the project agenda, if more or less time should have been alotted for user testing and making changes to the design."
+    },
+    {
+      "qid": "ami-IB4003-decision-01",
+      "effect": "regold",
+      "sentence_ids": [
+        "IB4003.rdhillon.s.17"
+      ],
+      "gold_answer": "People will not be arranged such that people of the same project are grouped together in offices."
+    },
+    {
+      "qid": "ami-IB4003-decision-02",
+      "effect": "exclude",
+      "sentence_ids": [
+        "IB4003.rdhillon.s.16"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-ES2006a-action_who-02",
+      "effect": "exclude",
+      "sentence_ids": [
+        "ES2006a.elana.s.9"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-ES2006a-action_who-03",
+      "effect": "exclude",
+      "sentence_ids": [
+        "ES2006a.elana.s.10"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-ES2006a-action_what-02",
+      "effect": "exclude",
+      "sentence_ids": [
+        "ES2006a.elana.s.9"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-ES2006a-action_what-03",
+      "effect": "regold",
+      "sentence_ids": [
+        "ES2006a.elana.s.10"
+      ],
+      "gold_answer": "They will get specific instructions when they get back to their workspace."
+    },
+    {
+      "qid": "ami-ES2006c-problem-01",
+      "effect": "exclude",
+      "sentence_ids": [
+        "ES2006c.elana.s.23"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-IS1008b-IS1008c-what_changed-04",
+      "effect": "exclude",
+      "sentence_ids": [
+        "IS1008b.JacquelinePalmer.s.15"
+      ],
+      "gold_answer": null
+    },
+    {
+      "qid": "ami-IS1008c-IS1008d-what_changed-03",
+      "effect": "exclude",
+      "sentence_ids": [
+        "IS1008d.JacquelinePalmer.s.14"
+      ],
+      "gold_answer": null
+    }
+  ]
+}
