@@ -671,3 +671,26 @@ Aimed at the sparsity above (softened items called `stated`). Two agent-generate
 - `prompts/firmness_check.v1.md` (`tenor.evals.firmness`, `scripts/firmness_agents.py`): per bullet, notes vs meeting status (decided / assigned / open / discussed / info) and owner; a flag only when the meeting is firmer or names an owner the notes lack or differ on. Flags become reader candidates (text = `flag_text`, kind from `meeting_status`, quote checked) scored blind with `e4_reader.v2`, optionally pooled with a cue run.
 - `prompts/bullet_cue.v3.md`: v2 with a strict `stated` (same status, same owner, same value, else `part_missing` and a cue).
 - Caveat for any DEV read-out: the firmness prompt's four worked examples come from IS1008a, the only DEV meeting, so DEV numbers for it are optimistic; TEST is the measurement.
+
+## Firmness check and bullet cues v3 (agent-generated; Preliminary)
+
+Firmness check (`firmness_check.v1`, run `firmness_v1_20261110`) and bullet cues v3 (`bullet_cue.v3`, run `agent_v3_20261110`), Claude Code agents, one run each, on E4's 22 TEST units (626 bullets). Items pooled into one condition-blind packet set and scored at $0 by three agent-reader runs (`e4_reader.v2`; median of three, gold matched in ≥ 2 runs; unanimous on `true` 53/57, `in_notes` 53/57, `kind` 56/57, gold 52/57). Missing gold: the same 104 items (61 notes-partial, 43 notes-no). Cluster-bootstrap 95% CIs over meetings, seed 42. Code at `551e2d6`.
+
+| Condition | Items shown | Per unit | Bullets flagged | True and new | Duplicates | Partly in the notes | False | Missing gold recovered (full) | incl. partial |
+|---|---|---|---|---|---|---|---|---|---|
+| **Firmness v1, pooled** | 10 | 0.45 | 1.6% [0.6, 2.8] | 0% | 40% [0, 70] | 60% [30, 100] | 0% | **1/104 (1% [0, 3])** | 5/104 (5% [2, 7]) |
+| Firmness, Granola | 5 | 0.45 | 1.4% | 0/5 | 0/5 | 5/5 | 0 | 1/61 | 4/61 |
+| Firmness, Wispr Flow | 5 | 0.45 | 1.9% | 0/5 | 4/5 | 1/5 | 0 | 0/43 | 1/43 |
+| **Cues v3, pooled** | 47 | 2.1 | 12.6% [8.3, 17.0] | 43% [30, 53] | 9% [0, 18] | 47% [33, 58] | 4% [0, 10] | **6/104 (6% [0, 12])** | 15/104 (14% [7, 23]) |
+| Cues v3, Granola | 31 | 2.8 | 13.4% | 45% [32, 58] | 0% | 52% | 6% | 3/61 | 9/61 |
+| Cues v3, Wispr Flow | 16 | 1.5 | 11.6% | 38% [15, 62] | 25% | 38% | 0% | 3/43 | 6/43 |
+| **Union** | 57 | 2.6 | 12.9% [8.5, 17.5] | 35% [25, 44] | 14% [0, 29] | 49% [34, 62] | 4% [0, 8] | **7/104 (7% [0, 15])** | 17/104 (16% [9, 24]) |
+| Cues v2 | 29 | 1.3 | 6.5% | 59% [34, 90] | 0% | 38% | 0% | 4/104 (4%) | 10/104 |
+| G1: diff | 56 | 2.5 | – | 36% | 5% | 41% | 0% | 1/104 (1%) | 7/104 |
+| C3 / CU / R / RD / Q | | | | | | | | 8% / 26% / 38% / 36% / 11% | |
+
+- Recovered (full) by the gold item's notes verdict: firmness 1/61 partial, 0/43 no; cues v3 5/61, 1/43; union 6/61, 1/43.
+- Firmness mismatches over 626 bullets: none 616, softer 5, owner_missing 5, owner_differs 0, value_differs 0. True and new by type: softer 0/5 (5 partly in notes; 2 flags recover 1 gold item), owner_missing 0/5 (4 duplicates, all Wispr Flow "Speaker N" owners). True-and-new is 0 by construction: every `flag_text` carries a "notes say" clause readers saw.
+- Notes -> meeting status pairs where the notes are firmer: 64 (decided -> discussed 50); meeting firmer: 8. Only the latter is flagged.
+- Cues v3 `found`: 1,295 entries, `stated` 1,054, `unclear` 152, `part_missing` 58, `missing` 31; 85 cues, 84 with a verified quote. Fully recovered gold shared with v2: 2 of v3's 6.
+- Caveats: same model family generates and reads; one generation run; firmness worked examples come from DEV IS1008a (DEV gave 0 flags); 11 meetings. Details: `data/private/FIRMNESS.md` (local).
