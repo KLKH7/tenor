@@ -694,3 +694,21 @@ Firmness check (`firmness_check.v1`, run `firmness_v1_20261110`) and bullet cues
 - Notes -> meeting status pairs where the notes are firmer: 64 (decided -> discussed 50); meeting firmer: 8. Only the latter is flagged.
 - Cues v3 `found`: 1,295 entries, `stated` 1,054, `unclear` 152, `part_missing` 58, `missing` 31; 85 cues, 84 with a verified quote. Fully recovered gold shared with v2: 2 of v3's 6.
 - Caveats: same model family generates and reads; one generation run; firmness worked examples come from DEV IS1008a (DEV gave 0 flags); 11 meetings. Details: `data/private/FIRMNESS.md` (local).
+
+## Over-firm notes (Preliminary)
+
+Suspected = all 66 bullets the firmness run (`firmness_v1_20261110`) marked notes firmer than meeting (Granola 48, Wispr Flow 18); control = 66 sampled (seed 42) from the 158 bullets marked decided on both sides. Condition-blind, three agent-reader runs, majority consensus (3 three-way firmness ties -> middle value), $0. Over-firm = bullet claims decided, meeting only discussed/not_said (strict) or also leaning (lenient). Cluster-bootstrap 95% CIs over meetings, seed 42. Code at `04c0965`.
+
+| Group | n | Over-firm strict | Over-firm lenient | Meeting decided |
+|---|---|---|---|---|
+| Suspected, Granola | 48 | 29% [11, 45] | 52% [29, 75] | 23% [10, 34] |
+| Suspected, Wispr Flow | 18 | 17% [4, 33] | 44% [20, 70] | 11% [0, 38] |
+| **Suspected, pooled** (flag precision) | 66 | **26% [12, 39]** | **50% [31, 69]** | 20% [9, 29] |
+| Control, Granola | 31 | 3% [0, 8] | 23% [8, 36] | 52% [31, 74] |
+| Control, Wispr Flow | 35 | 3% [0, 8] | 23% [8, 41] | 69% [50, 84] |
+| **Control, pooled** (base rate) | 66 | **3% [0, 7]** | **23% [9, 38]** | 61% [41, 79] |
+
+- Weighted share of all "claims decided" bullets that are over-firm (suspected census + control pool weights 82/31, 76/35): pooled 13% [7, 20] strict, 41% [28, 54] lenient (~22 / ~69 of ~169); Granola 18% [8, 28] / 46% [32, 61]; Wispr Flow 7% [0, 14] / 34% [18, 50].
+- Suspected strict by generator meeting status: discussed 16/52, open 1/3, info 0/11.
+- Unanimous across runs (n = 132): firmness 102, claims 128, strict verdict 124, lenient verdict 116.
+- Caveats: same model family throughout; AMI role-play PM "decides" informally, so leaning vs decided is a judgement call; 11 meetings. Details: `data/private/OVERFIRM.md` (local).
