@@ -242,6 +242,27 @@ Wispr Flow is the second real product (see [PRODUCTS.md](../method/HARNESS.md)).
 
 When Kian first syncs, check the ASSUMED rows above against real responses (without printing them) and update this table: the parser is lenient, but a wrong guess silently drops data (e.g. no transcript turns, or one giant turn).
 
+## Braintrust export (`tenor.export.braintrust`)
+
+Braintrust is an external evaluation tool; `tenor export braintrust` writes results in its row shape. Checked 2026-11-10 against the public docs (read as page summaries, not raw text) and the Python SDK source (`py/src/braintrust/logger.py`, read directly). Nothing was run against a Braintrust account, and `https://docs.braintrust.dev/openapi.yaml` was not opened: re-check exact wording there before relying on a row marked VERIFIED for more than field names.
+
+| What we rely on | Detail | Status |
+|---|---|---|
+| Dataset record fields `id`, `input`, `expected`, `metadata` | Accepted top-level fields (`tags`, `origin` also exist; we do not write them) | VERIFIED https://docs.braintrust.dev/annotate/datasets/create.md |
+| Experiment event fields `id`, `input`, `output`, `expected`, `scores`, `metadata` | REST insert body `{"events": [...]}`; `input`, `output`, `expected` are any JSON; `metadata` is an object with string keys | VERIFIED https://docs.braintrust.dev/api-reference/experiments/insert-experiment-events.md |
+| `scores` values in [0, 1] | Object mapping score name to a number in [0, 1] or null; the SDK raises on values outside. Counts and other numbers go in `metadata` | VERIFIED same page; SDK source https://github.com/braintrustdata/braintrust-sdk-python |
+| `input` is the default match key between experiments | Rows are matched by `input` unless the project's comparison key is changed, so `input` holds only stable ids (no run state) | VERIFIED https://docs.braintrust.dev/evaluate/compare-experiments.md |
+| `expected` is not compared to `output` by Braintrust | We compute the score ourselves and send it | VERIFIED insert-experiment-events page |
+| SDK calls used by `--upload` | `init_dataset(project=, name=)`, `Dataset.insert(id=, input=, expected=, metadata=)` (upsert on `id`), `Dataset.flush()`, `init(project=, experiment=, dataset=, metadata=, tags=)`, `Experiment.log(id=, input=, output=, expected=, scores=, metadata=)` (requires non-None `input`, `output`, `scores`), `Experiment.summarize()` | VERIFIED SDK source; https://docs.braintrust.dev/sdks/python/api-reference.md |
+| API key | The SDK reads `BRAINTRUST_API_KEY` from the environment; our code only checks that it is set | VERIFIED SDK source |
+| An existing experiment name is reused | Create returns the existing experiment unless `ensure_new`; with stable row `id`s a re-upload is expected to overwrite rows, not duplicate them | VERIFIED for the REST create call https://docs.braintrust.dev/api-reference/experiments/create-experiment.md; ASSUMED that `init` + `log` with the same `id` behaves the same |
+| `dataset.jsonl` is importable as written | One JSON object per line with `id`, `input`, `expected`, `metadata`. The docs say the CLI "accepts JSONL files"; that it takes exactly this line shape is not confirmed | ASSUMED |
+| `experiment.jsonl` has no file-import path | No experiment file import was found in the pages read; the file is for inspection and for the SDK/REST path | ASSUMED |
+| `dataset=` on `init` links experiment rows to dataset rows | The docs suggest a per-row `origin` for the dataset performance view; `Experiment.log` has no `origin` argument, so we do not set it | ASSUMED |
+| Each named score on each row counts once toward the plan's score quota | Not stated either way. If true: 298 scores for notes completeness, 1,330 for transcript coverage, against 10k per month on the free plan | ASSUMED |
+| Behaviour at the free plan's limits | The plans page does not say whether ingestion is blocked or billed | ASSUMED |
+| Batch size | `--upload` goes through the SDK, which batches itself; no REST batch limit is documented | ASSUMED |
+
 ## Fixture format
 
 `data/fixtures/<set>/notes/<note_id>.json` is the exact 200 body of `GET /v1/notes/{id}?include=transcript`. `folders.json` is the exact 200 body of `GET /v1/folders` (one page). `tests/test_contract.py` checks each file round-trips byte-for-byte (as JSON values) through the same models used for live parsing.

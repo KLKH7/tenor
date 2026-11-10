@@ -5625,3 +5625,65 @@ def _e4_generate(
     if stopped:
         typer.echo(f"STOPPED: {stopped}. Cached calls replay at $0 on a re-run.", err=True)
         raise typer.Exit(1)
+
+
+export_app = typer.Typer(
+    no_args_is_help=True, help="Export results to external evaluation tools (no private text)."
+)
+app.add_typer(export_app, name="export")
+
+
+@export_app.command("braintrust")
+def export_braintrust(
+    experiment: Annotated[
+        str, typer.Option(help="Which result to export: notes-completeness, transcript-coverage.")
+    ],
+    out: Annotated[
+        Path, typer.Option(help="Folder for dataset.jsonl, experiment.jsonl, manifest.json.")
+    ],
+    upload: Annotated[
+        bool,
+        typer.Option(
+            "--upload",
+            help="Also send the rows to Braintrust with its SDK. Off by default; needs "
+            "BRAINTRUST_API_KEY in the environment and the `braintrust` package installed.",
+        ),
+    ] = False,
+    project: Annotated[
+        str, typer.Option(help="Braintrust project name (--upload only).")
+    ] = "TENOR",
+) -> None:
+    """Write a result as Braintrust-shaped JSONL: ids, labels and scores in [0, 1], no transcript
+    or notes text. Offline and $0 unless --upload is given."""
+    from datetime import UTC, datetime
+
+    from tenor.blackbox.kit import NotCommittable
+    from tenor.export import braintrust as B
+
+    try:
+        export = B.build(experiment)
+    except KeyError as e:
+        raise typer.BadParameter(str(e.args[0])) from e
+    except (FileNotFoundError, NotCommittable, ValueError) as e:
+        typer.echo(f"export refused: {e}", err=True)
+        raise typer.Exit(1) from e
+    man = B.write(export, out, date=datetime.now(UTC).date().isoformat(), git_sha=_git_sha())
+    typer.echo(
+        f"wrote {out}: {man['counts']['dataset']} dataset rows, "
+        f"{man['counts']['experiment']} experiment rows ({export.experiment_name})"
+    )
+    for score, products in export.score_summary.items():
+        for product, s in products.items():
+            means = ", ".join(f"{k} {v}" for k, v in s.items() if k.startswith("mean"))
+            typer.echo(f"  {score} · {product}: n {s['n']}, {means}")
+    if not upload:
+        return
+    from tenor.export.braintrust_upload import UploadRefused
+    from tenor.export.braintrust_upload import upload as send
+
+    try:
+        summary = send(export, project)
+    except UploadRefused as e:
+        typer.echo(f"upload refused: {e}", err=True)
+        raise typer.Exit(1) from e
+    typer.echo(summary)

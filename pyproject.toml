@@ -75,6 +75,7 @@ files = [
     "packages/tenor/watchdog.py",
     "packages/tenor/mcp_server",
     "packages/tenor/ami",
+    "packages/tenor/export",
 ]
 
 [[tool.mypy.overrides]]
