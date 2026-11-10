@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from collections import Counter
 
+import pytest
+
 from tenor.ami.corpus import AmiMeeting, DialogueAct, Speaker, SummarySentence
 from tenor.evals import came_back as K
 from tenor.evals import item_fates as F
@@ -31,6 +33,22 @@ def test_select_fills_each_position_within_the_series_cap() -> None:
 def test_select_comes_up_short_rather_than_break_a_rule() -> None:
     few = [K.Pair(x="ES2002" + a, y="ES2002" + b) for a, b in ("ab", "bc", "cd")]
     assert len(F.select(few, [], 42)) == F.MAX_PER_SERIES
+
+
+def test_parse_pairs_takes_consecutive_pairs_in_the_order_given() -> None:
+    got = F.parse_pairs("TS3009c__TS3009d, IS1008a__IS1008b")
+    assert [p.name for p in got] == ["TS3009c__TS3009d", "IS1008a__IS1008b"]
+    assert [p.kind for p in got] == ["cd", "ab"]
+    for bad in (
+        "IS1008a__IS1008c",  # not consecutive
+        "IS1008b__IS1008a",  # backwards
+        "IS1008a__IS1009b",  # two series
+        "IS1008a_IS1008b",
+        "IS1008a__IS1008b,IS1008a__IS1008b",
+        "",
+    ):
+        with pytest.raises(ValueError):
+            F.parse_pairs(bad)
 
 
 def _meeting(mid: str, texts: list[str], sentences: tuple[SummarySentence, ...] = ()) -> AmiMeeting:

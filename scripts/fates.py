@@ -1,8 +1,9 @@
 """Item fates: what the next meeting does with every decision and action of this one ($0, agents).
 
-    uv run --no-sync python scripts/fates.py dump [--seed 42]
-    uv run --no-sync python scripts/fates.py disagreements --run <RUN>
+    uv run --no-sync python scripts/fates.py dump [--seed 42] [--pairs X__Y,...]
+    uv run --no-sync python scripts/fates.py disagreements --run <RUN> [--pairs X__Y,...]
     uv run --no-sync python scripts/fates.py score --run <RUN> [--seed 42] [--model NAME]
+        [--pairs X__Y,...]
 
 ``dump`` selects 36 consecutive AMI scenario pairs (``tenor.evals.item_fates.select``: 12 per
 position, at most 2 per series, without the 6 DEVELOP pairs of ``scripts/cbd.py`` and pairs
@@ -25,6 +26,14 @@ needed_followup = yes), silent items per pair, a-b agreement and kappa, and the 
 earlier detector (``cbd_agent_runs/cbd_20261110``) on overlapping pairs, with meeting-series
 bootstrap CIs. It writes ``score.json`` and ``rows.json`` into the run directory. Local data
 only, private outputs: no LLM, no network.
+
+``--pairs X__Y,...`` runs the same steps on the named pairs instead of the seeded 36, for an
+extra run under its own run id: ``dump`` writes only those job files (same prompt, same
+directory) and leaves the 36 job files and ``pairs.json`` alone; ``disagreements`` and ``score``
+must be given the same ``--pairs``. A named pair whose X has no annotated decision or action,
+or with a meeting that has no transcript, is reported and left out. Named pairs are not checked
+against the DEVELOP set or the series cap: they are outside the test's sample, so report them
+apart from it.
 """
 
 from __future__ import annotations
@@ -64,12 +73,61 @@ def selection(seed: int) -> tuple[list[K.Pair], K.Selection, list[K.Pair]]:
     return pairs, earlier, chosen
 
 
+def named_pairs(spec: str) -> tuple[list[K.Pair], list[str]]:
+    """The pairs of ``--pairs`` that can be read, and why each of the others cannot."""
+    try:
+        wanted = F.parse_pairs(spec)
+    except ValueError as e:
+        raise SystemExit(f"--pairs: {e}") from e
+    counts = K.summary_counts(DEFAULT_ZIP)
+    ok: list[K.Pair] = []
+    problems: list[str] = []
+    for p in wanted:
+        missing = [m for m in (p.x, p.y) if m not in counts]
+        if missing:
+            problems.append(f"{p.name}: no transcript for {', '.join(missing)}")
+        elif not F.items(load_meeting(p.x)):
+            problems.append(f"{p.name}: {p.x} has no annotated decision or action")
+        else:
+            ok.append(p)
+    return ok, problems
+
+
+def run_pairs(seed: int, spec: str | None) -> tuple[list[K.Pair], list[str]]:
+    """The pairs of a run: the seeded selection, or the readable pairs of ``--pairs``."""
+    if spec is None:
+        return selection(seed)[2], []
+    return named_pairs(spec)
+
+
 def _prompt() -> str:
     return Path(f"prompts/{F.PROMPT}.md").read_text(encoding="utf-8")
 
 
 def _answer_path(run: str, reader: str, pair: str) -> str:
     return str(RUNS / run / reader / f"{pair}.jsonl")
+
+
+def dump_named(seed: int, spec: str) -> None:
+    """Job files for the pairs of ``--pairs`` only; nothing else in ``JOBS`` is touched."""
+    chosen, problems = named_pairs(spec)
+    in_selection = {p.name for p in selection(seed)[2]}
+    JOBS.mkdir(parents=True, exist_ok=True)
+    prompt = _prompt()
+    print("pair\tposition\tdecisions\tactions\tno_passage\ty_lines\tin_selection")
+    for p in chosen:
+        x, y = load_meeting(p.x), load_meeting(p.y)
+        where = _answer_path("<RUN>", "<your reader letter: a or b>", p.name)
+        (JOBS / f"{p.name}.md").write_text(F.job_file(x, y, prompt, where), encoding="utf-8")
+        its = F.items(x)
+        print(
+            f"{p.name}\t{p.kind}\t{sum(i.item_id[0] == 'D' for i in its)}\t"
+            f"{sum(i.item_id[0] == 'A' for i in its)}\t{sum(not i.linked for i in its)}\t"
+            f"{len(y.dialogue_acts)}\t{p.name in in_selection}"
+        )
+    for e in problems:
+        print(f"NOT DUMPED {e}")
+    print(f"{len(chosen)} extra job files in {JOBS}; pairs.json and the selection unchanged")
 
 
 def dump(seed: int) -> None:
@@ -112,18 +170,17 @@ def dump(seed: int) -> None:
 
 
 def read_run(
-    run: str, seed: int
+    run: str, seed: int, spec: str | None = None
 ) -> tuple[
     list[K.Pair], dict[str, list[str]], dict[str, dict[str, dict[str, F.Answer]]], list[str]
 ]:
-    """The selected pairs, each pair's X item ids, ``answers[pair][reader][item]`` for every
-    reader file that exists, and every problem found."""
+    """The run's pairs (:func:`run_pairs`), each pair's X item ids,
+    ``answers[pair][reader][item]`` for every reader file that exists, and every problem found."""
     if not (RUNS / run).is_dir():
         raise SystemExit(f"no reader outputs for run {run}: {RUNS / run} does not exist")
-    _, _, chosen = selection(seed)
+    chosen, errors = run_pairs(seed, spec)
     ids: dict[str, list[str]] = {}
     answers: dict[str, dict[str, dict[str, F.Answer]]] = {}
-    errors: list[str] = []
     for p in chosen:
         x, y = load_meeting(p.x), load_meeting(p.y)
         ids[p.name] = [i.item_id for i in F.items(x)]
@@ -146,8 +203,8 @@ def read_run(
     return chosen, ids, answers, errors
 
 
-def disagreements(run: str, seed: int) -> None:
-    chosen, ids, answers, errors = read_run(run, seed)
+def disagreements(run: str, seed: int, spec: str | None = None) -> None:
+    chosen, ids, answers, errors = read_run(run, seed, spec)
     out_dir = TIEBREAKS / run
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in out_dir.glob("*.md"):
@@ -235,8 +292,8 @@ def _print_silent(label: str, s: dict[str, Any]) -> None:
         )
 
 
-def score(run: str, seed: int, model: str) -> None:
-    chosen, ids, answers, errors = read_run(run, seed)
+def score(run: str, seed: int, model: str, spec: str | None = None) -> None:
+    chosen, ids, answers, errors = read_run(run, seed, spec)
     rows: list[dict[str, Any]] = []
     for p in chosen:
         if any(r not in answers[p.name] for r in F.READERS):
@@ -282,6 +339,8 @@ def score(run: str, seed: int, model: str) -> None:
         "prompt_versions": [F.PROMPT],
         "seed": seed,
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
+        "pair_source": "seeded selection" if spec is None else "--pairs",
+        "pair_names": [p.name for p in chosen],
         "pairs_selected": len(chosen),
         "pairs_scored": len(scored),
         "detector_run": str(DETECTOR_RUN),
@@ -311,13 +370,20 @@ def main() -> None:
     s.add_argument("--run", required=True)
     s.add_argument("--seed", type=int, default=42)
     s.add_argument("--model", default="unrecorded", help="the agents' model, for score.json")
+    for cmd in (d, g, s):
+        cmd.add_argument(
+            "--pairs", help="comma-separated X__Y pairs to use instead of the seeded selection"
+        )
     args = ap.parse_args()
     if args.cmd == "dump":
-        dump(args.seed)
+        if args.pairs is None:
+            dump(args.seed)
+        else:
+            dump_named(args.seed, args.pairs)
     elif args.cmd == "disagreements":
-        disagreements(args.run, args.seed)
+        disagreements(args.run, args.seed, args.pairs)
     else:
-        score(args.run, args.seed, args.model)
+        score(args.run, args.seed, args.model, args.pairs)
 
 
 if __name__ == "__main__":

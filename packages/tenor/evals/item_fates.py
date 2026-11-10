@@ -62,6 +62,9 @@ SILENT = ("changed_silently", "not_mentioned_needed", "silent_any")
 N_BOOT = 2000
 
 _PLACEHOLDER = re.compile(r"^\W*NA\W*$")
+_PAIR_NAME = re.compile(
+    r"^(?P<sx>(?:ES|IS|TS)\d{4})(?P<lx>[a-d])__(?P<sy>(?:ES|IS|TS)\d{4})(?P<ly>[a-d])$"
+)
 
 Fate = Literal[
     "reported",
@@ -89,6 +92,22 @@ def select(pairs: Sequence[K.Pair], exclude: Sequence[K.Pair], seed: int) -> lis
             per_series[p.series] += 1
             out.append(p)
     return sorted(out, key=lambda p: p.name)
+
+
+def parse_pairs(spec: str) -> list[K.Pair]:
+    """Pairs named on the command line (``X__Y,X__Y``), in the order given, for a run outside
+    the seeded selection. Raises ``ValueError`` for a name that is not two consecutive
+    meetings of one scenario series (a->b, b->c or c->d) or that is given twice."""
+    out: list[K.Pair] = []
+    for name in (s.strip() for s in spec.split(",")):
+        hit = _PAIR_NAME.match(name)
+        if not hit or hit["sx"] != hit["sy"] or ord(hit["ly"]) - ord(hit["lx"]) != 1:
+            raise ValueError(f"{name!r} is not a consecutive pair such as IS1008a__IS1008b")
+        pair = K.Pair(x=hit["sx"] + hit["lx"], y=hit["sy"] + hit["ly"])
+        if pair in out:
+            raise ValueError(f"{name!r} is given twice")
+        out.append(pair)
+    return out
 
 
 def items(m: AmiMeeting) -> list[K.Item]:
