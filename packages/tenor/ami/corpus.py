@@ -21,9 +21,11 @@ The zip is read in place, never extracted. For one meeting we load:
 
 from __future__ import annotations
 
+import math
 import re
 import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -194,10 +196,26 @@ def _word_streams(zf: zipfile.ZipFile, meeting_id: str) -> dict[str, _Stream]:
 
 
 def _words(streams: dict[str, _Stream]) -> list[Word]:
-    words = [w for agent in sorted(streams) for _, w in streams[agent] if w is not None]
-    # Stable order: start time, then speaker, then original position (sort is stable).
-    words.sort(key=lambda w: (w.start, w.agent))
-    return words
+    # Stable order: start time, then speaker, then original position (sort is stable). A word
+    # with no time (one full stop in TS3011d) sorts at the last timed word before it in its
+    # speaker's file: a NaN key would leave the whole list unsorted.
+    keyed: list[tuple[float, str, Word]] = []
+    for agent in sorted(streams):
+        last = 0.0
+        for _, w in streams[agent]:
+            if w is None:
+                continue
+            if not math.isnan(w.start):
+                last = w.start
+            keyed.append((last, agent, w))
+    keyed.sort(key=lambda k: k[:2])
+    return [w for _, _, w in keyed]
+
+
+def _timed(times: Iterable[float]) -> list[float]:
+    """The times that are numbers; ``[nan]`` if none is (untimed words must not make an act's
+    span NaN, which would break the sort by start time)."""
+    return [t for t in times if not math.isnan(t)] or [math.nan]
 
 
 def _act_text(words: list[Word]) -> str:
@@ -258,8 +276,8 @@ def _dialogue_acts(
                 DialogueAct(
                     da_id=el.get(f"{NITE}id", ""),
                     agent=hit["agent"],
-                    start=min(w.start for w in words),
-                    end=max(w.end for w in words),
+                    start=min(_timed(w.start for w in words)),
+                    end=max(_timed(w.end for w in words)),
                     text=text,
                     da_type=_da_type(el, names),
                     addressee=el.get("addressee", ""),

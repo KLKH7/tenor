@@ -70,7 +70,7 @@ Verdict = Literal[
 _SERIES = re.compile(r"^(?P<series>(?:ES|IS|TS)\d{4})(?P<letter>[a-d])$")
 _WORDS_FILE = re.compile(r"words/(?P<mid>[A-Z]{2}\d{4}[a-z])\.[A-Z]\.words\.xml$")
 _SUMM_FILE = re.compile(r"abstractive/(?P<mid>[A-Z]{2}\d{4}[a-z])\.abssumm\.xml$")
-_LINE_ID = re.compile(r"^L(\d{4})$")
+LINE_ID = re.compile(r"^L(\d{4})$")
 _TOKEN = re.compile(r"[a-z][a-z'-]+")
 # fmt: off
 _STOP = frozenset((
@@ -249,7 +249,7 @@ def spans(centres: Sequence[int], pad: int, n: int) -> list[tuple[int, int]]:
     return out
 
 
-def _passage(m: AmiMeeting, item: Item) -> str:
+def passage(m: AmiMeeting, item: Item) -> str:
     """The item's linked X lines (marked ``*``) with context; gaps shown as ``...``."""
     if not item.linked:
         why = "no links for this sentence" if m.has_summlinks else "this meeting has no links"
@@ -265,7 +265,7 @@ def _passage(m: AmiMeeting, item: Item) -> str:
 
 
 def _item_block(m: AmiMeeting, item: Item) -> str:
-    return f"### {item.item_id}: {item.text}\n\n```\n{_passage(m, item)}\n```"
+    return f"### {item.item_id}: {item.text}\n\n```\n{passage(m, item)}\n```"
 
 
 def roster(x: AmiMeeting, y: AmiMeeting) -> str:
@@ -323,7 +323,7 @@ class Claim(BaseModel):
         return v
 
     def y_indices(self) -> list[int]:
-        return sorted({int(hit[1]) for s in self.y_lines if (hit := _LINE_ID.match(s))})
+        return sorted({int(hit[1]) for s in self.y_lines if (hit := LINE_ID.match(s))})
 
 
 def claim_id(pair: str, k: int) -> str:
@@ -346,7 +346,7 @@ def parse_claims(
         except (json.JSONDecodeError, ValidationError) as e:
             errors.append(f"line {n}: {str(e).splitlines()[0]}")
             continue
-        bad = [s for s in c.y_lines if not (h := _LINE_ID.match(s)) or int(h[1]) >= n_y_lines]
+        bad = [s for s in c.y_lines if not (h := LINE_ID.match(s)) or int(h[1]) >= n_y_lines]
         if c.x_item not in item_ids:
             errors.append(f"line {n}: unknown x_item {c.x_item!r}")
         elif bad:
@@ -413,7 +413,7 @@ def _claim_block(x: AmiMeeting, y: AmiMeeting, item: Item, cid: str, c: Claim) -
     return "\n\n".join(
         [
             f"## Claim `{cid}`",
-            f"### X item {item.item_id}: {item.text}\n\n```\n{_passage(x, item)}\n```",
+            f"### X item {item.item_id}: {item.text}\n\n```\n{passage(x, item)}\n```",
             "### The claim\n\n```json\n"
             + json.dumps(claim, indent=1, ensure_ascii=False)
             + "\n```",

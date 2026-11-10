@@ -103,6 +103,25 @@ def test_dialogue_acts_and_summary_links(ami_zip: Path) -> None:
     }
 
 
+def test_untimed_word_does_not_break_time_order(tmp_path: Path) -> None:
+    """AMI's TS3011d has one full stop with no times, opening a dialogue act: the act takes the
+    span of its timed words and both lists stay sorted."""
+    untimed = '<w nite:id="XX0001a.A.words5" punc="true">.</w>'
+    words_a = "\n".join(untimed if "words5" in ln else ln for ln in WORDS_A.splitlines())
+    assert untimed in words_a
+    path = tmp_path / "ami.zip"
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("corpusResources/meetings.xml", MEETINGS)
+        zf.writestr("words/XX0001a.A.words.xml", words_a)
+        zf.writestr("words/XX0001a.B.words.xml", WORDS_B)
+        zf.writestr("dialogueActs/XX0001a.A.dialog-act.xml", ACTS_A)
+        zf.writestr("dialogueActs/XX0001a.B.dialog-act.xml", ACTS_B)
+    m = load_meeting("XX0001a", path)
+    assert [w.text for w in m.words] == ["Budget", "is", "fixed", ".", ".", "Yes", "Okay"]
+    assert [a.agent for a in m.dialogue_acts] == ["A", "B", "A"]
+    assert (m.dialogue_acts[2].start, m.dialogue_acts[2].end) == (5.2, 5.5)
+
+
 def test_meeting_note_from_ami(ami_zip: Path) -> None:
     note = meeting_note(load_meeting("XX0001a", ami_zip))
     u = note.utterances
