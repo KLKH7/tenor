@@ -695,6 +695,35 @@ Firmness check (`firmness_check.v1`, run `firmness_v1_20261110`) and bullet cues
 - Cues v3 `found`: 1,295 entries, `stated` 1,054, `unclear` 152, `part_missing` 58, `missing` 31; 85 cues, 84 with a verified quote. Fully recovered gold shared with v2: 2 of v3's 6.
 - Caveats: same model family generates and reads; one generation run; firmness worked examples come from DEV IS1008a (DEV gave 0 flags); 11 meetings. Details: `data/private/FIRMNESS.md` (local).
 
+## Meeting ledger (agent-generated; Preliminary)
+
+`meeting_ledger.v2` (frozen at `27ee539`), run `ledger_20261110`: Claude Code agents, one run, product transcript + attendee list simulated from the AMI roster only, E4's 22 TEST units. 668 entries (0 invalid; 1 of 1,583 quotes bad). Three blind agent-reader runs (`e4_reader.v2`; median of three, gold matched in ≥ 2 runs), $0. Coverage: full = 1, partial = 0.5, best single entry per gold item (298 gold), mean per unit; notes' coverage from the E3 whole-notes verdicts. Cluster-bootstrap 95% CIs over meetings, seed 42. Scorer at `c22f05e`.
+
+| Metric | Granola | Wispr Flow | Pooled |
+|---|---|---|---|
+| Entries per unit | 31.4 | 29.4 | 30.4 [27.0, 33.7] |
+| Entries true: yes / partly / no | 98% / 2% / 0% | 97% / 3% / 0% | 97% [96, 98] / 3% / 0% (0/668) |
+| Coverage, all gold: ledger | 0.78 [0.74, 0.83] | 0.76 [0.71, 0.82] | **0.77 [0.72, 0.82]** |
+| Coverage, all gold: notes | 0.72 [0.66, 0.78] | 0.78 [0.73, 0.83] | 0.75 [0.70, 0.79] |
+| Ledger minus notes, all | +0.06 [0.00, 0.11] | -0.02 [-0.07, 0.04] | **+0.02 [-0.02, 0.06]** |
+| Decisions: ledger / notes (difference) | 0.78 / 0.80 (-0.02 [-0.08, 0.03]) | 0.78 / 0.87 (-0.09 [-0.15, -0.04]) | 0.78 / 0.84 (-0.06 [-0.11, -0.01]) |
+| Actions: ledger / notes (difference) | 0.78 / 0.61 (+0.17 [0.04, 0.30]) | 0.76 / 0.60 (+0.15 [0.06, 0.24]) | 0.77 / 0.61 (+0.16 [0.09, 0.24]) |
+| Problems: ledger / notes (difference) | 0.72 / 0.64 (+0.08 [0.03, 0.14]) | 0.67 / 0.74 (-0.06 [-0.20, 0.10]) | 0.70 / 0.69 (+0.01 [-0.07, 0.09]) |
+| Missing gold stated: full | 28/61 (46%) | 18/43 (42%) | 46/104 (44% [28, 60]) |
+| Missing gold stated: incl. partial | 56/61 (92%) | 36/43 (84%) | 92/104 (88% [80, 95]) |
+| Missing gold recovered, E4 rule (entry not already in the notes): full | 26/61 (43%) | 14/43 (33%) | **40/104 (38% [22, 55])** |
+| E4 rule: incl. partial | 46/61 (75%) | 24/43 (56%) | 70/104 (67% [55, 79]) |
+| C3 / CU / R / RD / Q / G1 / cues v3 (full) | | | 8% / 26% / 38% / 36% / 11% / 1% / 6% |
+| 'agreed' entries true: yes | 175/177 | 168/172 | 343/349 (98% [97, 99]); 0 false |
+| Action entries with an owner | 43/70 | 37/69 | 80/139 (58% [39, 75]) |
+| Owner basis: said / inferred / attendee list | 16 / 16 / 10 | 13 / 15 / 8 | 29 / 31 / 18 (2 none) |
+
+- Missing gold by notes verdict (pooled): notes-partial 24/61 full, 56/61 incl. partial; notes-no 22/43 full, 36/43 incl. partial.
+- Gold the notes state in full (194): ledger 144 full, 43 partial, 7 none. 22 of the 43 have ≥ 2 partial entries (compound gold split over entries); counting those as full gives 0.85 (upper bound). 20 of the entries behind the partial decisions are `leaning` or `open`.
+- Entries already in the notes: yes 59%, partial 21%, no 19%. Readers' kind `other`: 160/668. Entries matching no gold: 335/668. Length: 1,054 words per ledger against 473 for the notes.
+- Unanimous across runs (n = 668): `true` 647, `kind` 621, `in_notes` 609, gold ids 628, gold ids with level 602. Coverage per run: 0.77, 0.78, 0.78.
+- Caveats: same model family generates and reads; one generation run; attendee list simulated from AMI rosters; 11 scripted meetings; notes judged as a whole, ledger by best single entry; agent generation is slower and costlier than one product call (not measured); the ledger is about twice the notes' length. Details: `data/private/LEDGER.md` (local).
+
 ## Over-firm notes (Preliminary)
 
 Suspected = all 66 bullets the firmness run (`firmness_v1_20261110`) marked notes firmer than meeting (Granola 48, Wispr Flow 18); control = 66 sampled (seed 42) from the 158 bullets marked decided on both sides. Condition-blind, three agent-reader runs, majority consensus (3 three-way firmness ties -> middle value), $0. Over-firm = bullet claims decided, meeting only discussed/not_said (strict) or also leaning (lenient). Cluster-bootstrap 95% CIs over meetings, seed 42. Code at `04c0965`.
