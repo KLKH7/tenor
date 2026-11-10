@@ -48,7 +48,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from tenor.ami.corpus import ROLE_NAMES, AmiMeeting
 from tenor.evals.coverage_e4 import ratio_ci
 
-PROMPT = "came_back_different.v1"
+PROMPT = "came_back_different.v2"
 JUDGE_PROMPT = "came_back_judge.v1"
 KNOWN = ("IS1008b__IS1008c", "IS1008c__IS1008d")  # FEATURE_TESTS (B): locator, fair wages
 N_DEVELOP = 6

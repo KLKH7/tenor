@@ -6,7 +6,7 @@
 
 ``dump`` lists every consecutive meeting pair that qualifies, applies the fixed split of
 ``tenor.evals.came_back.select`` and writes one detector job per selected pair to
-``data/private/reader/cbd_jobs/<X>__<Y>.md`` (prompt ``came_back_different.v1``, roster, X's
+``data/private/reader/cbd_jobs/<X>__<Y>.md`` (prompt ``came_back_different.v2``, roster, X's
 human decisions and actions with their linked passage, Y's full human transcript) plus
 ``cbd_jobs/pairs.json`` (the split). Same seed, same bytes. A detector agent reads one job file
 and writes JSONL (possibly empty) to ``data/private/reader/cbd_agent_runs/<RUN>/<X>__<Y>.jsonl``.
