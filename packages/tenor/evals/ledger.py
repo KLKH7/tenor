@@ -45,7 +45,7 @@ from tenor.evals import e4_reader as R
 from tenor.evals.bullet_cues import PRODUCT_LABEL, CueUnit
 from tenor.evals.list_check import normalize
 
-PROMPT = "meeting_ledger.v1"
+PROMPT = "meeting_ledger.v2"
 READER_PROMPT = "e4_reader.v2"
 PACKET_VERSION = "ledger_reader_packet.v1"
 KEY_VERSION = "ledger_reader_key.v1"

@@ -200,11 +200,13 @@ def test_dump_and_ingest_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixtur
     (run / "IS1008a__granola.jsonl").write_text(
         _jsonl(_entry("E1"), _entry("E2", quote=[])), encoding="utf-8"
     )
-    out = A.ingest("dev", "r1", readers=readers)
+    with pytest.raises(SystemExit, match="do not carry prompt"):
+        A.ingest("dev", "r1", readers=readers)  # the job was dumped with p.v1, not L.PROMPT
+    out = A.ingest("dev", "r1", readers=readers, prompt="p.v1", prompts=prompts)
     assert out["totals"]["kept"] == 1 and out["totals"]["no_valid_quote"] == 1
     assert out["totals"]["items"] == 1 and out["missing"] == []
     key = json.loads((readers / "ledger_keys" / "r1.key.json").read_text(encoding="utf-8"))
-    assert key["meta"]["prompt"] == L.PROMPT and key["meta"]["seed"] == 42
+    assert key["meta"]["prompt"] == "p.v1" and key["meta"]["seed"] == 42
     assert key["units"]["IS1008a:granola"]["items"]["K1"]["entry_id"] == "E1"
     assert (readers / "ledger_packets" / "r1" / "IS1008a__granola.md").exists()
     assert "no_valid_quote" in capsys.readouterr().out

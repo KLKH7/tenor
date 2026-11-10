@@ -1,8 +1,9 @@
 """Meeting ledger built by Claude Code agents (no API).
 
     uv run --no-sync python scripts/ledger_agents.py dump --split dev|test \
-        [--prompt meeting_ledger.v1]
-    uv run --no-sync python scripts/ledger_agents.py ingest --split dev|test --run <RUN>
+        [--prompt meeting_ledger.v2]
+    uv run --no-sync python scripts/ledger_agents.py ingest --split dev|test --run <RUN> \
+        [--prompt meeting_ledger.v2]
 
 ``dump`` writes one job file per unit of the split (DEV IS1008a:
 ``data/private/reader/ledger_jobs_dev/``; TEST, the 11 meetings of
@@ -78,9 +79,26 @@ def dump(split: str, prompt: str, readers: Path = READERS, prompts: Path = ROOT 
 
 
 def ingest(
-    split: str, run: str, seed: int = 42, model: str = "", readers: Path = READERS
+    split: str,
+    run: str,
+    seed: int = 42,
+    model: str = "",
+    readers: Path = READERS,
+    prompt: str = L.PROMPT,
+    prompts: Path = ROOT / "prompts",
 ) -> dict[str, Any]:
-    """Validate a run's answers and write the reader packets and the key; returns the counts."""
+    """Validate a run's answers and write the reader packets and the key; returns the counts.
+    ``prompt`` is recorded in the key, so it must be the one the split's job files carry:
+    a job file with other instructions stops the ingest."""
+    text = (prompts / f"{prompt}.md").read_text(encoding="utf-8").rstrip("\n")
+    stale = [
+        u.key
+        for u in units(readers, split)
+        if (job := jobs_dir(readers, split) / f"{u.meeting_id}__{u.product}.md").exists()
+        and text not in job.read_text(encoding="utf-8")
+    ]
+    if stale:
+        raise SystemExit(f"job files do not carry prompt {prompt}: {', '.join(stale)}")
     pdir = readers / "ledger_packets" / run
     kdir = readers / "ledger_keys"
     pdir.mkdir(parents=True, exist_ok=True)
@@ -109,7 +127,7 @@ def ingest(
         "key_version": L.KEY_VERSION,
         "packet_version": L.PACKET_VERSION,
         "reader_prompt": L.READER_PROMPT,
-        "prompt": L.PROMPT,
+        "prompt": prompt,
         "run_id": run,
         "split": split,
         "seed": seed,
@@ -140,11 +158,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     i.add_argument("--run", required=True)
     i.add_argument("--seed", type=int, default=42)
     i.add_argument("--model", default="", help="the generator agents' model, for the key's meta")
+    i.add_argument("--prompt", default=L.PROMPT, help="the prompt the job files were dumped with")
     a = ap.parse_args(argv)
     if a.cmd == "dump":
         dump(a.split, a.prompt)
     else:
-        ingest(a.split, a.run, a.seed, a.model)
+        ingest(a.split, a.run, a.seed, a.model, prompt=a.prompt)
 
 
 if __name__ == "__main__":
