@@ -57,6 +57,15 @@ gold action whose owner is one role (``owner_check.gold_owner``) and that has su
   ambiguous, not guessed. (The truth picks the line; the generator's name for it is scored.)
 
 Items with no single owner, no links, or no confident line are listed with the reason.
+
+**One tap** (:func:`one_tap_people`, :func:`one_tap_anchors`). A third condition simulates the
+user labelling one line per person. Every participant gets a label: the roster's name, else a
+neutral ``Person A``.. in order of first speech (never a role), so meetings with an incomplete
+or missing roster take part. Per participant one line the truth gives them (confidence >=
+:data:`ANCHOR_CONFIDENCE`, not mixed, :data:`ANCHOR_WORDS` words or more, from the first third
+of their lines: an early tap) is drawn with a fixed seed and shown in the job as
+``T-id -> label``; nothing else of the truth is shown. The labelled lines are left out of every
+score: they were given, not found.
 """
 
 from __future__ import annotations
@@ -65,6 +74,8 @@ import bisect
 import difflib
 import itertools
 import json
+import math
+import random
 import re
 import statistics
 from collections import Counter, defaultdict
@@ -88,6 +99,13 @@ PROMPT = "speaker_naming.v1"
 # "names": names only, as a real calendar invite has; only meetings where everyone has a name.
 ATTENDEE_MODES = ("roles", "names")
 PROMPTS = {"roles": PROMPT, "names": "speaker_naming.v2"}
+# Lines the user is simulated to have labelled. "none": the first two runs. "one": one per person.
+ANCHOR_MODES = ("none", "one")
+ONE_TAP_PROMPT = "speaker_naming.v3"
+ONE_TAP_KEYS = READERS / "speaker_onetap_keys"  # which lines were labelled, per unit (truth)
+ANCHOR_SEED = 42  # fixed: dump and score must pick the same lines
+ANCHOR_CONFIDENCE = 0.9  # a labelled line must be this surely its speaker's, and not mixed
+ANCHOR_WORDS = (8, 5, 0)  # least words of a labelled line; relaxed in this order, recorded
 CONFIDENT = 0.7  # a line's top speaker must hold this share of its words
 MIXED_SHARE = 0.25  # second speaker's share of the matched words that makes a line mixed
 MIXED_MIN_WORDS = 2
@@ -100,6 +118,8 @@ MIN_WORDS = 3  # robustness cut: lines this long, whose truth rests on more than
 UNKNOWN = "unknown"
 CONFIDENCES = ("high", "medium", "low")
 BASES = ("intro", "addressed", "role_content", "turn_taking", "diarisation_label", "none")
+ANCHOR_BASIS = "labelled_anchor"  # prompt v3: a labelled line, or continuity with one
+ONE_TAP_BASES = (*BASES, ANCHOR_BASIS)
 
 # One spelling per hesitation / backchannel, so "Mm-hm." and AMI's "Mm-hmm" are the same token.
 _FILLER = {
@@ -367,9 +387,11 @@ class Prediction:
 _LINE_ID = re.compile(r"^T(\d+)$")
 
 
-def parse_predictions(text: str, n_lines: int) -> tuple[dict[int, Prediction], list[str]]:
+def parse_predictions(
+    text: str, n_lines: int, bases: Sequence[str] = BASES
+) -> tuple[dict[int, Prediction], list[str]]:
     """A generator's JSONL as line index -> prediction, and what is wrong with it: bad JSON,
-    missing keys, values outside :data:`CONFIDENCES` / :data:`BASES`, unknown, repeated or
+    missing keys, values outside :data:`CONFIDENCES` / ``bases``, unknown, repeated or
     missing lines. A bad row is left out; the first row for a line wins."""
     out: dict[int, Prediction] = {}
     errors: list[str] = []
@@ -390,7 +412,7 @@ def parse_predictions(text: str, n_lines: int) -> tuple[dict[int, Prediction], l
             continue
         if not 0 <= pred.line < n_lines:
             errors.append(f"row {n}: no such line {row['line']!r}")
-        elif pred.confidence not in CONFIDENCES or pred.basis not in BASES:
+        elif pred.confidence not in CONFIDENCES or pred.basis not in bases:
             errors.append(f"row {n}: bad confidence or basis")
         elif pred.line in out:
             errors.append(f"row {n}: T{pred.line:04d} repeated")
@@ -399,6 +421,67 @@ def parse_predictions(text: str, n_lines: int) -> tuple[dict[int, Prediction], l
     if missing := [i for i in range(n_lines) if i not in out]:
         errors.append(f"{len(missing)} lines without a row (first T{missing[0]:04d})")
     return out, errors
+
+
+# -- one tap: labels for everyone, one labelled line per person ------------------------------
+
+
+def one_tap_people(attendees: Sequence[Attendee], first_speech: Sequence[str]) -> list[Attendee]:
+    """Every participant with a label and no role: the roster's name, else ``Person A``,
+    ``Person B``.. handed to the unnamed in order of first speech (``first_speech``: AMI agents,
+    earliest first; an agent missing from it comes last). The letter is not AMI's letter."""
+    rank = {a: i for i, a in enumerate(first_speech)}
+    unnamed = sorted(
+        (a.agent for a in attendees if not a.name), key=lambda g: (rank.get(g, len(rank)), g)
+    )
+    neutral = {g: f"Person {chr(ord('A') + i)}" for i, g in enumerate(unnamed)}
+    return [Attendee(a.agent, None, a.name or neutral[a.agent]) for a in attendees]
+
+
+@dataclass(frozen=True)
+class Anchor:
+    """The line the user is simulated to have labelled for one participant."""
+
+    agent: str
+    line: int
+    rule: str  # which filter the line passed: "8+ words", "5+ words", "any length", ...
+    n_words: int
+
+
+def one_tap_anchors(
+    truth: Sequence[LineTruth], agents: Sequence[str], key: str, seed: int = ANCHOR_SEED
+) -> dict[str, Anchor | None]:
+    """One labelled line per participant, drawn with ``seed`` (and ``key``, the unit's name, so
+    units differ): a line the truth gives them with confidence >= :data:`ANCHOR_CONFIDENCE`, not
+    mixed, among the first third of their lines, of 8+ words; failing that 5+ words, then any
+    length; failing that the same anywhere in the meeting (``rule`` says which). None when the
+    truth has no such line for the person at all."""
+    out: dict[str, Anchor | None] = {}
+    for agent in agents:
+        own = [t for t in truth if t.speaker == agent]
+        good = [t for t in own if t.confidence >= ANCHOR_CONFIDENCE and not t.mixed]
+        early = {t.index for t in own[: math.ceil(len(own) / 3)]}
+        tiers = [
+            (
+                f"{n}+ words" if n else "any length",
+                [t for t in good if t.index in early and t.n_words >= n],
+            )
+            for n in ANCHOR_WORDS
+        ] + [("any length, after the first third", good)]
+        out[agent] = None
+        for rule, cands in tiers:
+            if cands:
+                pick = random.Random(f"{seed}|{key}|{agent}").choice(cands)
+                out[agent] = Anchor(agent, pick.index, rule, pick.n_words)
+                break
+    return out
+
+
+def anchor_block(anchors: Mapping[str, Anchor | None], people: Sequence[Attendee]) -> list[str]:
+    """The job's "Lines the user has labelled" section: ``T-id -> label`` in line order."""
+    label = {a.agent: a.label for a in people}
+    rows = sorted((x.line, label[x.agent]) for x in anchors.values() if x is not None)
+    return [f"T{i:04d} -> {who}" for i, who in rows]
 
 
 # -- baselines --------------------------------------------------------------------------------
@@ -667,9 +750,11 @@ def split_meetings(split: str) -> tuple[str, ...]:
     return DEV_MEETINGS if split == "dev" else TEST_MEETINGS
 
 
-def jobs_dir(split: str, attendees: str = "roles") -> Path:
-    """Where a split's job files go; the names-only condition has its own directory."""
+def jobs_dir(split: str, attendees: str = "roles", anchors: str = "none") -> Path:
+    """Where a split's job files go; the names-only and one-tap conditions have their own."""
     stem = "speaker_jobs" if attendees == "roles" else f"speaker_jobs_{attendees}"
+    if anchors == "one":
+        stem = "speaker_jobs_onetap"
     return READERS / (stem if split == "test" else f"{stem}_{split}")
 
 
@@ -886,10 +971,17 @@ def job_file(
     prompt: str,
     attendees: Sequence[Attendee],
     lines: Sequence[ProdLine],
+    labelled: Sequence[str] | None = None,
 ) -> str:
     """One generator job: the prompt, the attendee list, the product transcript with the
-    product's own labels. No truth, no AMI transcript, no gold items."""
+    product's own labels. No truth, no AMI transcript, no gold items; in the one-tap condition
+    ``labelled`` (:func:`anchor_block`) is the only part that comes from the truth."""
     name = unit_name(meeting_id, product)
+    taps = (
+        []
+        if labelled is None
+        else ["## Lines the user has labelled", "", "```", *labelled, "```", ""]
+    )
     return "\n".join(
         [
             prompt.rstrip(),
@@ -905,6 +997,7 @@ def job_file(
             "",
             *attendee_block(attendees),
             "",
+            *taps,
             "## Transcript",
             "",
             "```",

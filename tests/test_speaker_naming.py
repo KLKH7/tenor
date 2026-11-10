@@ -489,3 +489,110 @@ def test_split_meetings_keep_dev_out_of_test() -> None:
     assert S.jobs_dir("test", "names").name == "speaker_jobs_names"
     assert S.jobs_dir("dev", "names").name == "speaker_jobs_names_dev"
     assert S.PROMPTS == {"roles": "speaker_naming.v1", "names": "speaker_naming.v2"}
+
+
+# -- one tap ----------------------------------------------------------------------------------
+
+
+def test_one_tap_people_keep_names_and_letter_the_rest_by_first_speech() -> None:
+    roster = [
+        S.Attendee("A", "Project Manager", None),
+        S.Attendee("B", "Marketing Expert", "Ben"),
+        S.Attendee("C", None, None),
+        S.Attendee("D", "Industrial Designer", None),
+    ]
+    people = S.one_tap_people(roster, ["C", "B", "D"])  # A never speaks: last
+    assert [(a.agent, a.label, a.role) for a in people] == [
+        ("A", "Person C", None),
+        ("B", "Ben", None),
+        ("C", "Person A", None),
+        ("D", "Person B", None),
+    ]
+    block = S.attendee_block(people)
+    assert block[1:5] == ["- Ben", "- Person A", "- Person B", "- Person C"]
+    assert "Manager" not in "\n".join(block)
+    assert S.resolve_speaker("person a", people) == "C" and S.resolve_speaker("Ben", people) == "B"
+    assert S.resolve_speaker("Person", people) is None
+    assert S.resolve_speaker("Project Manager", people) is None
+
+
+def test_one_tap_anchor_is_an_early_long_sure_line_and_is_seeded() -> None:
+    # A: nine lines, first third = lines 0..2; only line 2 is 8+ words, sure and not mixed
+    spec: list[tuple[str | None, int, float]] = [
+        ("A", 9, 0.8),  # not sure enough
+        ("A", 3, 1.0),  # short
+        ("A", 8, 0.9),
+        *[("A", 12, 1.0)] * 6,  # long and sure, but late
+    ]
+    truth = _truth(spec)
+    got = S.one_tap_anchors(truth, ["A"], "u")["A"]
+    assert got == S.Anchor("A", 2, "8+ words", 8)
+    mixed = [
+        S.LineTruth(2, 8, "A", 0.9, True, {"A": 6, "B": 2}, {}) if t.index == 2 else t
+        for t in truth
+    ]
+    assert S.one_tap_anchors(mixed, ["A"], "u")["A"] == S.Anchor("A", 1, "any length", 3)
+    many = _truth([("A", 10, 1.0)] * 30)
+    picks = {S.one_tap_anchors(many, ["A"], f"unit{k}")["A"] for k in range(20)}
+    assert len(picks) > 1 and all(p is not None and p.line < 10 for p in picks)
+    assert S.one_tap_anchors(many, ["A"], "u") == S.one_tap_anchors(many, ["A"], "u")
+    assert S.one_tap_anchors(many, ["A"], "u", seed=1) != S.one_tap_anchors(
+        many, ["A"], "u", seed=2
+    )
+
+
+def test_one_tap_anchor_relaxes_in_order_and_says_so() -> None:
+    truth = _truth(
+        [
+            ("A", 6, 1.0),
+            ("A", 2, 1.0),
+            ("A", 2, 1.0),
+            ("B", 2, 0.95),
+            ("C", 4, 0.8),
+            ("C", 1, 0.5),
+            ("C", 9, 0.5),
+            ("C", 9, 1.0),
+        ]
+    )
+    got = S.one_tap_anchors(truth, ["A", "B", "C", "D"], "u")
+    assert got["A"] == S.Anchor("A", 0, "5+ words", 6)
+    assert got["B"] == S.Anchor("B", 3, "any length", 2)
+    assert got["C"] == S.Anchor("C", 7, "any length, after the first third", 9)
+    assert got["D"] is None
+    people = [
+        S.Attendee(g, None, n)
+        for g, n in zip("ABCD", ("Zoe", "Ben", "Person A", "Person B"), strict=True)
+    ]
+    assert S.anchor_block(got, people) == ["T0000 -> Zoe", "T0003 -> Ben", "T0007 -> Person A"]
+
+
+def test_one_tap_job_shows_labelled_lines_and_default_job_does_not() -> None:
+    lines = [S.ProdLine(0, "Them", 0.0, 4.0, "Hello."), S.ProdLine(1, "Them", 5.0, 6.0, "Hi.")]
+    people = S.one_tap_people(PEOPLE, ["C", "A", "B"])
+    text = S.job_file("XX0001a", "granola", "P\n", people, lines, ["T0001 -> Ben"])
+    head, _, tail = text.partition("## Lines the user has labelled\n\n```\nT0001 -> Ben\n```\n\n")
+    assert head.rstrip().endswith("unknown.") and tail.startswith("## Transcript")
+    assert "Designer" not in text and "Manager" not in text
+    assert "labelled" not in S.job_file("XX0001a", "granola", "P\n", PEOPLE, lines)
+    assert S.jobs_dir("test", "names", "one").name == "speaker_jobs_onetap"
+    assert S.jobs_dir("dev", "names", "one").name == "speaker_jobs_onetap_dev"
+    assert S.jobs_dir("test", "names").name == "speaker_jobs_names"
+
+
+def test_labelled_anchor_basis_is_accepted_only_when_asked() -> None:
+    row = json.dumps(
+        {"line": "T0000", "speaker": "Ben", "confidence": "high", "basis": "labelled_anchor"}
+    )
+    assert S.parse_predictions(row, 1)[0] == {}
+    preds, errors = S.parse_predictions(row, 1, S.ONE_TAP_BASES)
+    assert preds[0].basis == S.ANCHOR_BASIS and errors == []
+
+
+def test_one_tap_prompt_is_v2_plus_labelled_lines() -> None:
+    from pathlib import Path
+
+    v3 = Path("prompts/speaker_naming.v3.md").read_text(encoding="utf-8")
+    assert "labelled_anchor" in v3 and "Lines the user has labelled" in v3
+    assert "T0009 -> Ilse Brandvold" in v3 and "Person A" in v3
+    for ami in ("Agnes", "Christine", "Shrida", "remote control", "Industrial Designer"):
+        assert ami not in v3
