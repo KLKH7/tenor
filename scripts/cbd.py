@@ -159,6 +159,8 @@ def _fmt(r: dict[str, Any], pct: bool = True) -> str:
 
 
 def score(run: str, seed: int, model: str) -> None:
+    if not (RUNS / run).is_dir():
+        raise SystemExit(f"no detector outputs for run {run}: {RUNS / run} does not exist")
     sel, claims, errors = read_claims(run, seed)
     known_ids = {K.claim_id(p, k) for p, cs in claims.items() for k in range(1, len(cs) + 1)}
     votes: dict[str, dict[str, str]] = {}
