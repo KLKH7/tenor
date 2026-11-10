@@ -373,3 +373,197 @@ def test_note_values_match_at_the_moment_elsewhere_or_absent() -> None:
     s = H.note_summary(rows)["granola"]
     assert s["values"] == 5 and s["matched"] == 4 and s["elsewhere_same_unit"] == 1
     assert s["match"] == {"at_moment": 1, "elsewhere": 1, "absent": 1, "no_moment": 1}
+
+
+# -- truth-free mode --------------------------------------------------------------------------
+
+
+def pair(a_text: str, b_text: str, name: str = "R1") -> list[dict]:
+    a = product(f"{FILL} {a_text} {FILL}", offset=0.0)
+    b = product(f"{FILL} {b_text} {FILL}", offset=30.0)
+    rows, n_anchor = H.pair_rows(name, a, b)
+    assert n_anchor >= 2 * len(FILL.split())
+    return rows
+
+
+def outcomes(rows: list[dict]) -> list[tuple[str, str | None, str | None]]:
+    return [
+        (r["outcome"], r["a"] and r["a"]["value"], r["b"] and r["b"]["value"])
+        for r in rows
+        if r["counted"]
+    ]
+
+
+def test_pair_rows_equal_different_and_one_sided() -> None:
+    rows = pair(
+        "it costs fifteen Euros and we don't ship on Tuesday",
+        "it costs €50 and we ship on Tuesday, maybe twice",
+    )
+    assert outcomes(rows) == [
+        ("different", "15 euro", "50 euro"),
+        ("only_a", "not", None),
+        ("equal", "tuesday", "tuesday"),
+    ]
+    assert rows[0]["mark"] == "number"
+    assert rows[0]["a"]["time_s"] < rows[0]["b"]["time_s"]  # each hearing's own clock
+    assert [r["id"] for r in rows] == ["R1:p0000", "R1:p0001", "R1:p0002"]
+    rows = pair("we have five minutes", "we have five dollars and no time")
+    assert outcomes(rows) == [("different", "5 minute", "5 dollar"), ("only_b", None, "no")]
+    assert rows[0]["mark"] == "unit_only"
+    assert pair("well no bad", "well not bad")[0]["mark"] == "negation_word"
+    assert pair("next Thursday then", "next Tuesday then")[0]["mark"] == "date"
+
+
+def test_pair_rows_ways_of_writing_are_not_marks() -> None:
+    # a digit string, a cardinal against an ordinal, a number written in pieces
+    assert outcomes(pair("council bill one two one two eighty three", "council bill 121283")) == [
+        ("equal", "121283", "121283")
+    ]
+    assert outcomes(pair("until September 19 then", "until September 19th then")) == [
+        ("equal", "september", "september"),
+        ("equal", "19", "19 ord"),
+    ]
+    assert outcomes(pair("project number 3018 378 type", "project number 3018378 type")) == [
+        ("equal", "3018", "3018378")
+    ]
+    assert outcomes(pair("project number 3018378 type", "project number 3018 378 type")) == [
+        ("equal", "3018378", "3018")
+    ]
+    # ... but a dropped digit is
+    assert outcomes(pair("council bill one two one two eight", "council bill 121282")) == [
+        ("different", "12128", "121282")
+    ]
+
+
+def test_digit_strings_need_three_number_words_and_no_punctuation() -> None:
+    def joined(text: str) -> list[str]:
+        _, vals = H.text_values(text)
+        return [v.shown for v in vals]
+
+    assert joined("resolution three two one four two passed") == ["32142"]
+    assert joined("bill one two one one ninety") == ["121190"]
+    assert joined("two or three") == ["2", "3"]
+    assert joined("five six") == ["5", "6"]
+    assert joined("one, two, three") == ["1", "2", "3"]
+    assert joined("ten eleven twelve") == ["10", "11", "12"]  # fewer than two single digits
+    assert joined("call 1 2 3") == ["1", "2", "3"]  # written digits are left alone
+
+
+def test_pair_rows_figure_of_speech_is_not_counted() -> None:
+    rows = pair("this one is fine", "this 1 is fine")
+    assert [(r["outcome"], r["counted"], r["excluded"]) for r in rows] == [
+        ("equal", False, "pronoun_one")
+    ]
+    assert H.pair_counts(rows)["not_counted"] == 1 and H.pair_counts(rows)["equal"] == 0
+
+
+def test_pair_summary_counts_and_rates() -> None:
+    rows = pair("it costs fifteen Euros and not more, about five minutes", "it costs €50", "R1")
+    rows += pair("we have two weeks", "we have two weeks", "R2")
+    s = H.pair_summary(rows, {"R1": 300.0, "R2": 900.0}, seed=42)
+    r1, r2, pooled = s["recordings"]["R1"], s["recordings"]["R2"], s["pooled"]
+    assert (r1["values_a"], r1["values_b"], r1["equal"], r1["different"]) == (3, 1, 0, 1)
+    assert (r1["only_a"], r1["only_b"], r1["marks"]) == (2, 0, {"number": 1})
+    assert r1["marks_per_10min"] == 2.0 and r2["marks_per_10min"] == 0.0
+    assert r1["by_kind"]["money"] == {"equal": 0, "different": 1, "only_a": 0, "only_b": 0}
+    assert (pooled["equal"], pooled["different"], pooled["recordings"]) == (1, 1, 2)
+    assert pooled["marks_per_10min"]["rate"] == 0.5
+    assert pooled["marks_per_recording"]["mean"] == 0.5
+    assert H.pair_summary(rows, {"R1": 300.0, "R2": 900.0}, seed=42) == s
+
+
+def test_validate_pairs_links_truth_classes_to_pair_rows() -> None:
+    said = "it costs fifteen Euros and five minutes later we sold nine and not ten"
+    human = H.human_stream(ami(("A", f"{FILL} {said} {FILL}")))
+    vals = H.human_values(human)
+    texts = {
+        "granola": "it costs fifteen Euros and five minutes later we sold nine and ten",
+        "wispr": "it costs fifty Euros and five minutes later we sold and not eleven",
+    }
+    streams = {p: product(f"{FILL} {t} {FILL}") for p, t in texts.items()}
+    hearings = {
+        p: H.classify(vals, H.product_values(st), H.anchors(human, st), len(st.words))
+        for p, st in streams.items()
+    }
+    truth = H.truth_links(vals, hearings)
+    assert [t["class"] for t in truth] == [
+        "disagree_one_right", "agree_right", "missing", "missing", "disagree_one_right",
+    ]  # fmt: skip
+    rows, _ = H.pair_rows("M1", streams["granola"], streams["wispr"])
+    v = H.validate_pairs(truth, rows)
+    assert v["truth"]["disagree_one_right"] == {"different": 2}
+    assert v["truth"]["agree_right"] == {"equal": 1}
+    assert v["truth"]["missing"] == {"only_a": 1, "only_b": 1}
+    assert v["marks"] == {"disagree_one_right": 2}
+    # a mark where the human transcript has no value at all
+    rows, _ = H.pair_rows(
+        "M1", product(f"{FILL} about 20 of them {FILL}"), product(f"{FILL} about 30 of them {FILL}")
+    )
+    assert H.validate_pairs([], rows)["marks"] == {"no_human_value": 1}
+
+
+# -- official values --------------------------------------------------------------------------
+
+
+def test_official_targets_from_a_legistar_item() -> None:
+    targets, skipped = H.official_targets(
+        "CB 121282",
+        "An ordinance amending Ordinance 127362, which adopted the 2026 budget; relating to "
+        "Initiative 137 on the November 5, 2024, ballot; all by a 3/4 vote.",
+        "The Council Bill (CB) was postponed to September 19, 2024",
+        {"In Favor": 6, "Opposed": 3, "Absent": 0},
+    )
+    assert [(t.label, t.shown) for t in targets] == [
+        ("matter number (CB)", "CB 121282"),
+        ("votes in favor", "6"),
+        ("votes opposed", "3"),
+        ("number in title", "ordinance 127362"),
+        ("number in title", "2026"),
+        ("number in title", "initiative 137"),
+        ("date in title", "november 5"),
+        ("date in action text", "september 19"),
+    ]
+    assert skipped == [
+        "title: year of the date november 5 2024",
+        "title: by a 3 4 vote",
+        "title: a 3 4 vote",
+    ]  # the action text's 2024 is the title's value again
+
+
+def status(target: H.Target, text: str) -> tuple[str, list[str]]:
+    found = H.find_target(target, *H.text_values(text))
+    return found["status"], [o["value"] for o in found["others"]]
+
+
+def test_find_target_right_wrong_absent() -> None:
+    (bill, favor, opposed, ordinance, *_), _ = H.official_targets(
+        "CB 121282", "amending Ordinance 127362", "", {"In Favor": 6, "Opposed": 3}
+    )
+    assert status(bill, "council bill one two one two eight two relating to") == ("right", [])
+    assert status(bill, "council bill one two one two eight relating to") == ("wrong", ["12128"])
+    assert status(bill, "the bill passes") == ("absent", [])
+    # another item's number in the same text is listed, the status stays right
+    assert status(bill, "Council Bill 121281 passed. Council Bill 121282 passed.") == (
+        "right",
+        ["121281"],
+    )
+    assert status(favor, "six in favor, three opposed") == ("right", [])
+    assert status(favor, "Passed 6-3.") == ("right", [])
+    far = "we met six times last year and then again this spring before the bill passes"
+    assert status(favor, far) == ("absent", [])  # no voting word within six words
+    assert status(favor, "none in favor, none opposed") == ("wrong", ["none"])
+    assert status(favor, "nine in favor") == ("wrong", ["9"])
+    assert status(opposed, "six in favor, three opposed") == ("right", [])
+    assert status(ordinance, "amending ordinance 127 362 which") == ("right", [])
+    assert status(ordinance, "amending ordinance one two seven three two which") == (
+        "wrong",
+        ["12732"],
+    )
+
+
+def test_find_target_day_needs_its_month() -> None:
+    (_, day), _ = H.official_targets("Res 1", "", "postponed to September 19, 2024", {})
+    assert status(day, "postponed until September 19th") == ("right", [])
+    assert status(day, "19 people spoke in September") == ("right", [])  # within six words
+    assert status(day, "there were 19 speakers") == ("absent", [])
+    assert status(day, "postponed to September 17") == ("wrong", ["17"])

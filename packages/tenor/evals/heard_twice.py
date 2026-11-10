@@ -642,9 +642,23 @@ def classify(
     own product word). Three passes, each product value used once: the same value in the tight
     window; the same value in the wide window; then another counted value of the same family in
     the tight window (``different``). Whatever is left is ``missing``."""
+    return [h for h, _ in _match(human, product, pairs, n_hyp)]
+
+
+def _match(
+    human: Sequence[Value],
+    product: Sequence[Value],
+    pairs: Sequence[tuple[int, int]],
+    n_hyp: int,
+    eq: Callable[[Value, Value], bool] | None = None,
+) -> list[tuple[Hearing, tuple[int, ...]]]:
+    """:func:`classify`, with the positions in ``product`` of the value(s) each hearing used.
+    ``eq`` replaces :func:`same` as the test that two values are one."""
+    eq = eq or same
     spans = [expected_span(h.start, h.end, pairs, n_hyp) for h in human]
     used: set[int] = set()
     result: dict[int, Hearing] = {}
+    took: dict[int, tuple[int, ...]] = {}
 
     def near(i: int, pad: int, clip: bool) -> list[int]:
         lo, hi, floor, ceiling = spans[i]
@@ -659,15 +673,17 @@ def classify(
             if i in result:
                 continue
             cands = near(i, pad, clip)
-            hit = next((k for k in cands if same(h, product[k]) or _part_of(h, product[k])), None)
+            hit = next((k for k in cands if eq(h, product[k]) or _part_of(h, product[k])), None)
             if hit is not None:
                 m = product[hit]
                 used.add(hit)
+                took[i] = (hit,)
                 result[i] = Hearing("correct", m.shown, m.text, m.start)
             elif h.parts:  # "twelve fifty" written as two numbers, in order
                 two = _two_parts(h, [k for k in sorted(cands)], product)
                 if two is not None:
                     used.update(two)
+                    took[i] = two
                     text = " ".join(product[k].text for k in two)
                     result[i] = Hearing("correct", h.shown, text, product[two[0]].start)
 
@@ -684,12 +700,13 @@ def classify(
         if cands:
             m = product[cands[0]]
             used.add(cands[0])
+            took[i] = (cands[0],)
             result[i] = Hearing(
                 "different", m.shown, m.text, m.start, number_same=bool(h.vals & m.vals)
             )
         else:
             result[i] = Hearing("missing", "", "", spans[i][0])
-    return [result[i] for i in range(len(human))]
+    return [(result[i], took.get(i, ())) for i in range(len(human))]
 
 
 def _part_of(h: Value, m: Value) -> bool:
@@ -1054,3 +1071,473 @@ def note_summary(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "per_meeting": dict(Counter(r["meeting"] for r in matched)),
         }
     return out
+
+
+# -- truth-free mode: two hearings against each other -----------------------------------------
+#
+# Where no human transcript exists, the two hearings are compared directly. Hearing A plays the
+# part the human transcript plays above (its values are the units, B's words are aligned to
+# its words), so the same matcher gives: the same value in both (``equal``), another value of
+# the same family at the same spot (``different``: the "heard two ways" mark), or a value in
+# one hearing only. Nothing here says which hearing is right.
+
+PAIR_OUTCOMES = ("equal", "different", "only_a", "only_b")
+DIGIT_RUN = 3  # numbers said in a row that make one digit string ("one two one two eight one")
+
+
+def _spoken_digits(v: Value) -> str | None:
+    """The digits of a number word that can be part of a digit string: a single digit ("two"),
+    a two-digit group ("eighty three") or a run of two ("two eighty three")."""
+    if v.kind != "number" or not v.text.replace(" ", "").isalpha():
+        return None
+    if v.parts:
+        return "".join(str(int(Fraction(x))) for x in v.parts)
+    (val,) = v.vals if len(v.vals) == 1 else ("",)
+    return val if val.isdigit() and int(val) < 100 else None
+
+
+def digit_strings(values: Sequence[Value], brk: Sequence[bool]) -> list[Value]:
+    """``values`` with every digit string joined into one number: :data:`DIGIT_RUN` or more
+    number words below 100 said one after another with no punctuation between, at least two of
+    them single digits. A bill number read out ("one two one two eight one", "one two one two
+    eighty three") is then the value 121281 or 121283, as the other hearing may write it. Used
+    on both hearings in the truth-free mode only."""
+    out: list[Value] = []
+    i = 0
+    while i < len(values):
+        j = i
+        if _spoken_digits(values[i]) is not None:
+            while (
+                j + 1 < len(values)
+                and _spoken_digits(values[j + 1]) is not None
+                and values[j + 1].start == values[j].end
+                and not brk[values[j].end - 1]
+            ):
+                j += 1
+        run = values[i : j + 1]
+        spoken = [str(_spoken_digits(v)) for v in run]
+        if len(run) >= DIGIT_RUN and sum(len(d) == 1 for d in spoken) >= 2:
+            number = str(int("".join(spoken)))
+            text = " ".join(v.text for v in run)
+            out.append(Value("number", "", frozenset({number}), run[0].start, run[-1].end, text))
+            i = j + 1
+        else:
+            out.append(values[i])
+            i += 1
+    return out
+
+
+def same_written(a: Value, b: Value) -> bool:
+    """:func:`same`, and a cardinal and an ordinal of one number are one value too ("September
+    19" / "September 19th"): between two hearings that is a way of writing, not a hearing."""
+    plain = ("", "ord", "clock")
+    return same(a, b) or (a.unit in plain and b.unit in plain and bool(a.vals & b.vals))
+
+
+def hearing_values(stream: Stream) -> list[Value]:
+    """A product transcript's hard values for the truth-free mode (digit strings joined)."""
+    return digit_strings(product_values(stream), stream.brk)
+
+
+def _context(stream: Stream, start: int, end: int, pad: int) -> str:
+    return " ".join(stream.words[max(0, start - pad) : min(len(stream.words), end + pad)])
+
+
+def _mark_type(a: Value, b: Value) -> str:
+    """What differs in a ``different`` pair: only the unit, the negation word, the date, or the
+    number itself."""
+    if a.family == "numeric":
+        return "unit_only" if a.vals & b.vals else "number"
+    return "negation_word" if a.family == "negation" else "date"
+
+
+def pair_rows(
+    recording: str, a: Stream, b: Stream, context: int = 6
+) -> tuple[list[dict[str, Any]], int]:
+    """The truth-free comparison of two hearings of one recording: one JSON row per value of
+    hearing ``a`` (``equal`` / ``different`` / ``only_a``) and per value of hearing ``b`` that
+    no value of ``a`` was matched to (``only_b``), and the number of alignment anchors.
+
+    ``b``'s words are aligned to ``a``'s by shared word runs checked against the running time
+    offset (:func:`anchors`); values are matched as :func:`classify` matches a product to the
+    human transcript. A row is ``counted`` unless a value in it is a figure of speech
+    (``excluded``). ``mark`` on a ``different`` row says what differs (:func:`_mark_type`).
+    Times are seconds on each hearing's own clock."""
+    va, vb = hearing_values(a), hearing_values(b)
+    pairs = anchors(a, b)
+    rows: list[dict[str, Any]] = []
+    used: set[int] = set()
+
+    def side(stream: Stream, v: Value) -> dict[str, Any]:
+        return {
+            "value": v.shown,
+            "text": v.text,
+            "kind": v.kind,
+            "at": v.start,
+            "time_s": round(stream.time[v.start], 1),
+            "line": stream.line[v.start],
+            "words": _context(stream, v.start, v.end, context),
+        }
+
+    matched = _match(va, vb, pairs, len(b.words), same_written)
+    used.update(k for _, took in matched for k in took)
+    apart_a, apart_b = _written_apart(va, vb, matched, used)
+    used.update(apart_b)
+    for i, (v, (h, took)) in enumerate(zip(va, matched, strict=True)):
+        if i in apart_a and h.outcome == "missing":
+            continue  # the rest of a number written apart: part of the row before
+        if i in apart_a or (took and took[0] in apart_b):
+            h = Hearing("correct", h.heard, h.text, h.at)
+        row: dict[str, Any] = {"recording": recording, "kind": v.kind, "a": side(a, v), "b": None}
+        theirs = [vb[k] for k in took]
+        row["outcome"] = {"correct": "equal", "different": "different", "missing": "only_a"}[
+            h.outcome
+        ]
+        row["excluded"] = v.excluded or next((m.excluded for m in theirs if m.excluded), "")
+        if theirs:
+            row["b"] = side(b, theirs[0])
+            row["b"]["text"] = h.text
+            row["b"]["words"] = _context(b, theirs[0].start, theirs[-1].end, context)
+        else:
+            row["b_words"] = _context(b, h.at, h.at + 1, context)
+        if h.outcome == "different":
+            row["mark"] = _mark_type(v, theirs[0])
+        rows.append(row)
+    for k, m in enumerate(vb):
+        if k not in used:
+            a_at = _expected_in_ref(m.start, pairs)
+            rows.append(
+                {"recording": recording, "kind": m.kind, "a": None, "b": side(b, m),
+                 "outcome": "only_b", "excluded": m.excluded,
+                 "a_words": _context(a, a_at, a_at + 1, context) if a.words else ""}
+            )  # fmt: skip
+    for n, row in enumerate(rows):
+        row["id"] = f"{recording}:p{n:04d}"
+        row["counted"] = not row["excluded"]
+    return rows, len(pairs)
+
+
+def _written_apart(
+    va: Sequence[Value],
+    vb: Sequence[Value],
+    matched: Sequence[tuple[Hearing, tuple[int, ...]]],
+    used: set[int],
+) -> tuple[set[int], set[int]]:
+    """One hearing writes a long number in pieces ("3018 378" for "3018378"). For every
+    ``different`` pair, the value on one side and the unmatched values right after it are
+    joined; when their digits are the other side's number, the pair is one value. Returns the
+    positions in ``va`` (the pair's value and the pieces) and in ``vb`` (likewise)."""
+
+    def digits(v: Value) -> str | None:
+        (val,) = v.vals if len(v.vals) == 1 else ("",)
+        return v.text if v.text.isdigit() else val if val.isdigit() else None
+
+    def pieces(vals: Sequence[Value], first: int, free: Callable[[int], bool], whole: str) -> int:
+        """How many values from ``first`` on spell ``whole`` (0: none do)."""
+        text, k = digits(vals[first]) or "", first
+        while text and text != whole and whole.startswith(text) and k + 1 < len(vals):
+            nxt = digits(vals[k + 1])
+            if nxt is None or vals[k + 1].start != vals[k].end or not free(k + 1):
+                break
+            text, k = text + nxt, k + 1
+        return k - first + 1 if text == whole and k > first else 0
+
+    in_a: set[int] = set()
+    in_b: set[int] = set()
+    for i, (h, took) in enumerate(matched):
+        if h.outcome != "different":
+            continue
+        k = took[0]
+        da, db = digits(va[i]), digits(vb[k])
+        if da is None or db is None:
+            continue
+        n = pieces(va, i, lambda x: matched[x][0].outcome == "missing", db)
+        m = pieces(vb, k, lambda x: x not in used and x not in in_b, da)
+        if n:
+            in_a.update(range(i, i + n))
+        elif m:
+            in_b.update(range(k, k + m))
+    return in_a, in_b
+
+
+def _expected_in_ref(hyp_pos: int, pairs: Sequence[tuple[int, int]]) -> int:
+    """The position in hearing A nearest to position ``hyp_pos`` of hearing B (last anchor at
+    or before it, moved on by the same number of words)."""
+    if not pairs:
+        return 0
+    k = bisect.bisect_right([h for _, h in pairs], hyp_pos) - 1
+    if k < 0:
+        return max(0, pairs[0][0] - (pairs[0][1] - hyp_pos))
+    return pairs[k][0] + (hyp_pos - pairs[k][1])
+
+
+def pair_counts(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Counts for one set of pair rows: values in each hearing (counted rows that hold one),
+    the four outcomes, what differs in the marks, and the outcomes per kind."""
+    counted = [r for r in rows if r["counted"]]
+    oc = Counter(r["outcome"] for r in counted)
+    marks = Counter(r["mark"] for r in counted if r["outcome"] == "different")
+    by_kind = {
+        k: {o: sum(r["kind"] == k and r["outcome"] == o for r in counted) for o in PAIR_OUTCOMES}
+        for k in KINDS
+        if any(r["kind"] == k for r in counted)
+    }
+    return {
+        "values_a": oc["equal"] + oc["different"] + oc["only_a"],
+        "values_b": oc["equal"] + oc["different"] + oc["only_b"],
+        **{o: oc.get(o, 0) for o in PAIR_OUTCOMES},
+        "marks": dict(sorted(marks.items())),
+        "not_counted": len(rows) - len(counted),
+        "by_kind": by_kind,
+    }
+
+
+def pair_summary(
+    rows: Sequence[Mapping[str, Any]], durations: Mapping[str, float], seed: int
+) -> dict[str, Any]:
+    """Per recording and pooled: :func:`pair_counts`, plus marks (``different`` rows) per
+    recording and per 10 minutes of audio, with a recording-cluster bootstrap CI when pooled.
+    ``durations`` (seconds of audio) fixes the recordings and their order."""
+    per: dict[str, Any] = {}
+    for rec, dur in durations.items():
+        c = pair_counts([r for r in rows if r["recording"] == rec])
+        c["duration_s"] = round(dur, 1)
+        c["marks_per_10min"] = round(c["different"] * 600 / dur, 2) if dur else None
+        per[rec] = c
+    pooled = pair_counts(rows)
+    total = sum(durations.values())
+    n = len(durations)
+    marks = [float(per[r]["different"]) for r in durations]
+    hard = [float(sum(v for k, v in per[r]["marks"].items() if k != "negation_word"))
+            for r in durations]  # fmt: skip
+    pooled["duration_s"] = round(total, 1)
+    pooled["recordings"] = n
+    pooled["marks_per_recording"] = {
+        "mean": round(sum(marks) / n, 2) if n else None,
+        "min": min(marks, default=0.0),
+        "max": max(marks, default=0.0),
+        "ci": _ci(ratio_ci([(m, 1.0) for m in marks], seed)),
+    }
+    pooled["marks_per_10min"] = {
+        "rate": round(sum(marks) * 600 / total, 2) if total else None,
+        "ci": _ci(ratio_ci([(m * 600, d) for m, d in zip(marks, durations.values(), strict=True)],
+                           seed)),
+    }  # fmt: skip
+    pooled["marks_no_negation_per_10min"] = {
+        "rate": round(sum(hard) * 600 / total, 2) if total else None,
+        "ci": _ci(ratio_ci([(m * 600, d) for m, d in zip(hard, durations.values(), strict=True)],
+                           seed)),
+    }  # fmt: skip
+    return {"recordings": per, "pooled": pooled}
+
+
+def _ci(ci: tuple[float, float] | None) -> list[float] | None:
+    return [round(x, 2) for x in ci] if ci else None
+
+
+def truth_links(
+    values: Sequence[Value], hearings: Mapping[str, Sequence[Hearing]]
+) -> list[dict[str, Any]]:
+    """Per human value, what :func:`validate_pairs` needs of the truth-based result: the
+    two-hearings class and where each product's value sits (``None`` when it heard none)."""
+    a, b = (hearings[p] for p in PRODUCTS)
+    return [
+        {
+            "class": two_hearings(g, w),
+            "excluded": v.excluded,
+            "kind": v.kind,
+            "a_at": None if g.outcome == "missing" else g.at,
+            "b_at": None if w.outcome == "missing" else w.at,
+        }
+        for v, g, w in zip(values, a, b, strict=True)
+    ]
+
+
+def validate_pairs(
+    truth: Sequence[Mapping[str, Any]], rows: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """The truth-free rows of one recording against the truth-based result (:func:`truth_links`,
+    hearing A = the first of :data:`PRODUCTS`). A human value and a pair row are linked when a
+    product's value for the human value is the value in the row.
+
+    ``truth``: per two-hearings class of the counted human values, the outcome of the linked
+    pair row (``split``: the two products' values sit in two rows; ``none``: neither product
+    had a value). ``marks``: every counted ``different`` row by the class of the human value
+    it is linked to (``no_human_value``: nobody said a value there according to the human
+    transcript; ``figure_of_speech``: the human value is excluded). Also sets ``truth_class``
+    on each linked row's copy in ``marks_rows``."""
+    by_a = {r["a"]["at"]: r for r in rows if r["a"]}
+    by_b = {r["b"]["at"]: r for r in rows if r["b"]}
+    linked: dict[str, str] = {}
+    table: dict[str, Counter[str]] = {c: Counter() for c in CLASSES}
+    for t in truth:
+        ra = by_a.get(t["a_at"]) if t["a_at"] is not None else None
+        rb = by_b.get(t["b_at"]) if t["b_at"] is not None else None
+        label = "figure_of_speech" if t["excluded"] else t["class"]
+        for r in (ra, rb):
+            # a disagreed human value outranks any other link to the same row
+            if r is not None and (label.startswith("disagree") or r["id"] not in linked):
+                linked[r["id"]] = label
+        if t["excluded"]:
+            continue
+        if ra is None and rb is None:
+            seen = "none"
+        elif ra is not None and rb is not None and ra["id"] != rb["id"]:
+            seen = "split"
+        else:
+            row = ra if ra is not None else rb
+            assert row is not None
+            seen = row["outcome"] if row["counted"] else "not_counted"
+        table[t["class"]][seen] += 1
+    marks = [r for r in rows if r["counted"] and r["outcome"] == "different"]
+    mark_rows = [{**r, "truth_class": linked.get(r["id"], "no_human_value")} for r in marks]
+    by_class = Counter(r["truth_class"] for r in mark_rows)
+    return {
+        "truth": {c: dict(sorted(table[c].items())) for c in CLASSES},
+        "marks": dict(sorted(by_class.items())),
+        "marks_rows": mark_rows,
+    }
+
+
+# -- official values (council record) ---------------------------------------------------------
+
+NEAR_PAD = 6  # words between a small official number and the word that says what it counts
+CUE_PAD = 2  # words between a cue word and another number that would be the wrong value
+NO_COUNT = frozenset(("none", "zero", "nobody"))  # a count of nothing before "in favor"
+
+
+@dataclass(frozen=True)
+class Target:
+    """One checkable value of an official record. A small number (a vote count, a day of the
+    month) is only ``right`` beside one of the ``near`` words; ``after`` / ``before`` are cue
+    words a competing number follows ("bill 121281") or precedes ("8 in favor")."""
+
+    label: str
+    shown: str
+    vals: frozenset[str]  # numeric readings as fractions
+    near: frozenset[str] = frozenset()
+    after: frozenset[str] = frozenset()
+    before: frozenset[str] = frozenset()
+
+
+def find_target(
+    target: Target, words: Sequence[str], values: Sequence[Value], context: int = 8
+) -> dict[str, Any]:
+    """Whether a text (its cleaned ``words`` and their ``values``) has an official value:
+    ``right`` (the number is there; beside a ``near`` word when the target has any), ``wrong``
+    (it is not, and another number sits within :data:`CUE_PAD` words after an ``after`` cue or
+    before a ``before`` cue, or "none" does), else ``absent``. ``hits`` and ``others`` quote
+    every place, so a reader can check each case; ``others`` is listed even when the status is
+    ``right``. A number written in two pieces ("127 362") counts as the number."""
+
+    def cue(v: Value, cues: frozenset[str], lo: int, hi: int) -> bool:
+        return any(w in cues for w in words[max(0, v.start - lo) : v.end + hi])
+
+    def quote(v: Value) -> str:
+        return " ".join(words[max(0, v.start - context) : v.end + context])
+
+    def apart(k: int) -> bool:
+        """``nums[k]`` and the number right after it spell the target ("127 362")."""
+        if k + 1 >= len(nums) or nums[k + 1].start != nums[k].end:
+            return False
+        text = nums[k].text + nums[k + 1].text
+        return text.isdigit() and str(Fraction(int(text))) in target.vals
+
+    nums = [v for v in values if v.family == "numeric" and v.excluded != "speaker_label"]
+    joined = {j for k in range(len(nums)) if apart(k) for j in (k, k + 1)}
+    hits = [
+        v
+        for k, v in enumerate(nums)
+        if (v.vals & target.vals or k in joined)
+        and (not target.near or cue(v, target.near, NEAR_PAD, NEAR_PAD))
+    ]
+    others = [
+        v
+        for k, v in enumerate(nums)
+        if not (v.vals & target.vals or k in joined)
+        and (
+            (bool(target.after) and cue(v, target.after, CUE_PAD, 0))
+            or (bool(target.before) and cue(v, target.before, 0, CUE_PAD))
+        )
+    ]
+    none = [
+        i
+        for i, w in enumerate(words)
+        if w in NO_COUNT and any(x in target.before for x in words[i + 1 : i + 1 + CUE_PAD])
+    ]  # "none in favor" where the record has a count
+    status = "right" if hits else "wrong" if others or none else "absent"
+    return {
+        "status": status,
+        "hits": [quote(v) for v in hits],
+        "others": [{"value": v.shown, "words": quote(v)} for v in others]
+        + [
+            {"value": words[i], "words": " ".join(words[max(0, i - context) : i + 1 + context])}
+            for i in none
+        ],
+    }
+
+
+def text_values(text: str) -> tuple[list[str], list[Value]]:
+    """Cleaned words and hard values (digit strings joined) of free text (notes, a title)."""
+    toks = clean_words(text)
+    words, brk = [t for t, _ in toks], [b for _, b in toks]
+    return words, digit_strings(extract(words, brk), brk)
+
+
+MONTHS = frozenset(
+    _words("january february march april june july august september october november december")
+)
+_FAVOR = frozenset(_words("favor favour"))
+_OPPOSED = frozenset(_words("opposed against"))
+_VOTE = frozenset(_words("vote votes voted passed passes adopted unanimous unanimously tally"))
+
+
+def official_targets(
+    matter_file: str, title: str, action_text: str, votes: Mapping[str, int]
+) -> tuple[list[Target], list[str]]:
+    """The checkable values of one Legistar agenda item, and the title values left unchecked.
+
+    * the matter number ("CB 121282": 121282), competing with any number after "bill" /
+      "resolution";
+    * the vote counts (``votes``: "In Favor" / "Opposed" -> count; a zero count is not a
+      target), each only beside a voting word, competing with a number before "in favor" /
+      "opposed";
+    * every number in the title and the action text: a day of the month beside its month; a
+      number of three digits or more anywhere ("Initiative 137", "Ordinance 127362"); a
+      smaller number beside the word before it. The year of a date and a smaller number with
+      no word before it ("3/4") are returned in the second list, unchecked."""
+    out: list[Target] = []
+    skipped: list[str] = []
+    kind, _, number = matter_file.partition(" ")
+    bill = frozenset({str(Fraction(int(number)))})
+    cues = frozenset(_words("bill cb resolution res"))
+    out.append(Target(f"matter number ({kind})", matter_file, bill, after=cues))
+    for name, near, before in (("In Favor", _FAVOR | _VOTE | frozenset(_words("yes aye ayes")),
+                                _FAVOR),
+                               ("Opposed", _OPPOSED | _VOTE | frozenset(_words("no nay nays")),
+                                _OPPOSED)):  # fmt: skip
+        if votes.get(name):
+            vals = frozenset({str(Fraction(votes[name]))})
+            out.append(Target(f"votes {name.lower()}", str(votes[name]), vals, near, before=before))
+    seen = {bill}
+    for source, text in (("title", title), ("action text", action_text)):
+        words, values = text_values(text)
+        for v in values:
+            if v.family != "numeric" or v.vals in seen:
+                continue
+            seen.add(v.vals)
+            prev = words[v.start - 1] if v.start else ""
+            cue = frozenset({prev}) if prev.isalpha() and len(prev) > 3 else frozenset()
+            big = any(Fraction(x) >= 100 or Fraction(x).denominator != 1 for x in v.vals)
+            if v.start > 1 and words[v.start - 2] in MONTHS and prev.isdigit():
+                skipped.append(f"{source}: year of the date {' '.join(words[v.start - 2 : v.end])}")
+            elif prev in MONTHS:
+                out.append(Target(f"date in {source}", f"{prev} {v.text}", v.vals, cue, cue))
+            elif big:
+                shown = f"{prev} {v.text}" if cue else v.text
+                out.append(Target(f"number in {source}", shown, v.vals, after=cue))
+            elif cue:
+                out.append(Target(f"number in {source}", f"{prev} {v.text}", v.vals, cue, cue))
+            else:
+                skipped.append(f"{source}: {' '.join(words[max(0, v.start - 2) : v.end + 2])}")
+    return out, skipped
