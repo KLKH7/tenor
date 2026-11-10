@@ -647,3 +647,20 @@ With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wron
 - DEV pilot (IS1008a, cap $0.30): **$0.064**. Outputs read: quotes verbatim, G1 kept 2–3 items per unit, owner suggestions sensible (one "unsure" in S1 resolved in S2).
 - TEST (hard cap $3.10, the high estimate rounded up): **$1.209**. Prompt-cache evidence (live calls): S2 28 calls, 294k cache-read vs 14k uncached input tokens, all 28 with reads; S1 156k read / 137k written; G1 13k read / 206k written (no reuse possible, see above).
 - **Total $1.27.**
+
+## Bullet cues (agent-generated; Preliminary)
+
+Per-bullet cues (`bullet_cue.v2`, Claude Code agent, one run, run `agent_v2_20261110`) on E4's 22 TEST units, scored at $0 by three condition-blind agent-reader runs (`e4_reader.v2`; median of three, gold matched in ≥ 2 runs; unanimous on `true` 26/29, `in_notes` 22/29). Missing gold: the same 104 items. Cluster-bootstrap 95% CIs over meetings, seed 42. Code at `6628fc4`.
+
+| Condition | Items shown | Per unit | True and new | Duplicates of the notes | Partly in the notes | False | Missing gold recovered (full) |
+|---|---|---|---|---|---|---|---|
+| **Bullet cues, pooled** | 29 | 1.3 | 59% [34, 90] | 0% | 38% [11, 60] | 0% | **4/104 (4% [1, 7])** |
+| Bullet cues, Granola | 21 | 1.9 | 62% [39, 89] | 0% | 33% | 0% | 3/61 |
+| Bullet cues, Wispr Flow | 8 | 0.7 | 50% [14, 100] | 0% | 50% | 0% | 1/43 |
+| G1: diff | 56 | 2.5 | 36% | 5% | 41% | 0% | 1/104 (1%) |
+| C3 / CU / R / RD / Q | | | | | | | 8% / 26% / 38% / 36% / 11% |
+
+- 626 bullets checked; 41 (6.5% [4.1, 9.3]) carry a verified cue (42 of 44 quotes verified). Incl. partial matches: 10/104 (10% [4, 17]); missing outright: 3/43.
+- All 4 fully recovered items sit on a bullet whose widened span holds the gold lines (2 of 4 inside the unwidened hand range); with partial matches, 9 of 10.
+- Sparsity: the generator's `found` lists hold 1,596 entries: 1,488 `stated`, 62 `unclear`, 46 `missing` / `part_missing`, and all 46 became cues. Of the 104 missing gold items the generator called 59 `stated`, 7 `unclear`, 10 `missing` / `part_missing`, and did not list 26 (19 of them inside a bullet span); 2 have no gold lines. In 5 seeded samples, 3 were lenient `stated` (wrong owner, or "explored" vs decided) and 2 real omissions marked `unclear`.
+- Caveats: same model family generates and reads; one generation run; 11 meetings; single-run hand alignment. Details: `data/private/BULLET_CUES.md` (local).
