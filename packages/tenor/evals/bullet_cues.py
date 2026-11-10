@@ -690,7 +690,7 @@ def build_packets(
                     pre.setdefault(r["model"], []).append({**src, "e4_cand_id": v.cand_id})
                 else:
                     by_model.setdefault(r["model"], []).append(src)
-        order = sorted(MODELS)
+        order = sorted(set(MODELS) | set(by_model) | set(pre))  # agents label rows "agent"
         items = R.pool(by_model, seed, f"cues:{u.key}", order)
         key_units[u.key] = {
             "meeting_id": u.meeting_id,
