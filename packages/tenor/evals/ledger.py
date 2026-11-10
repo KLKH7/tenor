@@ -22,7 +22,8 @@ entries are wrong.
   ``prompts/e4_reader.v2.md`` readers work unchanged.
 * :func:`consensus` and :func:`score`: the reader runs merged per item (medians, majority
   kind, gold matched in >= 2 runs), then per product and pooled: entries per unit, true rates,
-  coverage of all gold next to the notes' coverage computed the same way, gold the notes miss
+  coverage of all gold (the best single entry per gold item) next to the notes' coverage with
+  the same credit (from the E3 readers' verdict on the notes as a whole), gold the notes miss
   that the ledger states, entries already in the notes, true rate by status, owners of
   actions; bootstrap CIs resample meetings.
 
@@ -351,6 +352,31 @@ def consensus(
     return out, problems
 
 
+def agreement(
+    key_units: Mapping[str, Mapping[str, Any]],
+    runs: Sequence[Mapping[str, Mapping[str, R.ReaderLine]]],
+) -> dict[str, int]:
+    """Over the items every run read: how many all runs judged alike on ``true``, ``in_notes``,
+    ``kind``, the gold ids matched (``gold_ids``) and the ids with their levels (``gold``)."""
+    out = dict.fromkeys(("items", "true", "in_notes", "kind", "gold_ids", "gold"), 0)
+    for uk, unit in key_units.items():
+        for k in unit["items"]:
+            ls = [run[uk][k] for run in runs if k in run.get(uk, {})]
+            if len(ls) < len(runs):
+                continue
+            views: dict[str, set[Any]] = {
+                "true": {ln.true for ln in ls},
+                "in_notes": {ln.in_notes for ln in ls},
+                "kind": {ln.kind for ln in ls},
+                "gold_ids": {tuple(sorted(g.id for g in ln.gold_match)) for ln in ls},
+                "gold": {tuple(sorted((g.id, g.match) for g in ln.gold_match)) for ln in ls},
+            }
+            out["items"] += 1
+            for name, seen in views.items():
+                out[name] += len(seen) == 1
+    return out
+
+
 # -- scoring ----------------------------------------------------------------------------------
 
 CREDIT = {"full": 1.0, "partial": 0.5}
@@ -366,12 +392,15 @@ def notes_by_unit(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, str]
     return out
 
 
-def best_match(verdicts: Mapping[str, ItemVerdict], drop_false: bool = False) -> dict[str, str]:
+def best_match(
+    verdicts: Mapping[str, ItemVerdict], drop_false: bool = False, new_only: bool = False
+) -> dict[str, str]:
     """Gold id -> the best level any ledger item states it at (``drop_false``: items the
-    readers judged not true do not count)."""
+    readers judged not true do not count; ``new_only``: nor do items the readers found
+    already in the notes, which is E4's rule for a recovered item)."""
     best: dict[str, str] = {}
     for v in verdicts.values():
-        if drop_false and v.true == "no":
+        if (drop_false and v.true == "no") or (new_only and v.in_notes == "yes"):
             continue
         for g, m in v.gold.items():
             if MATCH_RANK[m] > MATCH_RANK.get(best.get(g, ""), 0):
@@ -396,6 +425,7 @@ def unit_row(
     by the ledger and by the notes, and the gold the notes miss that the ledger states."""
     gold = list(unit["gold_ids"])
     best = best_match(verdicts)
+    new = best_match(verdicts, new_only=True)
     row: dict[str, Any] = {
         "meeting_id": unit["meeting_id"],
         "product": unit["product"],
@@ -419,7 +449,9 @@ def unit_row(
     row["actions_owned"] = len(owned)
     for b in ("said", "attendee_list", "inferred"):
         row[f"owner_{b}"] = sum(it["owner_basis"] == b for it in owned)
-    act_ids = [k for k, it in unit["items"].items() if it["kind"] == "action" and it["owner"]]
+    act_ids = [
+        k for k, it in unit["items"].items() if it["kind"] == "action" and it["owner"].strip()
+    ]
     row["actions_owned_true_yes"] = sum(verdicts[k].true == "yes" for k in act_ids)
     row["cov_ledger"] = coverage(best, gold)
     row["cov_ledger_true"] = coverage(best_match(verdicts, drop_false=True), gold)
@@ -429,6 +461,8 @@ def unit_row(
         row[f"miss_{nv}"] = len(miss)
         row[f"miss_{nv}_full"] = sum(best.get(g) == "full" for g in miss)
         row[f"miss_{nv}_any"] = sum(g in best for g in miss)
+        row[f"miss_{nv}_full_new"] = sum(new.get(g) == "full" for g in miss)
+        row[f"miss_{nv}_any_new"] = sum(g in new for g in miss)
     row["best"] = best
     return row
 
@@ -491,10 +525,15 @@ def summarize(rows: Sequence[Mapping[str, Any]], seed: int) -> dict[str, Any]:
     out["coverage"] = cov
     rows2 = [{**r, "miss": r["miss_partial"] + r["miss_no"],
               "miss_full": r["miss_partial_full"] + r["miss_no_full"],
-              "miss_any": r["miss_partial_any"] + r["miss_no_any"]} for r in rows]  # fmt: skip
+              "miss_any": r["miss_partial_any"] + r["miss_no_any"],
+              "miss_full_new": r["miss_partial_full_new"] + r["miss_no_full_new"],
+              "miss_any_new": r["miss_partial_any_new"] + r["miss_no_any_new"]}
+             for r in rows]  # fmt: skip
     out["notes_miss"] = {
         "all": {"full": _rate(rows2, "miss_full", "miss", seed),
                 "incl_partly": _rate(rows2, "miss_any", "miss", seed)},
+        "all_e4_rule": {"full": _rate(rows2, "miss_full_new", "miss", seed),
+                        "incl_partly": _rate(rows2, "miss_any_new", "miss", seed)},
         "notes_partial": {"full": _rate(rows, "miss_partial_full", "miss_partial", seed),
                           "incl_partly": _rate(rows, "miss_partial_any", "miss_partial", seed)},
         "notes_no": {"full": _rate(rows, "miss_no_full", "miss_no", seed),
@@ -569,12 +608,13 @@ def table(summary: Mapping[str, Mapping[str, Any]]) -> list[str]:
     for c, name in (("all", "all gold"), ("D", "decisions"), ("A", "actions"), ("P", "problems")):
         out.append(row(f"Coverage, {name}: ledger", lambda s, c=c: num(s["coverage"][c]["ledger"])))
         out.append(row(f"Coverage, {name}: notes", lambda s, c=c: num(s["coverage"][c]["notes"])))
-    out.append(row("Coverage, all gold: ledger - notes",
-                   lambda s: num(s["coverage"]["all"]["ledger_minus_notes"])))  # fmt: skip
+        out.append(row(f"Coverage, {name}: ledger - notes",
+                       lambda s, c=c: num(s["coverage"][c]["ledger_minus_notes"])))  # fmt: skip
     out.append(row("Coverage, all gold: ledger, entries judged false left out",
                    lambda s: num(s["coverage"]["all"]["ledger_true_only"])))  # fmt: skip
-    for k, name in (("all", "notes miss"), ("notes_partial", "notes partial"),
-                    ("notes_no", "notes no")):  # fmt: skip
+    for k, name in (("all", "notes miss"),
+                    ("all_e4_rule", "notes miss (E4 rule: entry not already in the notes)"),
+                    ("notes_partial", "notes partial"), ("notes_no", "notes no")):  # fmt: skip
         out.append(row(f"Gold the {name}: ledger full",
                        lambda s, k=k: pct(s["notes_miss"][k]["full"])))  # fmt: skip
         out.append(row(f"Gold the {name}: ledger full or partly",

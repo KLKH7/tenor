@@ -282,6 +282,14 @@ def test_consensus_needs_two_runs_per_item() -> None:
     assert empty == {"m:granola": {}} and not problems
 
 
+def test_agreement_counts_items_all_runs_judged_alike() -> None:
+    key = {"IS0000a:granola": {"items": {"K1": {}, "K2": {}, "K3": {}}, "gold_ids": ["A1"]}}
+    r1, _ = L.dedupe([_line("K1", gold_match=_gm(A1="full")), _line("K2"), _line("K3")])
+    r2, _ = L.dedupe([_line("K1", gold_match=_gm(A1="partial")), _line("K2", true="partly")])
+    got = L.agreement(key, [r1, r2])  # K3 was not read by every run
+    assert got == {"items": 2, "true": 1, "in_notes": 2, "kind": 2, "gold_ids": 2, "gold": 1}
+
+
 # -- scoring ----------------------------------------------------------------------------------
 
 
@@ -310,6 +318,8 @@ def test_coverage_credit_and_categories() -> None:
     assert L.best_match({"K1": _v(D1="partial"), "K2": _v(true="no", D1="full")}, True) == {
         "D1": "partial"
     }
+    seen = {"K1": _v(in_notes="yes", D1="full"), "K2": _v(in_notes="partial", D1="partial")}
+    assert L.best_match(seen, new_only=True) == {"D1": "partial"}  # E4's rule for recovered
 
 
 def _key() -> dict[str, Any]:
@@ -371,6 +381,7 @@ def test_unit_row_counts() -> None:
     assert row["cov_notes"] == {"all": 0.375, "D": 0.5, "A": 0.5, "P": 0.0}
     assert (row["miss_partial"], row["miss_partial_full"], row["miss_partial_any"]) == (1, 1, 1)
     assert (row["miss_no"], row["miss_no_full"], row["miss_no_any"]) == (2, 0, 2)
+    assert (row["miss_partial_full_new"], row["miss_no_any_new"]) == (1, 2)
     assert (row["status_agreed"], row["status_agreed_true_yes"]) == (2, 2)
     assert (row["status_open"], row["status_open_true_no"]) == (1, 1)
     assert (row["actions"], row["actions_owned"], row["owner_said"]) == (2, 1, 1)

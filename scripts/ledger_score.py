@@ -9,8 +9,9 @@ Reads every ``*.jsonl`` of each reader run, drops repeated lines within a run, a
 consensus per item (median ``true`` and ``in_notes``, majority kind, gold ids matched in >= 2
 runs at the median level). Then, per product and pooled, with bootstrap 95% CIs that resample
 meetings: entries per unit; true yes / partly / no; the ledger's coverage of all gold (full = 1,
-partial = 0.5, best match per gold item, mean per unit then over units; overall and D / A / P)
-next to the notes' coverage computed the same way from ``--notes``; of the gold the notes miss
+partial = 0.5, best single entry per gold item, mean per unit then over units; overall and
+D / A / P) next to the notes' coverage with the same credit from ``--notes`` (the E3 readers'
+verdict on the notes as a whole); of the gold the notes miss
 how much the ledger states (full / incl. partly, by notes-partial and notes-no); entries already
 in the notes; true rate by ledger status; owners of action entries. Writes a JSON report (next
 to the key unless ``--out``) and prints a Markdown table. Local data only: no LLM, no network.
@@ -88,6 +89,7 @@ def run_score(key_path: Path, runs: Sequence[Path], notes_path: Path, seed: int)
         "repeated_lines_dropped": {str(r): x[2] for r, x in zip(runs, read, strict=True)},
         "line_errors": [e for x in read for e in x[1]],
         "unit_problems": problems,
+        "unanimous": L.agreement(key["units"], [r[0] for r in read]),
         "units_without_ledger": key["meta"].get("units_without_output", []),
         "inputs": {
             str(p): hashlib.sha256(p.read_bytes()).hexdigest()[:16]
@@ -120,7 +122,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         if uk not in meta["unit_problems"]:
             print(f"not scored {uk}: {why}", file=sys.stderr)
     print("\n".join(L.table(result["summary"])))
-    print(f"\n{len(result['per_unit'])} units scored, {len(result['units_not_scored'])} not; {out}")
+    un = meta["unanimous"]
+    print(f"\nunanimous over {un['items']} items read by every run: " + ", ".join(
+        f"{k} {v}" for k, v in un.items() if k != "items"))  # fmt: skip
+    print(f"{len(result['per_unit'])} units scored, {len(result['units_not_scored'])} not; {out}")
 
 
 if __name__ == "__main__":
