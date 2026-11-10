@@ -12,7 +12,9 @@ The zip is read in place, never extracted. For one meeting we load:
 - **summary** from ``abstractive/<ID>.abssumm.xml``: the annotator's ABSTRACT / DECISIONS /
   PROBLEMS / ACTIONS sentences (scenario meetings only; natural meetings have none);
 - **dialogue acts** from ``dialogueActs/<ID>.<letter>.dialog-act.xml``: AMI's segmentation of
-  each speaker's words into utterance-sized units. Each act points at a range of word ids;
+  each speaker's words into utterance-sized units. Each act points at a range of word ids, at
+  its type in ``ontologies/da-types.xml`` (``inf`` Inform, ``sug`` Suggest, ``ass`` Assess, ...;
+  :data:`DA_GLOSS`) and, in some meetings, carries an ``addressee`` attribute;
 - **summary links** from ``extractive/<ID>.summlink.xml``: for each abstractive sentence, the
   dialogue acts an annotator marked as its support. Not every meeting has them (IB4003 doesn't).
 """
@@ -34,6 +36,26 @@ DEFAULT_ZIP = Path("data/ami/annotations/ami_public_manual_1.6.2.zip")
 _WORDS = re.compile(r"words/(?P<mid>[A-Z]{2}\d{4}[a-z]?)\.(?P<agent>[A-Z])\.words\.xml$")
 _ACTS = re.compile(r"dialogueActs/(?P<mid>[A-Z]{2}\d{4}[a-z]?)\.(?P<agent>[A-Z])\.dialog-act\.xml$")
 _HREF_IDS = re.compile(r"id\(([^)]+)\)")
+DA_TYPES_XML = "ontologies/da-types.xml"
+# AMI's dialogue-act types (short name -> gloss), as ontologies/da-types.xml names them.
+DA_GLOSS = {
+    "bck": "Backchannel",
+    "stl": "Stall",
+    "fra": "Fragment",
+    "inf": "Inform",
+    "sug": "Suggest",
+    "ass": "Assess",
+    "el.inf": "Elicit-Inform",
+    "el.sug": "Elicit-Offer-Or-Suggestion",
+    "el.ass": "Elicit-Assessment",
+    "el.und": "Elicit-Comment-Understanding",
+    "off": "Offer",
+    "und": "Comment-About-Understanding",
+    "be.pos": "Be-Positive",
+    "be.neg": "Be-Negative",
+    "oth": "Other",
+}
+DA_MINOR = ("bck", "stl", "fra")  # AMI's "minor" class: no content of their own
 SUMMARY_SECTIONS = ("abstract", "decisions", "problems", "actions")
 ROLE_NAMES = {
     "PM": "Project Manager",
@@ -77,6 +99,8 @@ class DialogueAct(BaseModel):
     start: float  # first word's start time (seconds)
     end: float
     text: str  # its words (no non-word events, no truncated fragments), punctuation attached
+    da_type: str = ""  # AMI's short type name ("inf", "sug", "ass", ...; DA_GLOSS); "" if untyped
+    addressee: str = ""  # the act's ``addressee`` attribute as given (agent letters); "" if absent
 
 
 class SummarySentence(BaseModel):
@@ -186,11 +210,31 @@ def _act_text(words: list[Word]) -> str:
     return out.strip()
 
 
+def _da_type_names(zf: zipfile.ZipFile) -> dict[str, str]:
+    """NXT id of a dialogue-act type (``ami_da_4``) -> its short name (``inf``); empty when the
+    zip has no ontology file."""
+    if DA_TYPES_XML not in zf.namelist():
+        return {}
+    return {
+        el.get(f"{NITE}id", ""): el.get("name", "")
+        for el in _parse(zf, DA_TYPES_XML).iter("da-type")
+    }
+
+
+def _da_type(el: ET.Element, names: dict[str, str]) -> str:
+    for p in el.iter(f"{NITE}pointer"):
+        if p.get("role") == "da-aspect":
+            ids = _HREF_IDS.findall(p.get("href", ""))
+            return names.get(ids[0], "") if ids else ""
+    return ""
+
+
 def _dialogue_acts(
     zf: zipfile.ZipFile, meeting_id: str, streams: dict[str, _Stream]
 ) -> tuple[DialogueAct, ...]:
     """Every dialogue act with at least one spoken word, sorted by start time then agent."""
     acts: list[DialogueAct] = []
+    names = _da_type_names(zf)
     for name in sorted(zf.namelist()):
         hit = _ACTS.search(name)
         if not hit or hit["mid"] != meeting_id:
@@ -217,6 +261,8 @@ def _dialogue_acts(
                     start=min(w.start for w in words),
                     end=max(w.end for w in words),
                     text=text,
+                    da_type=_da_type(el, names),
+                    addressee=el.get("addressee", ""),
                 )
             )
     acts.sort(key=lambda a: (a.start, a.agent))
