@@ -737,6 +737,77 @@ def private_texts(rows: Sequence[Mapping[str, Any]]) -> list[str]:
     return out
 
 
+# -- agent-generated runs (Claude Code agents answer job files; no API) ---------------------
+
+
+def split_alignment(
+    units: Sequence[CueUnit], maps: Mapping[str, Mapping[str, Any]]
+) -> dict[str, dict[str, list[Range]]]:
+    """Unit key -> bullet alignment, as the API runner aligns: TEST units use the hand maps
+    (``KeyError`` if one is missing), DEV units (IS1008a, no hand map) use
+    :func:`overlap_align`."""
+    out: dict[str, dict[str, list[Range]]] = {}
+    for u in units:
+        if u.split == "dev":
+            out[u.key] = overlap_align(u)
+        else:
+            out[u.key] = {b: list(rs) for b, rs in maps[u.key]["bullet_map"].items()}
+    return out
+
+
+def split_units(
+    packets_dir: Path, map_dir: Path, split: str, test_meetings: Sequence[str]
+) -> tuple[list[CueUnit], dict[str, dict[str, list[Range]]]]:
+    """The units of one split and their alignment (:func:`split_alignment`). ``dev`` is
+    :data:`PILOT_MEETING` (IS1008a, word-overlap alignment); ``test`` is ``test_meetings``
+    (hand maps from ``map_dir``, which DEV never reads)."""
+    if split not in ("dev", "test"):
+        raise ValueError(f"split must be dev or test, not {split!r}")
+    meetings = [PILOT_MEETING] if split == "dev" else list(test_meetings)
+    units = [u for u in load_units(packets_dir, meetings) if u.split == split]
+    maps = load_maps(map_dir) if split == "test" else {}
+    return units, split_alignment(units, maps)
+
+
+def job_file(unit: CueUnit, jobs: Sequence[Job], instructions: str, title: str) -> str:
+    """One unit's job file: the instructions (a prompt file), every notes bullet once, then
+    per job its bullet block (:func:`bullet_block`): exactly what the API call would send."""
+    parts = [f"# {title}: {unit.key} ({len(jobs)} bullets)\n\n## Instructions\n\n{instructions}\n",
+             "## Notes (shared by every job)\n\n" + notes_block(unit)]  # fmt: skip
+    parts += [f"## Job {j.bullet_id}\n\n" + bullet_block(j) for j in jobs]
+    return "\n".join(parts)
+
+
+def read_agent_lines(
+    text: str, job_ids: Iterable[str], label: str
+) -> tuple[list[tuple[str, dict[str, Any]]], list[str]]:
+    """An agent's answer file: one JSON object per line, each with a ``bullet_id`` of a job.
+    Returns ``(bullet_id, object without bullet_id)`` in file order and one error per bad,
+    unknown or repeated line and for unanswered jobs. Blank lines are skipped."""
+    ids = list(job_ids)
+    known = set(ids)
+    seen: set[str] = set()
+    out: list[tuple[str, dict[str, Any]]] = []
+    errors: list[str] = []
+    for n, ln in enumerate(text.splitlines(), 1):
+        if not ln.strip():
+            continue
+        try:
+            d = json.loads(ln)
+            bid = str(d.pop("bullet_id"))
+        except (ValueError, KeyError, AttributeError, TypeError) as e:
+            errors.append(f"{label} line {n}: {e!r}")
+            continue
+        if bid not in known or bid in seen:
+            errors.append(f"{label} line {n}: unknown or repeated bullet {bid}")
+            continue
+        seen.add(bid)
+        out.append((bid, d))
+    if missing := [b for b in ids if b not in seen]:
+        errors.append(f"{label}: {len(missing)} bullets unanswered ({', '.join(missing)})")
+    return out, errors
+
+
 # -- the run ----------------------------------------------------------------------------------
 
 

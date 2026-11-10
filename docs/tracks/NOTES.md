@@ -664,3 +664,10 @@ Per-bullet cues (`bullet_cue.v2`, Claude Code agent, one run, run `agent_v2_2026
 - All 4 fully recovered items sit on a bullet whose widened span holds the gold lines (2 of 4 inside the unwidened hand range); with partial matches, 9 of 10.
 - Sparsity: the generator's `found` lists hold 1,596 entries: 1,488 `stated`, 62 `unclear`, 46 `missing` / `part_missing`, and all 46 became cues. Of the 104 missing gold items the generator called 59 `stated`, 7 `unclear`, 10 `missing` / `part_missing`, and did not list 26 (19 of them inside a bullet span); 2 have no gold lines. In 5 seeded samples, 3 were lenient `stated` (wrong owner, or "explored" vs decided) and 2 real omissions marked `unclear`.
 - Caveats: same model family generates and reads; one generation run; 11 meetings; single-run hand alignment. Details: `data/private/BULLET_CUES.md` (local).
+
+### Next: firmness check and stricter cues (designed on DEV, not run)
+
+Aimed at the sparsity above (softened items called `stated`). Two agent-generated features, same jobs as the cues (TEST: hand maps; DEV IS1008a: `overlap_align`, as the cue pilot did):
+- `prompts/firmness_check.v1.md` (`tenor.evals.firmness`, `scripts/firmness_agents.py`): per bullet, notes vs meeting status (decided / assigned / open / discussed / info) and owner; a flag only when the meeting is firmer or names an owner the notes lack or differ on. Flags become reader candidates (text = `flag_text`, kind from `meeting_status`, quote checked) scored blind with `e4_reader.v2`, optionally pooled with a cue run.
+- `prompts/bullet_cue.v3.md`: v2 with a strict `stated` (same status, same owner, same value, else `part_missing` and a cue).
+- Caveat for any DEV read-out: the firmness prompt's four worked examples come from IS1008a, the only DEV meeting, so DEV numbers for it are optimistic; TEST is the measurement.
