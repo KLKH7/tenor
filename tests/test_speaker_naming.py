@@ -194,6 +194,43 @@ def test_attendee_block_orders_by_name_and_handles_missing_rosters() -> None:
     assert S.attendee_block(nobody)[0].startswith("Attendee list: unknown")
 
 
+def test_names_only_invite_lists_names_alphabetically_without_roles() -> None:
+    full = [
+        S.Attendee("A", "Project Manager", "Zoe Lee"),
+        S.Attendee("B", "Marketing Expert", "Ben"),
+    ]
+    assert S.all_named(full) and not S.all_named(PEOPLE) and not S.all_named([])
+    people = S.names_only(full)
+    block = S.attendee_block(people)
+    assert block == [
+        "Attendee list (2 people):",
+        "- Ben",
+        "- Zoe Lee",
+        "",
+        "Write a speaker exactly as one of: Ben; Zoe Lee; unknown.",
+    ]
+    text = S.job_file("XX0001a", "granola", "P\n", people, [S.ProdLine(0, "Them", 0.0, 1.0, "Hi.")])
+    assert "Manager" not in text and "Marketing" not in text
+    assert S.resolve_speaker("zoe", people) == "A" and S.resolve_speaker("Ben", people) == "B"
+    assert S.resolve_speaker("Project Manager", people) is None
+    assert S.resolve_speaker("Zoe Lee (Project Manager)", people) is None
+
+
+def test_names_only_scores_a_name_and_counts_a_role_as_wrong() -> None:
+    full = [S.Attendee("A", "Project Manager", "Zoe Lee"), S.Attendee("B", None, "Ben")]
+    truth = [S.LineTruth(i, 4, "A", 1.0, False, {"A": 4}, {}) for i in range(3)]
+    preds = {
+        0: S.Prediction(0, "Zoe Lee", "high", "intro"),
+        1: S.Prediction(1, "Project Manager", "medium", "role_content"),
+        2: S.Prediction(2, "unknown", "low", "none"),
+    }
+    labels = dict.fromkeys(range(3), "Them")
+    row = S.score_unit(truth, labels, S.names_only(full), preds)
+    assert row["cells"]["all"]["named"] == 2 and row["cells"]["all"]["correct"] == 1
+    assert row["unresolved_names"] == 1
+    assert S.score_unit(truth, labels, full, preds)["cells"]["all"]["correct"] == 2
+
+
 def test_parse_predictions_reports_what_is_wrong() -> None:
     ok = {"line": "T0000", "speaker": "Ben", "confidence": "high", "basis": "intro"}
     text = "\n".join(
@@ -449,3 +486,6 @@ def test_split_meetings_keep_dev_out_of_test() -> None:
     assert (
         S.jobs_dir("dev").name == "speaker_jobs_dev" and S.jobs_dir("test").name == "speaker_jobs"
     )
+    assert S.jobs_dir("test", "names").name == "speaker_jobs_names"
+    assert S.jobs_dir("dev", "names").name == "speaker_jobs_names_dev"
+    assert S.PROMPTS == {"roles": "speaker_naming.v1", "names": "speaker_naming.v2"}

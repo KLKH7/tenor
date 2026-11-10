@@ -20,6 +20,14 @@ the rule and what counts as ambiguous). Gold: AMI 1.6.2 with errata v2 (correcte
 Units with no usable roster are reported apart, not pooled. Writes
 ``speaker_agent_runs/<RUN>/score_<split>.json`` (local: it quotes gold action text).
 Local data only: no LLM, no network.
+
+``--attendees names`` is the names-only condition: a real calendar invite has names and no
+roles. ``dump --split test --attendees names --prompt speaker_naming.v2`` writes
+``speaker_jobs_names/`` for the meetings whose roster has a name for every participant, the
+list in alphabetical order with no roles; ``score ... --attendees names`` scores those units
+the same way, a prediction being a name (a role written as a speaker names nobody), and
+writes ``score_<split>_names.json``. Give a names-only run its own ``<RUN>``. The default
+(``--attendees roles``, ``speaker_naming.v1``) is the first run's behaviour, unchanged.
 """
 
 from __future__ import annotations
@@ -36,15 +44,21 @@ from tenor.ami.corpus import load_meeting
 from tenor.evals import speaker_naming as S
 
 
-def dump(split: str) -> None:
+def dump(split: str, attendees: str = "roles", prompt_name: str | None = None) -> None:
+    prompt_name = prompt_name or S.PROMPTS[attendees]
     meetings = S.split_meetings(split)
     notes = S.load_notes(meetings)
-    out = S.jobs_dir(split)
+    out = S.jobs_dir(split, attendees)
     out.mkdir(parents=True, exist_ok=True)
-    prompt = Path(f"prompts/{S.PROMPT}.md").read_text(encoding="utf-8")
+    prompt = Path(f"prompts/{prompt_name}.md").read_text(encoding="utf-8")
     for mid in meetings:
         people = S.attendees_of(load_meeting(mid))
         named = sum(a.name is not None for a in people)
+        if attendees == "names":
+            if not S.all_named(people):
+                print(f"{mid}: skipped, {named}/{len(people)} names")
+                continue
+            people = S.names_only(people)
         roster = (
             "no usable roster"
             if not S.usable(people)
@@ -59,7 +73,7 @@ def dump(split: str) -> None:
             path.write_text(S.job_file(mid, product, prompt, people, lines), encoding="utf-8")
             labels = len({x.label for x in lines})
             print(f"{mid}:{product}: {len(lines)} lines, {labels} labels, roster: {roster}")
-    print(f"jobs in {out} (prompt {S.PROMPT})")
+    print(f"jobs in {out} (prompt {prompt_name}, attendees {attendees})")
 
 
 def _git_sha() -> str:
@@ -104,7 +118,10 @@ def _show(name: str, s: dict[str, Any]) -> None:
     print(f"  speaker values naming no attendee: {s['unresolved_names']}; actions: {s['actions']}")
 
 
-def score(split: str, run: str, seed: int) -> None:
+def score(
+    split: str, run: str, seed: int, attendees: str = "roles", prompt_name: str | None = None
+) -> None:
+    prompt_name = prompt_name or S.PROMPTS[attendees]
     errata = E.load_errata(E.ERRATA_V2)
     run_dir = S.RUNS_DIR / run
     rows: list[dict[str, Any]] = []
@@ -119,10 +136,14 @@ def score(split: str, run: str, seed: int) -> None:
             pred_path = run_dir / f"{name}.jsonl"
             if not truth_path.exists():
                 raise SystemExit(f"{truth_path}: run scripts/speaker_truth.py first")
+            truth, labels, people = S.read_truth(json.loads(truth_path.read_text()))
+            if attendees == "names":
+                if not S.all_named(people):
+                    continue
+                people = S.names_only(people)
             if not pred_path.exists():
                 errors.append(f"{name}: no output")
                 continue
-            truth, labels, people = S.read_truth(json.loads(truth_path.read_text()))
             preds, errs = S.parse_predictions(pred_path.read_text(encoding="utf-8"), len(truth))
             errors += [f"{name}: {e}" for e in errs]
             if not S.usable(people):
@@ -145,14 +166,17 @@ def score(split: str, run: str, seed: int) -> None:
         print(f"no usable roster, not pooled: {u['unit']}: {u['named']}/{u['lines']} lines named")
     for e in errors:
         print("ERROR", e)
-    out = run_dir / f"score_{split}.json"
+    out = run_dir / (
+        f"score_{split}.json" if attendees == "roles" else f"score_{split}_{attendees}.json"
+    )
     if run_dir.is_dir():
         payload = {
             "meta": {
                 "run": run,
                 "split": split,
                 "seed": seed,
-                "prompt": S.PROMPT,
+                "prompt": prompt_name,
+                "attendees": attendees,
                 "truth_version": S.TRUTH_VERSION,
                 "gold": "ami-1.6.2+errata.v2",
                 "generator": "Claude Code agent (model as launched; not an API call)",
@@ -174,11 +198,13 @@ if __name__ == "__main__":
     for cmd in ("dump", "score"):
         p = sub.add_parser(cmd)
         p.add_argument("--split", choices=("dev", "test"), required=True)
+        p.add_argument("--attendees", choices=S.ATTENDEE_MODES, default="roles")
+        p.add_argument("--prompt", default=None, help="prompts/<name>.md; default by --attendees")
         if cmd == "score":
             p.add_argument("--run", required=True)
             p.add_argument("--seed", type=int, default=42)
     a = ap.parse_args()
     if a.cmd == "dump":
-        dump(a.split)
+        dump(a.split, a.attendees, a.prompt)
     else:
-        score(a.split, a.run, a.seed)
+        score(a.split, a.run, a.seed, a.attendees, a.prompt)

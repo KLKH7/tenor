@@ -84,6 +84,10 @@ RUNS_DIR = READERS / "speaker_agent_runs"
 
 TRUTH_VERSION = "speaker_truth.v1"
 PROMPT = "speaker_naming.v1"
+# What the simulated invite carries. "roles": names with scenario roles (the first run).
+# "names": names only, as a real calendar invite has; only meetings where everyone has a name.
+ATTENDEE_MODES = ("roles", "names")
+PROMPTS = {"roles": PROMPT, "names": "speaker_naming.v2"}
 CONFIDENT = 0.7  # a line's top speaker must hold this share of its words
 MIXED_SHARE = 0.25  # second speaker's share of the matched words that makes a line mixed
 MIXED_MIN_WORDS = 2
@@ -317,6 +321,18 @@ class Attendee:
 def usable(attendees: Sequence[Attendee]) -> bool:
     """Whether there is anyone to name: at least one attendee has a name or a role."""
     return any(a.label for a in attendees)
+
+
+def all_named(attendees: Sequence[Attendee]) -> bool:
+    """Whether the roster has a name for every participant (the names-only condition needs it:
+    with a person missing from the list, a names-only invite would not be the real invite)."""
+    return bool(attendees) and all(a.name for a in attendees)
+
+
+def names_only(attendees: Sequence[Attendee]) -> list[Attendee]:
+    """The same people as a real calendar invite lists them: names, no roles. A prediction is
+    then a name (or first name); a role written as a speaker names nobody."""
+    return [Attendee(a.agent, None, a.name) for a in attendees]
 
 
 def _norm(s: str) -> str:
@@ -651,8 +667,10 @@ def split_meetings(split: str) -> tuple[str, ...]:
     return DEV_MEETINGS if split == "dev" else TEST_MEETINGS
 
 
-def jobs_dir(split: str) -> Path:
-    return READERS / ("speaker_jobs" if split == "test" else f"speaker_jobs_{split}")
+def jobs_dir(split: str, attendees: str = "roles") -> Path:
+    """Where a split's job files go; the names-only condition has its own directory."""
+    stem = "speaker_jobs" if attendees == "roles" else f"speaker_jobs_{attendees}"
+    return READERS / (stem if split == "test" else f"{stem}_{split}")
 
 
 def unit_name(meeting_id: str, product: str) -> str:
