@@ -524,7 +524,7 @@ With the two ES2006a corrections (`spot_label` in the report), TEST has **1 wron
 
 ## E4: coverage head-to-head (TEST run 2026-11-09, scored by agent readers; Preliminary)
 
-**Question.** Can a "+N missed items" line under a product's notes surface what the notes left out, precisely enough to be worth showing? And does it beat two simple alternatives: writing fuller notes, or asking Granola Chat? This decides whether "Coverage" is pitchable (go / no-go thresholds below, fixed before any TEST data).
+**Question.** Can a "+N missed items" line under a product's notes surface what the notes left out, precisely enough to be worth showing? And does it beat two simple alternatives: writing fuller notes, or asking Granola Chat? This decides whether the "Coverage" idea is worth building (go / no-go thresholds below, fixed before any TEST data).
 
 | | |
 |---|---|
