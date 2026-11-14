@@ -76,3 +76,13 @@ def test_list_class_and_weighted_coverage() -> None:
     assert J.two_stage(J.list_class([], True), J.ACCEPT["lists"]) == "careful"
     assert J.weighted_coverage(["full", "partial", "none", "full"]) == 0.625
     assert J.weighted_coverage([]) is None
+
+
+def test_two_stage_verdict_takes_the_careful_reading_only_when_routed_there() -> None:
+    accept = J.ACCEPT["notes"]
+    assert J.two_stage_verdict("full", "none", accept) == "full"
+    assert J.two_stage_verdict("full", None, accept) == "full"
+    assert J.two_stage_verdict("partial", "full", accept) == "full"
+    assert J.two_stage_verdict("none", "partial", accept) == "partial"
+    with pytest.raises(ValueError):
+        J.two_stage_verdict("partial", None, accept)

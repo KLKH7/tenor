@@ -104,6 +104,16 @@ def two_stage(judge_class: str, accept: Collection[str]) -> Literal["judge", "ca
     return "judge" if judge_class in accept else "careful"
 
 
+def two_stage_verdict(judge: str, careful: str | None, accept: Collection[str]) -> str:
+    """The two-stage verdict for one row: the judge's when its class is in ``accept``, else the
+    careful reading's. A row routed to the careful reading must have one."""
+    if two_stage(judge, accept) == "judge":
+        return judge
+    if careful is None:
+        raise ValueError("a row routed to the careful reading has no careful verdict")
+    return careful
+
+
 def weighted_coverage(verdicts: Sequence[str]) -> float | None:
     """Coverage of a set of items: full counts 1, partial one half, none 0. None when empty."""
     if not verdicts:

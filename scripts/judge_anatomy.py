@@ -6,6 +6,8 @@
     uv run --no-sync python scripts/judge_anatomy.py agree A.jsonl B.jsonl
     uv run --no-sync python scripts/judge_anatomy.py twostage [--split test|dev|all] [--seed 42] \
         [--json OUT]
+    uv run --no-sync python scripts/judge_anatomy.py fresh RUN_DIR RUN_DIR RUN_DIR [--seed 42] \
+        [--model NAME] [--json OUT]
 
 Three studies, each with the judge's verdict and a careful reference per row:
 
@@ -25,7 +27,10 @@ sample of judge errors as one job file for cause labelling (data/private/reader/
 "keep the judge's top-credit calls, read the rest carefully" (``J.ACCEPT``): its agreement with
 the reference, the share of rows that need the careful reading, and the headline numbers under
 the judge alone, the two-stage policy and the reference. The careful reading is taken from the
-reference itself, so agreement is exact wherever the judge withholds credit. No LLM, no network.
+reference itself, so agreement is exact wherever the judge withholds credit. ``fresh`` breaks
+that circle for the notes study: the second stage is a new careful reading (three run directories
+of frozen-reader JSONL, notes TEST), scored as the first run alone and as the majority of three
+against the same reference and against the original v2 reader run. No LLM, no network.
 """
 
 from __future__ import annotations
@@ -325,7 +330,8 @@ def fmt(cell: dict[str, Any]) -> str:
         return "none"
     lo, hi = cell["ci"]
     ci = f" [{lo:.0%}, {hi:.0%}]" if lo is not None else ""
-    return f"{cell['hits']} of {cell['n']} ({cell['rate']:.0%}){ci}"
+    kappa = f", kappa {cell['kappa']:.2f}" if "kappa" in cell else ""
+    return f"{cell['hits']} of {cell['n']} ({cell['rate']:.0%}){ci}{kappa}"
 
 
 def show(node: Any, depth: int = 0) -> None:
@@ -432,6 +438,25 @@ def test_line(a: dict[str, float | None], b: dict[str, float | None]) -> str:
     return f"{t['wins']}-{t['losses']}, p = {t['sign_p']:.3f}"
 
 
+def notes_headline(rows: list[dict[str, Any]], view: str) -> dict[str, Any]:
+    """E3 coverage per product and the per-meeting sign test, reading verdicts from ``view``."""
+    per: dict[str, dict[str, float | None]] = {"granola": {}, "wispr": {}}
+    for product, by_meeting in per.items():
+        for m in sorted({r["cluster"] for r in rows}):
+            by_meeting[m] = J.weighted_coverage(
+                [r[view] for r in rows if r["unit"] == f"{m}__{product}"]
+            )
+    return {
+        "coverage_granola": J.weighted_coverage(
+            [r[view] for r in rows if r["unit"].endswith("__granola")]
+        ),
+        "coverage_wispr": J.weighted_coverage(
+            [r[view] for r in rows if r["unit"].endswith("__wispr")]
+        ),
+        "wispr_vs_granola_by_meeting": test_line(per["granola"], per["wispr"]),
+    }
+
+
 def notes_two_stage(split: str, seed: int) -> dict[str, Any]:
     """E3 coverage per product and the per-meeting comparison under the three views."""
     rows = pick(split, notes_rows)
@@ -445,20 +470,7 @@ def notes_two_stage(split: str, seed: int) -> dict[str, Any]:
         "headline": {},
     }
     for view in VIEWS:
-        per: dict[str, dict[str, float | None]] = {"granola": {}, "wispr": {}}
-        for product, by_meeting in per.items():
-            for m in sorted({r["cluster"] for r in rows}):
-                unit = [r[view] for r in rows if r["unit"] == f"{m}__{product}"]
-                by_meeting[m] = J.weighted_coverage(unit)
-        out["headline"][view] = {
-            "coverage_granola": J.weighted_coverage(
-                [r[view] for r in rows if r["unit"].endswith("__granola")]
-            ),
-            "coverage_wispr": J.weighted_coverage(
-                [r[view] for r in rows if r["unit"].endswith("__wispr")]
-            ),
-            "wispr_vs_granola_by_meeting": test_line(per["granola"], per["wispr"]),
-        }
+        out["headline"][view] = notes_headline(rows, view)
     return out
 
 
@@ -563,6 +575,107 @@ def answers_two_stage(split: str, seed: int) -> dict[str, Any]:
     return out
 
 
+ORIGINAL_V2 = PRIVATE / "reader/runs/test_v2_all.jsonl"
+
+
+def reader_run(path: Path) -> dict[str, str]:
+    """Notes verdicts of one reader run (a JSONL file or a directory of them), by row id."""
+    files = sorted(path.glob("*.jsonl")) if path.is_dir() else [path]
+    out: dict[str, str] = {}
+    for f in files:
+        for r in jsonl(f):
+            key = "|".join((r["meeting"], r["product"], r["gold_id"]))
+            if key in out:
+                raise SystemExit(f"{path}: {key} appears twice")
+            out[key] = LABEL[r["notes_verdict"]]
+    return out
+
+
+def pair(rows: list[dict[str, Any]], a: str, b: str, seed: int) -> dict[str, Any]:
+    """Agreement of two verdict columns over ``rows``, with Cohen's kappa."""
+    cell = rate(rows, seed, lambda r: r[a] == r[b])
+    cell["kappa"] = cohen_kappa([r[a] for r in rows], [r[b] for r in rows])
+    return cell
+
+
+def fresh(run_dirs: list[Path], seed: int) -> dict[str, Any]:
+    """The notes two-stage policy with a new careful reading as its second stage (TEST)."""
+    if len(run_dirs) != 3:
+        raise SystemExit("need exactly three fresh reader runs")
+    rows = notes_rows("test")
+    runs = [reader_run(d) for d in run_dirs]
+    original = reader_run(ORIGINAL_V2)
+    names = [f"fresh_{i + 1}" for i in range(3)]
+    for r in rows:
+        r["route"] = J.two_stage(r["judge"], J.ACCEPT["notes"])
+        r["original_v2"] = original[r["id"]]
+    careful = [r for r in rows if r["route"] == "careful"]
+    missing = {
+        n: [r["id"] for r in careful if r["id"] not in run]
+        for n, run in zip(names, runs, strict=True)
+    }
+    if any(missing.values()):
+        raise SystemExit(f"fresh runs lack routed items: {missing}")
+    for r in careful:
+        for n, run in zip(names, runs, strict=True):
+            r[n] = run[r["id"]]
+        r["fresh_majority"] = J.median_verdict([r[n] for n in names])
+    views = [*names, "fresh_majority"]
+    for r in rows:
+        for v in views:
+            r[f"two_stage_{v}"] = J.two_stage_verdict(r["judge"], r.get(v), J.ACCEPT["notes"])
+    accepted = [r for r in rows if r["route"] == "judge"]
+    out: dict[str, Any] = {
+        "seed": seed,
+        "runs": [str(d.relative_to(ROOT)) if d.is_absolute() else str(d) for d in run_dirs],
+        "items": {"all": len(rows), "careful": len(careful), "accepted": len(accepted)},
+        "accepted_wrong": {
+            **rate(accepted, seed),
+            "directions": dict(Counter(r["direction"] for r in accepted if is_wrong(r))),
+        },
+        "two_stage_agreement_with_reference": {
+            v: pair(rows, f"two_stage_{v}", "reference", seed) for v in views
+        },
+        "circular_two_stage_agreement": rate(
+            rows,
+            seed,
+            lambda r: (r["judge"] if r["route"] == "judge" else r["reference"]) == r["reference"],
+        ),
+        "careful_items": {
+            "vs_reference": {v: pair(careful, v, "reference", seed) for v in views},
+            "vs_original_v2": {v: pair(careful, v, "original_v2", seed) for v in views},
+            "original_v2_vs_reference": pair(careful, "original_v2", "reference", seed),
+            "between_fresh_runs": {
+                f"{a}_vs_{b}": pair(careful, a, b, seed)
+                for i, a in enumerate(names)
+                for b in names[i + 1 :]
+            },
+            "unanimous": rate(careful, seed, lambda r: len({r[n] for n in names}) == 1),
+            "direction_vs_reference": {
+                v: dict(Counter(J.direction(r[v], r["reference"], J.COVERAGE) for r in careful))
+                for v in views
+            },
+            "direction_vs_original_v2": {
+                v: dict(Counter(J.direction(r[v], r["original_v2"], J.COVERAGE) for r in careful))
+                for v in views
+            },
+            "changes_vs_reference": dict(
+                Counter(
+                    f"{r['reference']} -> {r['fresh_majority']}"
+                    for r in careful
+                    if r["fresh_majority"] != r["reference"]
+                )
+            ),
+        },
+        "headline": {
+            "judge": notes_headline(rows, "judge"),
+            **{f"two_stage_{v}": notes_headline(rows, f"two_stage_{v}") for v in views},
+            "reference": notes_headline(rows, "reference"),
+        },
+    }
+    return out
+
+
 def twostage(split: str, seed: int) -> dict[str, Any]:
     return {
         "split": split,
@@ -587,12 +700,21 @@ def main() -> None:
     for name in ("report", "twostage"):
         sub.choices[name].add_argument("--json", type=Path)
     sub.choices["sample"].add_argument("--n", type=int, default=40)
+    p = sub.add_parser("fresh")
+    p.add_argument("runs", type=Path, nargs=3)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--model", default="not recorded")
+    p.add_argument("--json", type=Path)
     p = sub.add_parser("agree")
     p.add_argument("a", type=Path)
     p.add_argument("b", type=Path)
     args = ap.parse_args()
-    if args.cmd in ("report", "twostage"):
-        out = (report if args.cmd == "report" else twostage)(args.split, args.seed)
+    if args.cmd in ("report", "twostage", "fresh"):
+        if args.cmd == "fresh":
+            out = fresh(args.runs, args.seed)
+            out["reader"] = {"prompt": "notes_reader.v2", "model": args.model}
+        else:
+            out = (report if args.cmd == "report" else twostage)(args.split, args.seed)
         show(out)
         if args.json:
             sha = subprocess.run(
