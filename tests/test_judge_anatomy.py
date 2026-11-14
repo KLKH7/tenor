@@ -59,3 +59,20 @@ def test_spearman_handles_ties_and_constants() -> None:
     assert J.spearman([1, 1, 1], [1, 2, 3]) is None
     assert J.spearman([1, 2], [1, 2]) is None
     assert J.spearman([1, 2, 2, 3], [1, 2, 2, 3]) == pytest.approx(1.0)
+
+
+def test_two_stage_keeps_only_top_credit_calls() -> None:
+    assert J.two_stage("full", J.ACCEPT["notes"]) == "judge"
+    assert J.two_stage("partial", J.ACCEPT["notes"]) == "careful"
+    assert J.two_stage("none", J.ACCEPT["notes"]) == "careful"
+    assert J.two_stage("correct", J.ACCEPT["answers"]) == "judge"
+    assert J.two_stage("partially_correct", J.ACCEPT["answers"]) == "careful"
+
+
+def test_list_class_and_weighted_coverage() -> None:
+    assert J.list_class(["G1"], False) == "gold"
+    assert J.list_class([], True) == "true"
+    assert J.list_class([], False) == "no"
+    assert J.two_stage(J.list_class([], True), J.ACCEPT["lists"]) == "careful"
+    assert J.weighted_coverage(["full", "partial", "none", "full"]) == 0.625
+    assert J.weighted_coverage([]) is None

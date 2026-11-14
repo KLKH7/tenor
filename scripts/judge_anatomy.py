@@ -4,6 +4,8 @@
         [--json OUT]
     uv run --no-sync python scripts/judge_anatomy.py sample [--split test|dev] [--seed 42] [--n 40]
     uv run --no-sync python scripts/judge_anatomy.py agree A.jsonl B.jsonl
+    uv run --no-sync python scripts/judge_anatomy.py twostage [--split test|dev|all] [--seed 42] \
+        [--json OUT]
 
 Three studies, each with the judge's verdict and a careful reference per row:
 
@@ -19,7 +21,11 @@ Three studies, each with the judge's verdict and a careful reference per row:
 ``report`` prints direction, load, item kind, verdict class and stability tables with 95% intervals
 from resampling whole meetings (notes) or questions (lists, answers). ``sample`` writes a seeded
 sample of judge errors as one job file for cause labelling (data/private/reader/anatomy_jobs/).
-``agree`` scores two labellers' JSONL outputs against each other. No LLM, no network.
+``agree`` scores two labellers' JSONL outputs against each other. ``twostage`` scores the policy
+"keep the judge's top-credit calls, read the rest carefully" (``J.ACCEPT``): its agreement with
+the reference, the share of rows that need the careful reading, and the headline numbers under
+the judge alone, the two-stage policy and the reference. The careful reading is taken from the
+reference itself, so agreement is exact wherever the judge withholds credit. No LLM, no network.
 """
 
 from __future__ import annotations
@@ -29,12 +35,14 @@ import json
 import random
 import subprocess
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from tenor.evals import judge_anatomy as J
 from tenor.evals.judge_check import cohen_kappa
+from tenor.evals.list_check import _f1, sign_test
 
 ROOT = Path(__file__).resolve().parent.parent
 PRIVATE = ROOT / "data/private"
@@ -205,12 +213,13 @@ def bins(rows: list[dict[str, Any]], key: str, seed: int) -> dict[str, Any]:
     """Rows in three groups of units, cut at the terciles of ``key`` (a feature, not an outcome)."""
     values = sorted({(r.get("unit", r["cluster"]), r[key]) for r in rows}, key=lambda x: x[1])
     cut1, cut2 = values[len(values) // 3][1], values[2 * len(values) // 3][1]
-    out = {}
-    for name, test in (
+    cuts: tuple[tuple[str, Callable[[Any], bool]], ...] = (
         (f"< {cut1}", lambda v: v < cut1),
         (f"{cut1} to {cut2 - 1}", lambda v: cut1 <= v < cut2),
         (f">= {cut2}", lambda v: v >= cut2),
-    ):
+    )
+    out = {}
+    for name, test in cuts:
         out[name] = rate([r for r in rows if test(r[key])], seed)
     return out
 
@@ -401,6 +410,170 @@ def agree(a_path: Path, b_path: Path) -> None:
     print("agreed:", dict(Counter(a[c] for c in cases if a[c] == b[c]).most_common()))
 
 
+SYSTEMS = {
+    "A": "granola_chat",
+    "B": "notes_only",
+    "B'": "notes_only_wispr",
+    "C": "notes_facts",
+    "D": "notes_facts_fallback",
+}
+DELETION_RUN = ROOT / "data/ami/results/deletion/20261105T211504Z.deletion.jsonl"
+E1_RUN = ROOT / "data/ami/results/e1/20261106T002704Z.json"
+VIEWS = ("judge", "two_stage", "reference")
+
+
+def pick(split: str, loader: Any) -> list[dict[str, Any]]:
+    """Rows of one split, or of both for 'all'."""
+    return [r for s in (("dev", "test") if split == "all" else (split,)) for r in loader(s)]
+
+
+def test_line(a: dict[str, float | None], b: dict[str, float | None]) -> str:
+    t = sign_test(a, b)
+    return f"{t['wins']}-{t['losses']}, p = {t['sign_p']:.3f}"
+
+
+def notes_two_stage(split: str, seed: int) -> dict[str, Any]:
+    """E3 coverage per product and the per-meeting comparison under the three views."""
+    rows = pick(split, notes_rows)
+    for r in rows:
+        r["route"] = J.two_stage(r["judge"], J.ACCEPT["notes"])
+        r["two_stage"] = r["judge"] if r["route"] == "judge" else r["reference"]
+    out: dict[str, Any] = {
+        "agreement": rate(rows, seed, lambda r: r["two_stage"] == r["reference"]),
+        "judge_agreement": rate(rows, seed, lambda r: r["judge"] == r["reference"]),
+        "careful_share": rate(rows, seed, lambda r: r["route"] == "careful"),
+        "headline": {},
+    }
+    for view in VIEWS:
+        per: dict[str, dict[str, float | None]] = {"granola": {}, "wispr": {}}
+        for product, by_meeting in per.items():
+            for m in sorted({r["cluster"] for r in rows}):
+                unit = [r[view] for r in rows if r["unit"] == f"{m}__{product}"]
+                by_meeting[m] = J.weighted_coverage(unit)
+        out["headline"][view] = {
+            "coverage_granola": J.weighted_coverage(
+                [r[view] for r in rows if r["unit"].endswith("__granola")]
+            ),
+            "coverage_wispr": J.weighted_coverage(
+                [r[view] for r in rows if r["unit"].endswith("__wispr")]
+            ),
+            "wispr_vs_granola_by_meeting": test_line(per["granola"], per["wispr"]),
+        }
+    return out
+
+
+def lists_two_stage(split: str, seed: int) -> dict[str, Any]:
+    """E1 recall, lenient precision and F1 per condition, and the paired tests, under the views."""
+    e1 = json.loads(E1_RUN.read_text(encoding="utf-8"))["records"]
+    n_gold = {r["qid"]: len(r["gold"]) for r in e1}
+    rows = [
+        r for r in jsonl(PRIVATE / "JUDGE_REREAD_e1.jsonl") if split == "all" or r["split"] == split
+    ]
+    for r in rows:
+        j = (r["judge"]["gold"], bool(r["judge"]["gold"]) or bool(r["judge"]["in_transcript"]))
+        ref = (r["reference"]["gold"], bool(r["reference"]["right"]))
+        cls = J.list_class(r["judge"]["gold"], bool(r["judge"]["in_transcript"]))
+        r["route"] = J.two_stage(cls, J.ACCEPT["lists"])
+        r["views"] = {
+            "judge": j,
+            "reference": ref,
+            "two_stage": j if r["route"] == "judge" else ref,
+        }
+        r["cluster"] = r["qid"]
+    qids = sorted({r["qid"] for r in rows})
+
+    def metrics(view: str, cond: str) -> dict[str, dict[str, float | None]]:
+        out: dict[str, dict[str, float | None]] = {"recall": {}, "precision": {}, "f1": {}}
+        for q in qids:
+            items = [
+                r["views"][view]
+                for r in rows
+                if r["qid"] == q
+                and (
+                    r["condition"] == cond
+                    or (cond == "LD" and r["condition"] == "L" and r["ld_kept"])
+                )
+            ]
+            covered = {g for gold, _ in items for g in gold}
+            recall = len(covered) / n_gold[q] if n_gold[q] else 0.0
+            precision = sum(right for _, right in items) / len(items) if items else None
+            out["recall"][q], out["precision"][q] = recall, precision
+            out["f1"][q] = _f1(precision, recall)
+        return out
+
+    def mean(xs: dict[str, float | None]) -> float:
+        vals = [x for x in xs.values() if x is not None]
+        return sum(vals) / len(vals)
+
+    same = lambda r: r["views"]["two_stage"] == r["views"]["reference"]  # noqa: E731
+    out: dict[str, Any] = {
+        "questions": len(qids),
+        "agreement": rate(rows, seed, same),
+        "judge_agreement": rate(rows, seed, lambda r: not r["judge_wrong"]),
+        "careful_share": rate(rows, seed, lambda r: r["route"] == "careful"),
+        "headline": {},
+    }
+    for view in VIEWS:
+        m = {c: metrics(view, c) for c in ("C", "L", "LD")}
+        out["headline"][view] = {
+            **{f"{c}_{k}": mean(m[c][k]) for c in m for k in ("recall", "precision", "f1")},
+            "L_vs_C_recall": test_line(m["C"]["recall"], m["L"]["recall"]),
+            "L_vs_C_f1": test_line(m["C"]["f1"], m["L"]["f1"]),
+            "LD_vs_C_f1": test_line(m["C"]["f1"], m["LD"]["f1"]),
+        }
+    return out
+
+
+def answers_two_stage(split: str, seed: int) -> dict[str, Any]:
+    """Deletion study: correct and not-wrong per system, paired tests, confident errors."""
+    abstain = {(r["qid"], r["system"]): bool(r["answer"]["abstain"]) for r in jsonl(DELETION_RUN)}
+    rows = pick(split, answers_rows)
+    for r in rows:
+        r["route"] = J.two_stage(r["judge"], J.ACCEPT["answers"])
+        r["two_stage"] = r["judge"] if r["route"] == "judge" else r["reference"]
+    out: dict[str, Any] = {
+        "questions": len({r["cluster"] for r in rows}),
+        "agreement": rate(rows, seed, lambda r: r["two_stage"] == r["reference"]),
+        "judge_agreement": rate(rows, seed, lambda r: r["judge"] == r["reference"]),
+        "careful_share": rate(rows, seed, lambda r: r["route"] == "careful"),
+        "headline": {},
+    }
+    for view in VIEWS:
+        correct: dict[str, dict[str, float | None]] = {}
+        not_wrong: dict[str, dict[str, float | None]] = {}
+        confident: dict[str, int] = {}
+        for label, system in SYSTEMS.items():
+            mine = [r for r in rows if r["system"] == system]
+            correct[label] = {r["cluster"]: float(r[view] == "correct") for r in mine}
+            not_wrong[label] = {r["cluster"]: float(r[view] != "incorrect") for r in mine}
+            confident[label] = sum(
+                r[view] == "incorrect" and (label == "A" or not abstain[(r["cluster"], system)])
+                for r in mine
+            )
+        out["headline"][view] = {
+            **{f"{k}_correct": sum(v.values()) / len(v) for k, v in correct.items()},  # type: ignore[arg-type]
+            **{f"{k}_not_wrong": sum(v.values()) / len(v) for k, v in not_wrong.items()},  # type: ignore[arg-type]
+            "A_vs_B_correct": test_line(correct["B"], correct["A"]),
+            "D_vs_C_correct": test_line(correct["C"], correct["D"]),
+            "A_vs_D_not_wrong": test_line(not_wrong["D"], not_wrong["A"]),
+            "A_vs_D_correct": test_line(correct["D"], correct["A"]),
+            "B_vs_Bprime_correct": test_line(correct["B'"], correct["B"]),
+            "confident_errors": " / ".join(f"{k} {v}" for k, v in confident.items()),
+        }
+    return out
+
+
+def twostage(split: str, seed: int) -> dict[str, Any]:
+    return {
+        "split": split,
+        "seed": seed,
+        "rule": {k: sorted(v) for k, v in J.ACCEPT.items()},
+        "notes": notes_two_stage(split, seed),
+        "lists": lists_two_stage(split, seed),
+        "answers": answers_two_stage(split, seed),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -408,14 +581,18 @@ def main() -> None:
         p = sub.add_parser(name)
         p.add_argument("--split", choices=("dev", "test"), default="test")
         p.add_argument("--seed", type=int, default=42)
-    sub.choices["report"].add_argument("--json", type=Path)
+    p = sub.add_parser("twostage")
+    p.add_argument("--split", choices=("dev", "test", "all"), default="test")
+    p.add_argument("--seed", type=int, default=42)
+    for name in ("report", "twostage"):
+        sub.choices[name].add_argument("--json", type=Path)
     sub.choices["sample"].add_argument("--n", type=int, default=40)
     p = sub.add_parser("agree")
     p.add_argument("a", type=Path)
     p.add_argument("b", type=Path)
     args = ap.parse_args()
-    if args.cmd == "report":
-        out = report(args.split, args.seed)
+    if args.cmd in ("report", "twostage"):
+        out = (report if args.cmd == "report" else twostage)(args.split, args.seed)
         show(out)
         if args.json:
             sha = subprocess.run(

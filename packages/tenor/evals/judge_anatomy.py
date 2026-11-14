@@ -9,6 +9,8 @@ Pure functions used by ``scripts/judge_anatomy.py``. No LLM, no network, no file
   ordered verdict scale.
 * :func:`cluster_rate` is a rate with a 95% interval from resampling whole clusters (meetings or
   questions), seeded.
+* :func:`two_stage` is the policy the anatomy suggests: keep the judge's verdict when it gives
+  top credit, and take a careful reading for everything else.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from __future__ import annotations
 import math
 import random
 import re
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import Literal
 
 COVERAGE: tuple[str, ...] = ("none", "partial", "full")
@@ -34,6 +36,14 @@ _STOP_WORDS = (
 )
 _STOP = frozenset(_STOP_WORDS.split())
 _WORD = re.compile(r"[a-z0-9]+")
+
+# The two-stage rule, stated on DEV and frozen before TEST (JUDGE_ANATOMY.md, "Two-stage judge"):
+# the judge's verdict stands only in its top-credit class; every other row gets the careful reading.
+ACCEPT: dict[str, frozenset[str]] = {
+    "notes": frozenset({"full"}),
+    "answers": frozenset({"correct"}),
+    "lists": frozenset({"gold"}),
+}
 
 Direction = Literal["same", "harsh", "lenient"]
 Third = Literal["first", "middle", "last"]
@@ -80,6 +90,25 @@ def direction(judge: str, reference: str, scale: Sequence[str]) -> Direction:
     """'harsh' when the judge's verdict is below the reference's on ``scale``, 'lenient' above."""
     j, r = scale.index(judge), scale.index(reference)
     return "same" if j == r else "harsh" if j < r else "lenient"
+
+
+def list_class(gold: Sequence[str], in_transcript: bool) -> str:
+    """The list judge's verdict class for one answer item: 'gold' (linked to a gold item),
+    'true' (not linked, but true per the transcript) or 'no'."""
+    return "gold" if gold else "true" if in_transcript else "no"
+
+
+def two_stage(judge_class: str, accept: Collection[str]) -> Literal["judge", "careful"]:
+    """Whose verdict a row gets: the judge's when its class is in ``accept``, else the careful
+    reading's."""
+    return "judge" if judge_class in accept else "careful"
+
+
+def weighted_coverage(verdicts: Sequence[str]) -> float | None:
+    """Coverage of a set of items: full counts 1, partial one half, none 0. None when empty."""
+    if not verdicts:
+        return None
+    return sum({"full": 1.0, "partial": 0.5, "none": 0.0}[v] for v in verdicts) / len(verdicts)
 
 
 def median_verdict(passes: Sequence[str], scale: Sequence[str] = COVERAGE) -> str:
