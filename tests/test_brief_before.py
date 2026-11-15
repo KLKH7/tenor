@@ -51,6 +51,8 @@ def test_parse_fates_and_naming() -> None:
     got, bad = BB.parse_fates(json.dumps(line) + "\n" + json.dumps(dict(line, bullet=7)), [1, 3])
     assert got[1].fate == "reported"
     assert bad == ["line 2: unknown bullet 7", "no answer for bullet 3"]
+    one, bad = BB.parse_fates(json.dumps(line), [3])
+    assert one[3].fate == "reported" and bad == []
     naming = "\n".join(
         json.dumps(r)
         for r in (
@@ -118,6 +120,10 @@ def test_score_counts_staleness_naming_and_quiet_pairs() -> None:
     assert got["silent_items"] == 1
     assert got["silent_named_by_brief"]["num"] == 1
     assert got["silent_covered_by_line"]["num"] == 1
+    assert (got["other_items_named_by_brief"]["num"], got["other_items_named_by_brief"]["den"]) == (
+        2,
+        2,
+    )
     assert got["quiet_pairs"] == 1
     assert got["quiet_pairs_brief"]["total"] == 1 and got["quiet_pairs_line"]["total"] == 0
     assert got["cross_check"]["single_same_fate"] == 3

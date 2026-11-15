@@ -177,9 +177,19 @@ def fate_job(y: B.CueUnit, bullets: Sequence[tuple[int, str]], prompt: str, answ
 
 def parse_fates(text: str, numbers: Sequence[int]) -> tuple[dict[int, BulletFate], list[str]]:
     """A fate reader's answers by bullet number, and problems (unreadable lines, unknown or
-    repeated numbers, missing bullets)."""
+    repeated numbers, missing bullets). When only one bullet is asked about (a tie-break on a
+    single bullet) and the answer has a single line, that line answers the bullet whatever
+    number it gives: a one-item list numbered "3." can render as "1."."""
     out: dict[int, BulletFate] = {}
     errors: list[str] = []
+    lines = [raw for raw in text.splitlines() if raw.strip()]
+    if len(numbers) == 1 and len(lines) == 1:
+        try:
+            raw_obj = json.loads(lines[0])
+            if isinstance(raw_obj, dict):
+                text = json.dumps(dict(raw_obj, bullet=numbers[0]))
+        except json.JSONDecodeError:
+            pass
     for k, raw in enumerate(text.splitlines(), start=1):
         if not raw.strip():
             continue
@@ -398,6 +408,13 @@ def score(
         "silent_items": len(silent),
         "silent_named_by_brief": _share(silent_rows, lambda r: r["key"] in named, seed),
         "silent_cited_by_brief": _share(silent_rows, lambda r: r["key"] in cited, seed),
+        # The same share over the items that did not go quiet: a brief that names silent items
+        # no more often than the rest is not picking them out.
+        "other_items_named_by_brief": _share(
+            [dict(r, key=(r["pair"], r["x_item"])) for r in fates if not T.is_silent(r)],
+            lambda r: r["key"] in named,
+            seed,
+        ),
         "silent_covered_by_line": _share(silent_rows, lambda r: r["key"] in covered, seed),
         "quiet_pairs": len(quiet_pairs),
         "quiet_pairs_brief": per_pair(per_pair_bullets, quiet_pairs),
