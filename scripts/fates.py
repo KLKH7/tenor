@@ -41,6 +41,11 @@ not one of ``item_fates.READ_BEFORE``, from which ``item_fates.select`` draws up
 position, at most 2 per series, its own seeded shuffle). ``dump`` writes their job files next to
 the others and ``fates_jobs/fresh_pairs.json`` (the pool, every exclusion with its reason, the
 draw); ``disagreements`` and ``score`` must be given the same ``--split fresh``.
+
+``--split fresh2`` uses the second FRESH set (:func:`fresh2_selection`, seed 43 for the draw):
+the FRESH pool minus the FRESH draw (seed 42), the earlier detector's TEST pairs and the demo
+pairs, from which ``item_fates.fresh2_split`` draws up to 24 (8 per position, topped up from
+any position, at most 2 per series). ``dump`` writes ``fates_jobs/fresh2_pairs.json``.
 """
 
 from __future__ import annotations
@@ -87,6 +92,17 @@ def fresh_selection(seed: int) -> tuple[list[K.Pair], dict[str, list[str]], list
     return pool, excluded, fresh
 
 
+def fresh2_selection(seed: int) -> tuple[list[K.Pair], dict[str, list[str]], list[K.Pair]]:
+    """The pool left for the second FRESH set, every excluded pair under its reason, and the
+    draw (seeded by ``seed``). The FRESH set it leaves out is always the seed-42 draw."""
+    pairs, earlier, chosen = selection(F.FRESH_SEED)
+    excluded, _, fresh = F.fresh_split(
+        pairs, chosen, earlier.develop, empty_pairs(pairs), F.FRESH_SEED
+    )
+    excluded2, pool, fresh2 = F.fresh2_split(pairs, excluded, fresh, earlier.test, seed)
+    return pool, excluded2, fresh2
+
+
 def named_pairs(spec: str) -> tuple[list[K.Pair], list[str]]:
     """The pairs of ``--pairs`` that can be read, and why each of the others cannot."""
     try:
@@ -114,6 +130,8 @@ def run_pairs(
     ``--pairs``."""
     if split == "fresh":
         return fresh_selection(seed)[2], []
+    if split == "fresh2":
+        return fresh2_selection(seed)[2], []
     if spec is None:
         return selection(seed)[2], []
     return named_pairs(spec)
@@ -149,10 +167,12 @@ def dump_named(seed: int, spec: str) -> None:
     print(f"{len(chosen)} extra job files in {JOBS}; pairs.json and the selection unchanged")
 
 
-def dump_fresh(seed: int) -> None:
-    """Job files for the FRESH set and ``fresh_pairs.json``; the 36 job files are untouched."""
+def dump_fresh(seed: int, split: str = "fresh") -> None:
+    """Job files for the FRESH (or second FRESH) set and ``<split>_pairs.json``; the 36 job
+    files are untouched."""
     pairs = K.available_pairs(K.summary_counts(DEFAULT_ZIP))
-    pool, excluded, fresh = fresh_selection(seed)
+    pool, excluded, fresh = (fresh_selection if split == "fresh" else fresh2_selection)(seed)
+    mix, salt = (F.FRESH_MIX, F.FRESH_SALT) if split == "fresh" else (F.FRESH2_MIX, F.FRESH2_SALT)
     JOBS.mkdir(parents=True, exist_ok=True)
     prompt = _prompt()
     print("pair\tposition\tdecisions\tactions\tno_passage\ty_lines")
@@ -171,27 +191,36 @@ def dump_fresh(seed: int) -> None:
     record = {
         "seed": seed,
         "prompt": F.PROMPT,
-        "salt": F.FRESH_SALT,
-        "mix": dict(F.FRESH_MIX),
+        "salt": salt,
+        "mix": dict(mix),
         "max_per_series": F.MAX_PER_SERIES,
         "derivation": (
             "came_back.available_pairs: consecutive scenario pairs (a->b, b->c, c->d) where both "
             "meetings have a human transcript and X's abstractive summary has at least one "
             "decision or action sentence; minus every pair under 'excluded'; then "
             "item_fates.select with the mix, the series cap and its own seeded shuffle"
+            + (
+                ""
+                if split == "fresh"
+                else "; then, while short of the mix's total, the pool's other pairs in their "
+                "own seeded shuffle (salt '<salt>.top_up'), any position, within the series cap. "
+                "'excluded' holds the FRESH set's exclusions (seed 42), its draw ('fresh_1'), "
+                "the earlier detector's TEST pairs (cbd_20261110) and the demo pairs "
+                "(swdemo_v3_20261115)"
+            )
         ),
         "pairs_available": len(pairs),
         "excluded": excluded,
         "pool": [p.name for p in pool],
-        "pool_by_position": {k: sum(p.kind == k for p in pool) for k, _ in F.FRESH_MIX},
+        "pool_by_position": {k: sum(p.kind == k for p in pool) for k, _ in mix},
         "pairs": [p.name for p in fresh],
-        "by_position": {k: [p.name for p in fresh if p.kind == k] for k, _ in F.FRESH_MIX},
+        "by_position": {k: [p.name for p in fresh if p.kind == k] for k, _ in mix},
         "series": len({p.series for p in fresh}),
         "items": n_items,
     }
-    (JOBS / "fresh_pairs.json").write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    (JOBS / f"{split}_pairs.json").write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
     print(f"pool {len(pool)} pairs {record['pool_by_position']}")
-    print(f"{len(fresh)} FRESH job files, {n_items} items, {record['series']} series, in {JOBS}")
+    print(f"{len(fresh)} {split} job files, {n_items} items, {record['series']} series, in {JOBS}")
 
 
 def dump(seed: int) -> None:
@@ -408,7 +437,11 @@ def score(
         "seed": seed,
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
         "pair_source": (
-            "FRESH set" if split == "fresh" else "seeded selection" if spec is None else "--pairs"
+            {"fresh": "FRESH set", "fresh2": "second FRESH set"}[split]
+            if split
+            else "seeded selection"
+            if spec is None
+            else "--pairs"
         ),
         "pair_names": [p.name for p in chosen],
         "pairs_selected": len(chosen),
@@ -446,12 +479,14 @@ def main() -> None:
             "--pairs", help="comma-separated X__Y pairs to use instead of the seeded selection"
         )
         which.add_argument(
-            "--split", choices=["fresh"], help="the FRESH set instead of the seeded selection"
+            "--split",
+            choices=["fresh", "fresh2"],
+            help="the FRESH set (or the second FRESH set) instead of the seeded selection",
         )
     args = ap.parse_args()
     if args.cmd == "dump":
-        if args.split == "fresh":
-            dump_fresh(args.seed)
+        if args.split in ("fresh", "fresh2"):
+            dump_fresh(args.seed, args.split)
         elif args.pairs is None:
             dump(args.seed)
         else:

@@ -59,6 +59,23 @@ def test_fresh_split_leaves_out_every_earlier_pair_and_keeps_the_rules() -> None
     assert fresh == F.fresh_split(list(reversed(pairs)), test, develop, empty, 42)[2]
 
 
+def test_fresh2_split_leaves_out_the_fresh_draw_and_every_earlier_pair() -> None:
+    pairs = [*_all_pairs(), K.Pair(x="TS3009c", y="TS3009d"), K.Pair(x="TS3009a", y="TS3009b")]
+    earlier = K.select(pairs, 42)
+    test = F.select(pairs, earlier.develop, 42)
+    excluded, _, fresh = F.fresh_split(pairs, test, earlier.develop, [], 42)
+    ex2, pool, fresh2 = F.fresh2_split(pairs, excluded, fresh, earlier.test, 43)
+    assert ex2["fresh_1"] == sorted(p.name for p in fresh)
+    assert ex2["since_demo"] == sorted(p.name for p in pairs if p.name in F.DEMO_PAIRS)
+    assert "TS3009a__TS3009b" in ex2["since_demo"]
+    gone = {n for names in ex2.values() for n in names}
+    assert {p.name for p in pool} == {p.name for p in pairs} - gone
+    assert set(fresh2) <= set(pool) and not set(fresh2) & {*fresh, *test, *earlier.test}
+    assert len(fresh2) == min(len(pool), sum(n for _, n in F.FRESH2_MIX))
+    assert max(Counter(p.series for p in fresh2).values()) <= F.MAX_PER_SERIES
+    assert fresh2 == F.fresh2_split(list(reversed(pairs)), excluded, fresh, earlier.test, 43)[2]
+
+
 def test_parse_pairs_takes_consecutive_pairs_in_the_order_given() -> None:
     got = F.parse_pairs("TS3009c__TS3009d, IS1008a__IS1008b")
     assert [p.name for p in got] == ["TS3009c__TS3009d", "IS1008a__IS1008b"]

@@ -15,7 +15,8 @@ readers and a tie-break and are not shown to the writer or to the checkers.
 3. :func:`score` counts, over ``follow_through.line_rows`` rows and the fates rows: sentences
    judged true, silent items covered (by kind of item, kind of silence and kind of sentence),
    pairs with and
-   without a silent item that got a sentence, and sentences per pair; intervals resample teams.
+   without a silent item that got a sentence, and sentences per pair; for writers that mark a
+   sentence's scope (v4), truth and coverage by scope; intervals resample teams.
 
 No LLM and no network: agents read the job files and write JSONL.
 """
@@ -39,6 +40,7 @@ PRODUCT = "annotations"  # stands where a product's name would in the follow-thr
 SECTIONS = {"D": "Decisions", "A": "Action items"}
 KINDS = {"D": "decision", "A": "task"}
 SILENT_KINDS = ("changed_silently", "not_mentioned")
+SCOPES = ("item", "part")  # writer v4: a sentence names whole items, or parts of taken-up items
 N_BOOT = 2000
 
 ADAPTATION = (
@@ -210,6 +212,17 @@ def score(
         & set(silent)
         for k in ("changed", "not_mentioned")
     }
+    scopes = SCOPES if any(r.get("scope") for r in lines) else ()
+    covered_by_scope = {
+        k: {
+            (r["unit"], i)
+            for r in lines
+            if r["strict"] and r.get("scope") == k
+            for i in r["x_items"]
+        }
+        & set(silent)
+        for k in scopes
+    }
     checked = [r for r in lines if r["status"] == "ok"]
     per_pair = Counter(r["unit"] for r in lines)
     silent_pairs = {p for p, _ in silent}
@@ -256,6 +269,27 @@ def score(
                 "den": sum(r["kind"] == k for r in checked),
             }
             for k in ("changed", "not_mentioned")
+        },
+        "true_by_scope": {
+            k: _rate(
+                _by_series(
+                    [r for r in checked if r.get("scope") == k],
+                    lambda r: bool(r["strict"]),
+                    line_series,
+                ),
+                seed,
+            )
+            for k in scopes
+        },
+        "covered_by_scope": {
+            k: {
+                "all": cover(lambda r: True, covered_by_scope[k]),
+                **{
+                    f: cover(lambda r, f=f: r["fate"] == f, covered_by_scope[k])  # type: ignore[misc]
+                    for f in SILENT_KINDS
+                },
+            }
+            for k in scopes
         },
         "true_sentences_by_fate_of_item": dict(sorted(true_about.items())),
         "true_sentences_naming_a_silent_item": sum(

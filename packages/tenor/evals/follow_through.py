@@ -253,6 +253,9 @@ class WriterLine(BaseModel):
     x_bullets: tuple[str, ...]
     y_lines: tuple[str, ...] = ()
     quote: str = ""
+    # Writer v4 and later: whether the sentence names whole items or parts of items the later
+    # meeting does take up. Absent for earlier writers; never shown to checkers.
+    scope: Literal["item", "part"] | None = None
 
 
 def writer_job_file(x: B.CueUnit, y: B.CueUnit, prompt: str, answer_path: str) -> str:
@@ -408,6 +411,7 @@ def line_rows(
             "sentence": line.sentence,
             "x_bullets": list(line.x_bullets),
             "status": w["status"],
+            "scope": line.scope,
             **{f"supported_{c}": None for c in CHECKERS},
             "x_items": [],
             "item_fates": [],

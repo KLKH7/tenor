@@ -1,15 +1,17 @@
 """The "since last time" writer on the item-fates pairs ($0, agents).
 
     uv run --no-sync python scripts/since_writer.py dump --run <RUN> --prompt <NAME>
-        [--split test|dev|fresh | --pairs IS1008a-b,IS1008b-c,...] [--model NAME]
+        [--split test|dev|fresh|fresh2 | --pairs IS1008a-b,IS1008b-c,...] [--model NAME]
     uv run --no-sync python scripts/since_writer.py dump-check --run <RUN> [--model NAME]
     uv run --no-sync python scripts/since_writer.py score --run <RUN> [--model NAME] [--seed 42]
 
 Pairs are the 36 seeded item-fates pairs (``scripts/fates.py``, seed 42; ``--split test``, the
 default); ``--split dev`` (or ``--dev``) the 6 development pairs that study excluded, only for
 developing a writer prompt; ``--split fresh`` the FRESH set (``item_fates.fresh_split``, up to
-30 pairs none of the earlier writers ran on); ``--pairs`` any named available pairs (split
-``pairs``, e.g. demo data: not a test set), kept in ``run.json``. Each split is scored against
+30 pairs none of the earlier writers ran on); ``--split fresh2`` the second FRESH set
+(``item_fates.fresh2_split``, seed 43: up to 24 pairs used in no earlier run); ``--pairs``
+any named available pairs (split ``pairs``, e.g. demo data: not a test set), kept in
+``run.json``. Each split is scored against
 its own fates run (:data:`FATES_RUNS`); named pairs against whichever fates run of
 :data:`PAIR_FATES_RUNS` read each pair first. ``--model`` on ``dump`` records the writer
 agents' model and on ``dump-check`` the checkers' model in ``run.json``. Everything is under
@@ -55,6 +57,7 @@ FATES_RUNS = {
     "test": READERS / "fates_runs" / "fates_20261110",
     "dev": READERS / "fates_runs" / "fates_dev_20261114",
     "fresh": READERS / "fates_runs" / "fates_fresh_20261114",
+    "fresh2": READERS / "fates_runs" / "fates_fresh2_20261115",
 }
 SPLITS = tuple(FATES_RUNS)
 # Every fates run, searched in this order for the fates of pairs named with --pairs.
@@ -64,7 +67,8 @@ SEED = 42  # the item-fates selection seed
 
 def pairs_of(split: str, names: list[str] | None = None) -> list[K.Pair]:
     """The 36 item-fates pairs (``test``), the 6 development pairs that study excluded
-    (``dev``), the FRESH set (``fresh``), or the pairs ``names`` (``pairs``)."""
+    (``dev``), the FRESH set (``fresh``), the second FRESH set (``fresh2``), or the pairs
+    ``names`` (``pairs``)."""
     available = K.available_pairs(K.summary_counts(DEFAULT_ZIP))
     if split == "pairs":
         return W.parse_pairs(",".join(names or []), available)
@@ -75,8 +79,11 @@ def pairs_of(split: str, names: list[str] | None = None) -> list[K.Pair]:
     test = F.select(available, [*earlier.develop, *empty], SEED)
     if split == "test":
         return test
-    if split == "fresh":
-        return F.fresh_split(available, test, earlier.develop, empty, SEED)[2]
+    if split in ("fresh", "fresh2"):
+        excluded, _, fresh = F.fresh_split(available, test, earlier.develop, empty, SEED)
+        if split == "fresh":
+            return fresh
+        return F.fresh2_split(available, excluded, fresh, earlier.test, F.FRESH2_SEED)[2]
     raise SystemExit(f"unknown split {split!r}: one of {(*SPLITS, 'pairs')}")
 
 

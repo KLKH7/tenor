@@ -165,3 +165,29 @@ def test_parse_pairs_takes_short_and_full_names_in_order() -> None:
         except ValueError:
             continue
         raise AssertionError(f"accepted {bad!r}")
+
+
+def test_score_splits_truth_and_coverage_by_scope_when_the_writer_marks_it() -> None:
+    p1, p2 = "AA1000a__AA1000b", "BB1000a__BB1000b"
+    fates = [
+        _fate(p1, "D1", "changed_silently"),
+        _fate(p1, "D2", "not_mentioned"),
+        _fate(p2, "D1", "returned_unchanged"),
+    ]
+    lines = [
+        {**_line(p1, ["D1"], "yes", "yes"), "scope": "part"},
+        {**_line(p1, ["D2"], "yes", "yes"), "scope": "item"},
+        {**_line(p2, ["D1"], "partly", "yes"), "scope": "part"},
+    ]
+    got = W.score(lines, fates, [p1, p2], 42)
+    part, item = got["true_by_scope"]["part"], got["true_by_scope"]["item"]
+    assert (part["num"], part["den"], item["num"], item["den"]) == (1, 2, 1, 1)
+    cov = got["covered_by_scope"]["part"]
+    assert (cov["all"]["num"], cov["changed_silently"]["num"], cov["not_mentioned"]["num"]) == (
+        1,
+        1,
+        0,
+    )
+    assert got["covered_by_scope"]["item"]["not_mentioned"]["num"] == 1
+    unmarked = W.score([dict(r, scope=None) for r in lines], fates, [p1, p2], 42)
+    assert unmarked["true_by_scope"] == {} and unmarked["covered_by_scope"] == {}

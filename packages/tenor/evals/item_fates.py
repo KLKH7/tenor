@@ -12,7 +12,8 @@ that read job files (file I/O in ``scripts/fates.py``).
    the earlier detector was tuned on and without pairs whose X has only placeholder items
    (:func:`items`). The same function, with :data:`FRESH_MIX` and its own salt, draws the
    FRESH set: up to 30 more pairs from what that selection, the development pairs and
-   :data:`READ_BEFORE` leave over.
+   :data:`READ_BEFORE` leave over; :func:`fresh2_split` draws the second FRESH set (FRESH2)
+   from what the FRESH draw and every other pair-level run leave over.
 2. :func:`job_file`: prompt :data:`PROMPT`, roster, each X item (id, kind, text, linked passage
    with context) and Y's full human transcript. No annotation of Y. With ``only`` it is the
    tie-break job: the same file restricted to some items, with no reader's answer in it.
@@ -50,10 +51,24 @@ MIX = (("ab", 12), ("bc", 12), ("cd", 12))  # pairs per position
 MAX_PER_SERIES = 2
 FRESH_MIX = (("ab", 10), ("bc", 10), ("cd", 10))  # the FRESH set: up to 30 pairs, by position
 FRESH_SALT = "fates.fresh"
+FRESH_SEED = 42  # the seed the FRESH set was drawn with
 # Pairs read before outside the seeded 36: run fates_extra_20261110 (IS1008a->b, IS1008c->d,
 # TS3009c->d). IS1008 is also the series the writer was developed (a->b) and tested on with a
 # product's notes. Kept out of the FRESH set.
 READ_BEFORE = ("IS1008a__IS1008b", "IS1008c__IS1008d", "TS3009c__TS3009d")
+# The second FRESH set: up to 24 pairs, 8 per position, then topped up from any position.
+FRESH2_MIX = (("ab", 8), ("bc", 8), ("cd", 8))
+FRESH2_SALT = "fates.fresh2"
+FRESH2_SEED = 43  # the seed the second FRESH set was drawn with
+# Pairs of the since-last-time demo run swdemo_v3_20261115 (demo data, read by a writer).
+DEMO_PAIRS = (
+    "IS1008a__IS1008b",
+    "IS1008b__IS1008c",
+    "IS1008c__IS1008d",
+    "TS3009a__TS3009b",
+    "TS3009b__TS3009c",
+    "TS3009c__TS3009d",
+)
 FATES = (
     "reported",
     "returned_unchanged",
@@ -128,6 +143,37 @@ def fresh_split(
     out = {n for names in excluded.values() for n in names}
     pool = sorted((p for p in pairs if p.name not in out), key=lambda p: p.name)
     return excluded, pool, select(pool, [], seed, FRESH_MIX, FRESH_SALT)
+
+
+def fresh2_split(
+    pairs: Sequence[K.Pair],
+    excluded_before: Mapping[str, Sequence[str]],
+    fresh: Sequence[K.Pair],
+    detector_test: Sequence[K.Pair],
+    seed: int,
+) -> tuple[dict[str, list[str]], list[K.Pair], list[K.Pair]]:
+    """The second FRESH set: every pair excluded from ``pairs`` under its reason (everything
+    :func:`fresh_split` excluded, its ``fresh`` draw, the earlier detector's TEST pairs, the
+    demo pairs :data:`DEMO_PAIRS`), the pool that leaves, and the draw: :func:`select` on the
+    pool with :data:`FRESH2_MIX` and :data:`FRESH2_SALT`, then, while the draw is short of
+    the mix's total, the pool's other pairs in an order of their own seeded shuffle, any
+    position, within the series cap. Deterministic in ``seed`` and independent of input order."""
+    excluded = {k: sorted(v) for k, v in excluded_before.items()}
+    excluded["fresh_1"] = sorted(p.name for p in fresh)
+    excluded["came_back_detector_test"] = sorted(p.name for p in detector_test)
+    excluded["since_demo"] = sorted(p.name for p in pairs if p.name in DEMO_PAIRS)
+    out = {n for names in excluded.values() for n in names}
+    pool = sorted((p for p in pairs if p.name not in out), key=lambda p: p.name)
+    drawn = select(pool, [], seed, FRESH2_MIX, FRESH2_SALT)
+    per_series = Counter(p.series for p in drawn)
+    rest = [p for p in pool if p not in drawn]
+    random.Random(f"{seed}:{FRESH2_SALT}.top_up").shuffle(rest)
+    target = sum(n for _, n in FRESH2_MIX)
+    for p in rest:
+        if len(drawn) < target and per_series[p.series] < MAX_PER_SERIES:
+            per_series[p.series] += 1
+            drawn.append(p)
+    return excluded, pool, sorted(drawn, key=lambda p: p.name)
 
 
 def parse_pairs(spec: str) -> list[K.Pair]:
