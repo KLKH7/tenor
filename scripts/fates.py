@@ -1,9 +1,9 @@
 """Item fates: what the next meeting does with every decision and action of this one ($0, agents).
 
-    uv run --no-sync python scripts/fates.py dump [--seed 42] [--pairs X__Y,...]
-    uv run --no-sync python scripts/fates.py disagreements --run <RUN> [--pairs X__Y,...]
+    uv run --no-sync python scripts/fates.py dump [--seed 42] [--pairs X__Y,...|--split fresh]
+    uv run --no-sync python scripts/fates.py disagreements --run <RUN> [--pairs ...|--split fresh]
     uv run --no-sync python scripts/fates.py score --run <RUN> [--seed 42] [--model NAME]
-        [--pairs X__Y,...]
+        [--pairs X__Y,...|--split fresh]
 
 ``dump`` selects 36 consecutive AMI scenario pairs (``tenor.evals.item_fates.select``: 12 per
 position, at most 2 per series, without the 6 DEVELOP pairs of ``scripts/cbd.py`` and pairs
@@ -34,6 +34,13 @@ must be given the same ``--pairs``. A named pair whose X has no annotated decisi
 or with a meeting that has no transcript, is reported and left out. Named pairs are not checked
 against the DEVELOP set or the series cap: they are outside the test's sample, so report them
 apart from it.
+
+``--split fresh`` uses the FRESH set instead (:func:`fresh_selection`): every available pair
+that is not in the seeded 36, not a DEVELOP pair, not a pair whose X has only placeholders and
+not one of ``item_fates.READ_BEFORE``, from which ``item_fates.select`` draws up to 30 (10 per
+position, at most 2 per series, its own seeded shuffle). ``dump`` writes their job files next to
+the others and ``fates_jobs/fresh_pairs.json`` (the pool, every exclusion with its reason, the
+draw); ``disagreements`` and ``score`` must be given the same ``--split fresh``.
 """
 
 from __future__ import annotations
@@ -73,6 +80,13 @@ def selection(seed: int) -> tuple[list[K.Pair], K.Selection, list[K.Pair]]:
     return pairs, earlier, chosen
 
 
+def fresh_selection(seed: int) -> tuple[list[K.Pair], dict[str, list[str]], list[K.Pair]]:
+    """The pool left for the FRESH set, every excluded pair under its reason, and the draw."""
+    pairs, earlier, chosen = selection(seed)
+    excluded, pool, fresh = F.fresh_split(pairs, chosen, earlier.develop, empty_pairs(pairs), seed)
+    return pool, excluded, fresh
+
+
 def named_pairs(spec: str) -> tuple[list[K.Pair], list[str]]:
     """The pairs of ``--pairs`` that can be read, and why each of the others cannot."""
     try:
@@ -93,8 +107,13 @@ def named_pairs(spec: str) -> tuple[list[K.Pair], list[str]]:
     return ok, problems
 
 
-def run_pairs(seed: int, spec: str | None) -> tuple[list[K.Pair], list[str]]:
-    """The pairs of a run: the seeded selection, or the readable pairs of ``--pairs``."""
+def run_pairs(
+    seed: int, spec: str | None, split: str | None = None
+) -> tuple[list[K.Pair], list[str]]:
+    """The pairs of a run: the seeded selection, the FRESH set, or the readable pairs of
+    ``--pairs``."""
+    if split == "fresh":
+        return fresh_selection(seed)[2], []
     if spec is None:
         return selection(seed)[2], []
     return named_pairs(spec)
@@ -128,6 +147,51 @@ def dump_named(seed: int, spec: str) -> None:
     for e in problems:
         print(f"NOT DUMPED {e}")
     print(f"{len(chosen)} extra job files in {JOBS}; pairs.json and the selection unchanged")
+
+
+def dump_fresh(seed: int) -> None:
+    """Job files for the FRESH set and ``fresh_pairs.json``; the 36 job files are untouched."""
+    pairs = K.available_pairs(K.summary_counts(DEFAULT_ZIP))
+    pool, excluded, fresh = fresh_selection(seed)
+    JOBS.mkdir(parents=True, exist_ok=True)
+    prompt = _prompt()
+    print("pair\tposition\tdecisions\tactions\tno_passage\ty_lines")
+    n_items = 0
+    for p in fresh:
+        x, y = load_meeting(p.x), load_meeting(p.y)
+        where = _answer_path("<RUN>", "<your reader letter: a or b>", p.name)
+        (JOBS / f"{p.name}.md").write_text(F.job_file(x, y, prompt, where), encoding="utf-8")
+        its = F.items(x)
+        n_items += len(its)
+        print(
+            f"{p.name}\t{p.kind}\t{sum(i.item_id[0] == 'D' for i in its)}\t"
+            f"{sum(i.item_id[0] == 'A' for i in its)}\t{sum(not i.linked for i in its)}\t"
+            f"{len(y.dialogue_acts)}"
+        )
+    record = {
+        "seed": seed,
+        "prompt": F.PROMPT,
+        "salt": F.FRESH_SALT,
+        "mix": dict(F.FRESH_MIX),
+        "max_per_series": F.MAX_PER_SERIES,
+        "derivation": (
+            "came_back.available_pairs: consecutive scenario pairs (a->b, b->c, c->d) where both "
+            "meetings have a human transcript and X's abstractive summary has at least one "
+            "decision or action sentence; minus every pair under 'excluded'; then "
+            "item_fates.select with the mix, the series cap and its own seeded shuffle"
+        ),
+        "pairs_available": len(pairs),
+        "excluded": excluded,
+        "pool": [p.name for p in pool],
+        "pool_by_position": {k: sum(p.kind == k for p in pool) for k, _ in F.FRESH_MIX},
+        "pairs": [p.name for p in fresh],
+        "by_position": {k: [p.name for p in fresh if p.kind == k] for k, _ in F.FRESH_MIX},
+        "series": len({p.series for p in fresh}),
+        "items": n_items,
+    }
+    (JOBS / "fresh_pairs.json").write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    print(f"pool {len(pool)} pairs {record['pool_by_position']}")
+    print(f"{len(fresh)} FRESH job files, {n_items} items, {record['series']} series, in {JOBS}")
 
 
 def dump(seed: int) -> None:
@@ -170,7 +234,7 @@ def dump(seed: int) -> None:
 
 
 def read_run(
-    run: str, seed: int, spec: str | None = None
+    run: str, seed: int, spec: str | None = None, split: str | None = None
 ) -> tuple[
     list[K.Pair], dict[str, list[str]], dict[str, dict[str, dict[str, F.Answer]]], list[str]
 ]:
@@ -178,7 +242,7 @@ def read_run(
     ``answers[pair][reader][item]`` for every reader file that exists, and every problem found."""
     if not (RUNS / run).is_dir():
         raise SystemExit(f"no reader outputs for run {run}: {RUNS / run} does not exist")
-    chosen, errors = run_pairs(seed, spec)
+    chosen, errors = run_pairs(seed, spec, split)
     ids: dict[str, list[str]] = {}
     answers: dict[str, dict[str, dict[str, F.Answer]]] = {}
     for p in chosen:
@@ -203,8 +267,8 @@ def read_run(
     return chosen, ids, answers, errors
 
 
-def disagreements(run: str, seed: int, spec: str | None = None) -> None:
-    chosen, ids, answers, errors = read_run(run, seed, spec)
+def disagreements(run: str, seed: int, spec: str | None = None, split: str | None = None) -> None:
+    chosen, ids, answers, errors = read_run(run, seed, spec, split)
     out_dir = TIEBREAKS / run
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in out_dir.glob("*.md"):
@@ -292,8 +356,10 @@ def _print_silent(label: str, s: dict[str, Any]) -> None:
         )
 
 
-def score(run: str, seed: int, model: str, spec: str | None = None) -> None:
-    chosen, ids, answers, errors = read_run(run, seed, spec)
+def score(
+    run: str, seed: int, model: str, spec: str | None = None, split: str | None = None
+) -> None:
+    chosen, ids, answers, errors = read_run(run, seed, spec, split)
     rows: list[dict[str, Any]] = []
     for p in chosen:
         if any(r not in answers[p.name] for r in F.READERS):
@@ -311,8 +377,10 @@ def score(run: str, seed: int, model: str, spec: str | None = None) -> None:
     _print_breakdown("Items with needed_followup = yes", result["needed_followup_yes"])
     print("== Silent items per meeting pair ==")
     print("pair\titems\tchanged_silently\tnot_mentioned_needed")
-    for p in F.pair_rows(rows):
-        print(f"{p['pair']}\t{p['items']}\t{p['changed_silently']}\t{p['not_mentioned_needed']}")
+    for pr in F.pair_rows(rows):
+        print(
+            f"{pr['pair']}\t{pr['items']}\t{pr['changed_silently']}\t{pr['not_mentioned_needed']}"
+        )
     _print_silent("all pairs", result["silent_per_pair"])
     for k, s in result["silent_per_pair_by_position"].items():
         _print_silent(f"{k[0]}->{k[1]}", s)
@@ -339,7 +407,9 @@ def score(run: str, seed: int, model: str, spec: str | None = None) -> None:
         "prompt_versions": [F.PROMPT],
         "seed": seed,
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
-        "pair_source": "seeded selection" if spec is None else "--pairs",
+        "pair_source": (
+            "FRESH set" if split == "fresh" else "seeded selection" if spec is None else "--pairs"
+        ),
         "pair_names": [p.name for p in chosen],
         "pairs_selected": len(chosen),
         "pairs_scored": len(scored),
@@ -371,19 +441,25 @@ def main() -> None:
     s.add_argument("--seed", type=int, default=42)
     s.add_argument("--model", default="unrecorded", help="the agents' model, for score.json")
     for cmd in (d, g, s):
-        cmd.add_argument(
+        which = cmd.add_mutually_exclusive_group()
+        which.add_argument(
             "--pairs", help="comma-separated X__Y pairs to use instead of the seeded selection"
+        )
+        which.add_argument(
+            "--split", choices=["fresh"], help="the FRESH set instead of the seeded selection"
         )
     args = ap.parse_args()
     if args.cmd == "dump":
-        if args.pairs is None:
+        if args.split == "fresh":
+            dump_fresh(args.seed)
+        elif args.pairs is None:
             dump(args.seed)
         else:
             dump_named(args.seed, args.pairs)
     elif args.cmd == "disagreements":
-        disagreements(args.run, args.seed, args.pairs)
+        disagreements(args.run, args.seed, args.pairs, args.split)
     else:
-        score(args.run, args.seed, args.model, args.pairs)
+        score(args.run, args.seed, args.model, args.pairs, args.split)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,9 @@ that read job files (file I/O in ``scripts/fates.py``).
 1. :func:`select`: :data:`MIX` pairs per position (a->b, b->c, c->d) drawn with a seed from
    ``came_back.available_pairs``, at most :data:`MAX_PER_SERIES` per series, without the pairs
    the earlier detector was tuned on and without pairs whose X has only placeholder items
-   (:func:`items`).
+   (:func:`items`). The same function, with :data:`FRESH_MIX` and its own salt, draws the
+   FRESH set: up to 30 more pairs from what that selection, the development pairs and
+   :data:`READ_BEFORE` leave over.
 2. :func:`job_file`: prompt :data:`PROMPT`, roster, each X item (id, kind, text, linked passage
    with context) and Y's full human transcript. No annotation of Y. With ``only`` it is the
    tie-break job: the same file restricted to some items, with no reader's answer in it.
@@ -46,6 +48,12 @@ from tenor.evals.coverage_e4 import ratio_ci
 PROMPT = "item_fates.v1"
 MIX = (("ab", 12), ("bc", 12), ("cd", 12))  # pairs per position
 MAX_PER_SERIES = 2
+FRESH_MIX = (("ab", 10), ("bc", 10), ("cd", 10))  # the FRESH set: up to 30 pairs, by position
+FRESH_SALT = "fates.fresh"
+# Pairs read before outside the seeded 36: run fates_extra_20261110 (IS1008a->b, IS1008c->d,
+# TS3009c->d). IS1008 is also the series the writer was developed (a->b) and tested on with a
+# product's notes. Kept out of the FRESH set.
+READ_BEFORE = ("IS1008a__IS1008b", "IS1008c__IS1008d", "TS3009c__TS3009d")
 FATES = (
     "reported",
     "returned_unchanged",
@@ -76,14 +84,20 @@ Fate = Literal[
 ]
 
 
-def select(pairs: Sequence[K.Pair], exclude: Sequence[K.Pair], seed: int) -> list[K.Pair]:
-    """:data:`MIX` pairs per position from ``pairs`` minus ``exclude``, at most
-    :data:`MAX_PER_SERIES` per series: one seeded shuffle, then first fit. Sorted by name.
-    Deterministic in ``seed`` and independent of input order; shorter than the target only if
-    the pool cannot fill a position."""
+def select(
+    pairs: Sequence[K.Pair],
+    exclude: Sequence[K.Pair],
+    seed: int,
+    mix: Sequence[tuple[str, int]] = MIX,
+    salt: str = "fates.select",
+) -> list[K.Pair]:
+    """``mix`` pairs per position from ``pairs`` minus ``exclude``, at most
+    :data:`MAX_PER_SERIES` per series: one shuffle seeded by ``seed`` and ``salt``, then first
+    fit. Sorted by name. Deterministic in ``seed`` and independent of input order; shorter than
+    the target only if the pool cannot fill a position."""
     pool = sorted(set(pairs) - set(exclude), key=lambda p: p.name)
-    random.Random(f"{seed}:fates.select").shuffle(pool)
-    want = dict(MIX)
+    random.Random(f"{seed}:{salt}").shuffle(pool)
+    want = dict(mix)
     per_series = Counter[str]()
     out: list[K.Pair] = []
     for p in pool:
@@ -92,6 +106,28 @@ def select(pairs: Sequence[K.Pair], exclude: Sequence[K.Pair], seed: int) -> lis
             per_series[p.series] += 1
             out.append(p)
     return sorted(out, key=lambda p: p.name)
+
+
+def fresh_split(
+    pairs: Sequence[K.Pair],
+    test: Sequence[K.Pair],
+    develop: Sequence[K.Pair],
+    empty: Sequence[K.Pair],
+    seed: int,
+) -> tuple[dict[str, list[str]], list[K.Pair], list[K.Pair]]:
+    """The FRESH set: every pair excluded from ``pairs`` under its reason (the seeded ``test``
+    selection, the ``develop`` pairs, pairs whose X has only placeholders, :data:`READ_BEFORE`),
+    the pool that leaves, and :func:`select` on that pool with :data:`FRESH_MIX` and
+    :data:`FRESH_SALT`. Deterministic in ``seed``."""
+    excluded = {
+        "item_fates_test_36": sorted(p.name for p in test),
+        "develop": sorted(p.name for p in develop),
+        "x_has_only_placeholders": sorted(p.name for p in empty),
+        "read_before": sorted(p.name for p in pairs if p.name in READ_BEFORE),
+    }
+    out = {n for names in excluded.values() for n in names}
+    pool = sorted((p for p in pairs if p.name not in out), key=lambda p: p.name)
+    return excluded, pool, select(pool, [], seed, FRESH_MIX, FRESH_SALT)
 
 
 def parse_pairs(spec: str) -> list[K.Pair]:

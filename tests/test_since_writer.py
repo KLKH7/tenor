@@ -147,3 +147,8 @@ def test_score_counts_truth_coverage_and_pairs() -> None:
     assert got["quiet_pairs_with_a_true_sentence"]["num"] == 0
     assert got["sentences_per_pair"] == {"0": 1, "1": 1, "2": 1, "3": 0}
     assert got["true_sentences_by_fate_of_item"] == {"not_mentioned": 1}
+    by_kind = got["covered_by_sentence_kind"]
+    assert (by_kind["not_mentioned"]["num"], by_kind["not_mentioned"]["den"]) == (1, 3)
+    assert by_kind["changed"]["num"] == 0
+    nm = got["not_mentioned_items_covered_by_not_mentioned_sentences"]
+    assert (nm["num"], nm["den"]) == (1, 2)

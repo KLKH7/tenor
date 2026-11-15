@@ -13,7 +13,8 @@ readers and a tie-break and are not shown to the writer or to the checkers.
    describe. The mechanical check of a writer line and the parsing of both outputs are
    ``follow_through``'s, unchanged.
 3. :func:`score` counts, over ``follow_through.line_rows`` rows and the fates rows: sentences
-   judged true, silent items covered (by kind of item and kind of silence), pairs with and
+   judged true, silent items covered (by kind of item, kind of silence and kind of sentence),
+   pairs with and
    without a silent item that got a sentence, and sentences per pair; intervals resample teams.
 
 No LLM and no network: agents read the job files and write JSONL.
@@ -182,6 +183,11 @@ def score(
     series_of = {r["pair"]: r["series"] for r in fates}
     silent = {(r["pair"], r["x_item"]): r for r in fates if T.is_silent(r)}
     covered = {(r["unit"], i) for r in lines if r["strict"] for i in r["x_items"]} & set(silent)
+    covered_by: dict[str, set[tuple[str, str]]] = {
+        k: {(r["unit"], i) for r in lines if r["strict"] and r["kind"] == k for i in r["x_items"]}
+        & set(silent)
+        for k in ("changed", "not_mentioned")
+    }
     checked = [r for r in lines if r["status"] == "ok"]
     per_pair = Counter(r["unit"] for r in lines)
     silent_pairs = {p for p, _ in silent}
@@ -190,10 +196,10 @@ def score(
     def line_series(r: Row) -> str:
         return str(series_of[r["unit"]])
 
-    def cover(keep: Callable[[Row], bool]) -> dict[str, Any]:
+    def cover(keep: Callable[[Row], bool], hit: set[tuple[str, str]] = covered) -> dict[str, Any]:
         rows = [r for k, r in sorted(silent.items()) if keep(r)]
         return _rate(
-            _by_series(rows, lambda r: (r["pair"], r["x_item"]) in covered, lambda r: r["series"]),
+            _by_series(rows, lambda r: (r["pair"], r["x_item"]) in hit, lambda r: r["series"]),
             seed,
         )
 
@@ -243,6 +249,12 @@ def score(
             k: cover(lambda r, k=k: r["fate"] == k)  # type: ignore[misc]
             for k in SILENT_KINDS
         },
+        "covered_by_sentence_kind": {
+            k: cover(lambda r: True, covered_by[k]) for k in ("changed", "not_mentioned")
+        },
+        "not_mentioned_items_covered_by_not_mentioned_sentences": cover(
+            lambda r: r["fate"] == "not_mentioned", covered_by["not_mentioned"]
+        ),
         "pairs_with_a_silent_item": len(silent_pairs),
         "silent_pairs_with_a_sentence": pair_rate(silent_pairs, lambda p: per_pair[p] > 0),
         "silent_pairs_with_a_silent_item_covered": pair_rate(

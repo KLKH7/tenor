@@ -35,6 +35,30 @@ def test_select_comes_up_short_rather_than_break_a_rule() -> None:
     assert len(F.select(few, [], 42)) == F.MAX_PER_SERIES
 
 
+def test_select_takes_a_mix_and_a_salt() -> None:
+    pairs = _all_pairs()
+    mix = (("ab", 2), ("bc", 1), ("cd", 0))
+    got = F.select(pairs, [], 42, mix, "other")
+    assert Counter(p.kind for p in got) == {"ab": 2, "bc": 1}
+    assert got != F.select(pairs, [], 42, mix)  # the salt seeds its own shuffle
+    assert F.select(pairs, [], 42) == F.select(pairs, [], 42, F.MIX, "fates.select")
+
+
+def test_fresh_split_leaves_out_every_earlier_pair_and_keeps_the_rules() -> None:
+    pairs = [*_all_pairs(), K.Pair(x="TS3009c", y="TS3009d")]
+    develop = K.select(pairs, 42).develop
+    test = F.select(pairs, develop, 42)
+    empty = [pairs[0]]
+    excluded, pool, fresh = F.fresh_split(pairs, test, develop, empty, 42)
+    assert excluded["read_before"] == sorted(F.READ_BEFORE)
+    gone = {n for names in excluded.values() for n in names}
+    assert {p.name for p in pool} == {p.name for p in pairs} - gone
+    assert set(fresh) <= set(pool) and not set(fresh) & {*test, *develop, *empty}
+    assert max(Counter(p.series for p in fresh).values()) <= F.MAX_PER_SERIES
+    assert all(n <= dict(F.FRESH_MIX)[k] for k, n in Counter(p.kind for p in fresh).items())
+    assert fresh == F.fresh_split(list(reversed(pairs)), test, develop, empty, 42)[2]
+
+
 def test_parse_pairs_takes_consecutive_pairs_in_the_order_given() -> None:
     got = F.parse_pairs("TS3009c__TS3009d, IS1008a__IS1008b")
     assert [p.name for p in got] == ["TS3009c__TS3009d", "IS1008a__IS1008b"]
