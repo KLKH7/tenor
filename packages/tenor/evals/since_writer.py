@@ -52,6 +52,28 @@ ADAPTATION = (
 Row = Mapping[str, Any]
 
 
+def parse_pairs(spec: str, available: Sequence[K.Pair]) -> list[K.Pair]:
+    """Pairs named on the command line, in the order given: comma-separated, each written
+    ``IS1008a-b`` or ``IS1008a__IS1008b``. Every pair must be in ``available``
+    (``came_back.available_pairs``); duplicates are an error."""
+    known = {p.name: p for p in available}
+    out: list[K.Pair] = []
+    for raw in (s.strip() for s in spec.split(",")):
+        if not raw:
+            continue
+        name = raw if "__" in raw else ""
+        if not name and len(raw) == 9 and raw[-2] == "-":
+            name = f"{raw[:7]}__{raw[:6]}{raw[-1]}"
+        if name not in known:
+            raise ValueError(f"not an available pair: {raw!r}")
+        if known[name] in out:
+            raise ValueError(f"pair named twice: {raw!r}")
+        out.append(known[name])
+    if not out:
+        raise ValueError("no pairs named")
+    return out
+
+
 def units(x: AmiMeeting, y: AmiMeeting) -> tuple[B.CueUnit, B.CueUnit, list[T.NoteItem]]:
     """X as notes (bullet ``B<k>`` per annotated item, decisions then actions, in the fates'
     order), Y as a transcript unit (``L0000`` = Y's first dialogue act, speaker = role), and

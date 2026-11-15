@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 from tenor.ami.corpus import AmiMeeting, DialogueAct, Speaker, SummarySentence
+from tenor.evals import came_back as K
 from tenor.evals import follow_through as T
 from tenor.evals import since_writer as W
 
@@ -152,3 +153,15 @@ def test_score_counts_truth_coverage_and_pairs() -> None:
     assert by_kind["changed"]["num"] == 0
     nm = got["not_mentioned_items_covered_by_not_mentioned_sentences"]
     assert (nm["num"], nm["den"]) == (1, 2)
+
+
+def test_parse_pairs_takes_short_and_full_names_in_order() -> None:
+    available = [K.Pair(x="IS1008a", y="IS1008b"), K.Pair(x="IS1008b", y="IS1008c")]
+    got = W.parse_pairs("IS1008b-c, IS1008a__IS1008b", available)
+    assert [p.name for p in got] == ["IS1008b__IS1008c", "IS1008a__IS1008b"]
+    for bad in ("IS1008c-d", "IS1008a-c", "IS1008a-b,IS1008a__IS1008b", " , "):
+        try:
+            W.parse_pairs(bad, available)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted {bad!r}")
