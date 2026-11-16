@@ -300,3 +300,188 @@ def test_qa_packets_are_blind_and_seeded_and_the_score_counts_tokens() -> None:
     total = sum(out["conditions"][c]["correct"] for c in Q.CONDITIONS)
     assert total == 2 and out["conditions"]["record"]["used_lookup"] == 2
     assert out["conditions"]["record"]["abstained"] == 1
+
+
+# -- v2: parts, the quiet-change check, the compact view, three-condition scoring ----------------
+
+T3 = _lines(["the menu is soup, bread and oat milk", "and Dana does the quotes", "fine"])
+T4 = _lines(["final menu: soup and bread, that's it", "quotes are in", "ok"])
+
+
+def _menu() -> R.SeriesRecord:
+    upd = R.Update(
+        meeting="m1",
+        new_entries=(
+            R.EntryIn(
+                kind="decision",
+                text="The menu is soup, bread and oat milk.",
+                parts=("soup", "bread", "oat milk"),
+                evidence=(R.RefIn(line="L0000", quote="soup, bread and oat milk"),),
+            ),
+            R.EntryIn(
+                kind="commitment",
+                text="Dana does the quotes.",
+                owner="Dana",
+                evidence=(R.RefIn(line="L0001", quote="Dana does the quotes"),),
+            ),
+        ),
+    )
+    rec = R.SeriesRecord(series="s")
+    assert C.update_problems(rec, upd, T3) == []
+    return R.apply_update(rec, upd, "memory_update.v2")
+
+
+def _menu_update(parts: list[dict[str, object]], kind: str = "reaffirmed") -> R.Update:
+    return R.Update.model_validate(
+        {
+            "meeting": "m2",
+            "events": [
+                {
+                    "entry_id": "E001",
+                    "kind": kind,
+                    "summary": "The menu comes back.",
+                    "evidence": [{"line": "L0000", "quote": "final menu soup and bread"}],
+                    "parts": parts,
+                },
+                {
+                    "entry_id": "E002",
+                    "kind": "reported",
+                    "summary": "Quotes in.",
+                    "evidence": [{"line": "L0001", "quote": "quotes are in"}],
+                },
+            ],
+        }
+    )
+
+
+SOUP = {
+    "part": "P1",
+    "outcome": "stands",
+    "evidence": [{"line": "L0000", "quote": "soup and bread"}],
+}
+BREAD = {
+    "part": "P2",
+    "outcome": "stands",
+    "evidence": [{"line": "L0000", "quote": "soup and bread"}],
+}
+MILK_NM = {"part": "P3", "outcome": "not_mentioned"}
+
+
+def test_parts_need_one_outcome_each_and_a_kind_that_agrees() -> None:
+    rec = _menu()
+    assert [p.part_id for p in rec.entries[0].parts] == ["P1", "P2", "P3"]
+    assert C.update_problems(rec, _menu_update([SOUP, BREAD, MILK_NM]), T4) == []
+    missing = C.update_problems(rec, _menu_update([SOUP, BREAD]), T4)
+    assert any("each standing part" in p for p in missing)
+    silent = {**MILK_NM, "outcome": "changed_without_comment", "current": "absent"}
+    silent["evidence"] = [{"line": "L0000", "quote": "bread, that's it"}]
+    wrong_kind = C.update_problems(rec, _menu_update([SOUP, BREAD, silent]), T4)
+    assert any("disagrees with its parts" in p for p in wrong_kind)
+    assert C.update_problems(
+        rec, _menu_update([SOUP, BREAD, silent], "changed_without_comment"), T4
+    ) == ["event 0 (E001): changed_without_comment must say what the item now is (current)"]
+    one_part = R.Update(
+        meeting="m2",
+        new_entries=(
+            R.EntryIn(
+                kind="issue",
+                text="x",
+                parts=("only",),
+                evidence=(R.RefIn(line="L0002", quote="ok"),),
+            ),
+        ),
+    )
+    assert any("at least two" in p for p in C.update_problems(rec, one_part, T4))
+
+
+def test_quiet_check_replaces_an_event_only_with_cited_lines() -> None:
+    rec = _menu()
+    upd = _menu_update([SOUP, BREAD, MILK_NM])
+    assert R.quiet_candidates(rec, upd) == ["E001"]
+    finding = R.QuietFinding(
+        entry_id="E001",
+        verdict="quiet_change",
+        parts=(
+            R.QuietPart(
+                part="P3",
+                evidence=(R.RefIn(line="L0000", quote="soup and bread, that's it"),),
+                current="absent",
+            ),
+        ),
+        current="The menu is soup and bread.",
+        reason="Oat milk is absent from the final menu; nobody mentions it.",
+    )
+    assert C.quiet_problems(rec, upd, [finding]) == []
+    assert C.quiet_problems(rec, upd, []) == ["no finding for candidates: E001"]
+    final = R.apply_quiet(upd, [finding], "memory_quiet_check.v1")
+    assert C.update_problems(rec, final, T4) == []
+    after = R.apply_update(rec, final, "v2")
+    menu = after.entries[0]
+    assert menu.status == "changed_without_comment"
+    assert menu.current == "The menu is soup and bread."
+    assert [p.status for p in menu.parts] == ["open", "open", "changed_without_comment"]
+    assert menu.history[-1].checked_by == "memory_quiet_check.v1:quiet_change"
+    assert C.record_problems(after, {"m1": T3, "m2": T4}) == []
+    tampered = after.model_copy(
+        update={
+            "entries": (menu.model_copy(update={"parts": rec.entries[0].parts}), after.entries[1])
+        }
+    )
+    assert any("part statuses" in p for p in C.record_problems(tampered, {"m1": T3, "m2": T4}))
+    holds = R.QuietFinding(entry_id="E001", verdict="holds", reason="all there")
+    kept = R.apply_quiet(upd, [holds], "memory_quiet_check.v1")
+    assert kept.events[0].kind == "reaffirmed"
+    assert kept.events[0].checked_by == "memory_quiet_check.v1:holds"
+
+
+def test_compact_render_folds_closed_entries_and_unmentioned_runs() -> None:
+    rec = _menu()
+    after = R.apply_update(rec, _menu_update([SOUP, BREAD, MILK_NM]), "v2")
+    compact = R.render(after, compact=True)
+    full = R.render(after)
+    assert "## E002 commitment | reported in m2 | owner: Dana" in compact
+    assert "- m2 reported" not in compact
+    assert "  - P3: oat milk" in compact
+    assert len(R.render_entry(after.entries[1], compact=True)) < len(
+        R.render_entry(after.entries[1])
+    )
+    assert "- m2 reported: Quotes in." in full
+    assert R.render(after, compact=True) == compact
+    third = R.Update.model_validate(
+        {
+            "meeting": "m3",
+            "events": [
+                {"entry_id": "E001", "kind": "not_mentioned", "summary": "no", "searched": ["a"]}
+            ],
+        }
+    )
+    later = R.apply_update(after, third, "v2")
+    assert "| open, not mentioned since" not in R.render(later, compact=True)
+    fourth = third.model_copy(update={"meeting": "m4"})
+    stale = R.render(R.apply_update(later, fourth, "v2"), compact=True)
+    assert "## E001 decision | open, not mentioned since m2 |" in stale
+
+
+def test_score_v2_splits_groups_and_resamples_questions() -> None:
+    conds = Q.CONDITIONS_V2
+    qids = ["q1", "q2", "q3"]
+    groups = {"q1": "single", "q2": "single", "q3": "cross"}
+    verdicts = {
+        (q, c): ("correct" if (c != "named" or q != "q3") else "incorrect")
+        for q in qids
+        for c in conds
+    }
+    costs = {(q, c): {"tokens": 10, "lookups": int(c != "named")} for q in qids for c in conds}
+    answers = {(q, c): Q.Answer(qid=q, condition=c, answer="a") for q in qids for c in conds}
+    out = Q.score_v2(qids, groups, verdicts, costs, answers, seed=42, n_boot=200)
+    assert out["overall"]["conditions"]["record"]["correct"] == 3
+    assert out["groups"]["cross"]["conditions"]["named"]["correct"] == 0
+    assert out["overall"]["paired"]["record_vs_named"]["correct"]["record_only"] == 1
+    lo, hi = out["overall"]["conditions"]["named"]["correct_ci"]
+    assert 0 <= lo <= 2 / 3 <= hi <= 1
+    assert out == Q.score_v2(qids, groups, verdicts, costs, answers, seed=42, n_boot=200)
+    key = Q.packet_key(qids, 42, conds)
+    assert all(
+        sorted(k) == ["X", "Y", "Z"] and sorted(v.values()) == sorted(conds)
+        for k, v in [(list(x), x) for x in key.values()]
+    )

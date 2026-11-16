@@ -232,6 +232,32 @@ def event_in(entry: Entry, meeting: str) -> str | None:
     return next((ev.kind for ev in entry.history if ev.meeting == meeting), None)
 
 
+def checked_in(entry: Entry, meeting: str) -> str | None:
+    """Who checked ``entry``'s event in ``meeting`` (the quiet-change verifier's
+    ``<prompt>:<verdict>``), or None."""
+    return next((ev.checked_by for ev in entry.history if ev.meeting == meeting), None)
+
+
+def quiet_events(record: SeriesRecord) -> list[dict[str, Any]]:
+    """Every ``changed_without_comment`` event in the record: entry, meeting, the parts it
+    flags and whether the writer or the quiet-change verifier set it."""
+    out = []
+    for e in record.entries:
+        for ev in e.history:
+            if ev.kind != "changed_without_comment":
+                continue
+            out.append(
+                {
+                    "entry": e.entry_id,
+                    "meeting": ev.meeting,
+                    "by": "verifier" if ev.checked_by else "writer",
+                    "parts": [p.part for p in ev.parts if p.outcome == "changed_without_comment"],
+                    "current": ev.current,
+                }
+            )
+    return out
+
+
 def fates_agreement(
     pairs: Sequence[tuple[str, str, Sequence[K.Item], Mapping[str, str]]],
     record: SeriesRecord,
@@ -258,6 +284,7 @@ def fates_agreement(
                 continue
             eid = matched[item.item_id]
             got = event_in(by_id[eid], y) if eid else None
+            checked = checked_in(by_id[eid], y) if eid else None
             rows.append(
                 {
                     "pair": f"{x}__{y}",
@@ -265,12 +292,14 @@ def fates_agreement(
                     "fate": label,
                     "entry": eid,
                     "record_event": got,
+                    "checked_by": checked,
                     "exact": got in FATE_TO_EVENT[label] if got else None,
                     "coarse": COARSE[got] == COARSE[label] if got else None,
                 }
             )
     scored = [r for r in rows if r["entry"] is not None and r["record_event"] is not None]
     confusion = Counter(f"{r['fate']} -> {r['record_event']}" for r in scored)
+    silent = [r for r in rows if r["fate"] == "changed_silently"]
     return {
         "items": len(rows),
         "matched": len(scored),
@@ -278,5 +307,20 @@ def fates_agreement(
         "exact": sum(bool(r["exact"]) for r in scored),
         "coarse": sum(bool(r["coarse"]) for r in scored),
         "confusion": dict(sorted(confusion.items())),
+        "quiet": {
+            "silent_items": len(silent),
+            "silent_with_entry": sum(r["record_event"] is not None for r in silent),
+            "caught": sum(r["record_event"] == "changed_without_comment" for r in silent),
+            "caught_by_verifier": sum(
+                r["record_event"] == "changed_without_comment" and bool(r["checked_by"])
+                for r in silent
+            ),
+            "false_alarms": [
+                f"{r['pair']}:{r['item']} ({r['fate']})"
+                for r in scored
+                if r["record_event"] == "changed_without_comment"
+                and r["fate"] != "changed_silently"
+            ],
+        },
         "rows": rows,
     }

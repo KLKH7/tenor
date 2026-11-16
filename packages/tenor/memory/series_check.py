@@ -12,6 +12,15 @@
 * **Append-only and complete.** Histories are in meeting order, one event per meeting, starting
   with ``introduced``. Every entry that was live before a meeting has an event in it: an
   update may not skip an entry.
+* **Parts (v2).** An entry lists no parts or at least two. An event that brings a multi-part
+  entry back (reported, reaffirmed, changed_*) gives every standing part exactly one outcome,
+  each backed by lines unless ``not_mentioned``; the event's kind agrees with its parts' (a
+  part changed without comment makes the event ``changed_without_comment``; a part changed or
+  dropped aloud makes it ``changed_openly``; otherwise reported or reaffirmed). Part statuses
+  are derived like entry statuses.
+* **Quiet check.** The verifier answers every candidate once (:func:`quiet_problems`); its
+  finding replaces an event only through :func:`tenor.memory.series_record.apply_quiet`, and
+  the result must pass the same update check, so a quiet change still rests on cited lines.
 
 All checks return a list of problems (empty when clean); nothing raises on bad input.
 """
@@ -24,14 +33,21 @@ from collections.abc import Mapping, Sequence
 from tenor.memory.series_record import (
     CHANGES,
     LIVE,
+    RETURNS,
     STATUS_AFTER,
+    Entry,
     Event,
+    QuietFinding,
     SeriesRecord,
     Transcript,
     Update,
     derive_current,
+    derive_parts,
     derive_status,
     entry_id,
+    part_id,
+    quiet_candidates,
+    standing_parts,
 )
 
 MIN_QUOTE_WORDS = 3
@@ -87,6 +103,55 @@ def _event_shape(
     return out
 
 
+def _parts_problems(
+    where: str,
+    kind: str,
+    outcomes: Sequence[tuple[str, str, int, str | None]],
+    standing: Sequence[str],
+) -> list[str]:
+    """``outcomes``: (part, outcome, number of lines, current) for one event on an entry whose
+    standing parts are ``standing``."""
+    out: list[str] = []
+    if kind not in RETURNS or not standing:
+        if outcomes:
+            out.append(f"{where}: parts are only for an event that brings a multi-part entry back")
+        return out
+    given = [p for p, _, _, _ in outcomes]
+    if sorted(given) != sorted(standing) or len(set(given)) != len(given):
+        out.append(f"{where}: parts must give each standing part ({', '.join(standing)}) once")
+    for p, outcome, n, current in outcomes:
+        w = f"{where} part {p}"
+        if outcome == "not_mentioned":
+            if n:
+                out.append(f"{w}: not_mentioned must cite no lines")
+        elif n == 0:
+            out.append(f"{w}: {outcome} cites no line")
+        if outcome in CHANGES and not (current or "").strip():
+            out.append(f"{w}: {outcome} must say what the part now is (current)")
+        if outcome not in CHANGES and current:
+            out.append(f"{w}: current is only for changes")
+    got = {o for _, o, _, _ in outcomes}
+    if "changed_without_comment" in got:
+        want: set[str] = {"changed_without_comment"}
+    elif got & {"changed_openly", "dropped"}:
+        want = {"changed_openly"}
+    else:
+        want = {"reported", "reaffirmed"}
+    if kind not in want:
+        expected = "/".join(sorted(want))
+        out.append(f"{where}: kind {kind} disagrees with its parts (expected {expected})")
+    return out
+
+
+def _new_parts_problems(where: str, parts: Sequence[str]) -> list[str]:
+    out = []
+    if len(parts) == 1:
+        out.append(f"{where}: list no parts or at least two")
+    if any(not p.strip() for p in parts):
+        out.append(f"{where}: empty part")
+    return out
+
+
 def update_problems(record: SeriesRecord, update: Update, transcript: Transcript) -> list[str]:
     """Problems with an update step before it is folded into ``record``: ``transcript`` is the
     new meeting's."""
@@ -109,6 +174,11 @@ def update_problems(record: SeriesRecord, update: Update, transcript: Transcript
         out += _event_shape(where, ev.kind, len(ev.evidence), ev.searched, ev.current)
         for r in ev.evidence:
             out += ref_problems(where, m, r.line, r.quote, {m: transcript})
+        outcomes = [(pe.part, pe.outcome, len(pe.evidence), pe.current) for pe in ev.parts]
+        out += _parts_problems(where, ev.kind, outcomes, standing_parts(by_id[ev.entry_id]))
+        for pe in ev.parts:
+            for r in pe.evidence:
+                out += ref_problems(f"{where} part {pe.part}", m, r.line, r.quote, {m: transcript})
     missing = [e.entry_id for e in record.entries if e.status in LIVE and e.entry_id not in seen]
     if missing:
         out.append(f"live entries with no event for {m}: {', '.join(missing)}")
@@ -116,6 +186,7 @@ def update_problems(record: SeriesRecord, update: Update, transcript: Transcript
         where = f"new entry {k}"
         if not new.text.strip():
             out.append(f"{where}: empty text")
+        out += _new_parts_problems(where, new.parts)
         for r in new.evidence:
             out += ref_problems(where, m, r.line, r.quote, {m: transcript})
     return out
@@ -157,6 +228,7 @@ def record_problems(record: SeriesRecord, transcripts: Mapping[str, Transcript])
             out.append(f"{where}: status {e.status} but history says {derive_status(e.history)}")
         if e.current != derive_current(e.text, e.history):
             out.append(f"{where}: current text does not match its history")
+        out += _entry_parts_problems(e)
         events = {ev.meeting: ev for ev in e.history}
         status = None
         for m in record.meetings[order[e.introduced_in] :]:
@@ -171,8 +243,70 @@ def record_problems(record: SeriesRecord, transcripts: Mapping[str, Transcript])
                 out += _event_shape(w, ev.kind, len(ev.evidence), ev.searched, ev.current)
             elif not ev.evidence:
                 out.append(f"{w}: introduced cites no line")
-            for r in ev.evidence:
+            for r in [*ev.evidence, *(r for pe in ev.parts for r in pe.evidence)]:
                 if r.meeting != ev.meeting:
                     out.append(f"{w}: cites {r.meeting}, not its own meeting")
                 out += ref_problems(w, r.meeting, r.line, r.quote, transcripts)
+    return out
+
+
+def _entry_parts_problems(e: Entry) -> list[str]:
+    """Part ids dense, statuses derived, and each event's parts as the update check wants
+    them given the parts standing before that event."""
+    out = []
+    where = e.entry_id
+    if [p.part_id for p in e.parts] != [part_id(n) for n in range(1, len(e.parts) + 1)]:
+        out.append(f"{where}: part ids must be P1, P2, ... in order")
+    out += _new_parts_problems(where, [p.text for p in e.parts])
+    if e.parts != derive_parts(e.parts, e.history):
+        out.append(f"{where}: part statuses do not match the history")
+    for k, ev in enumerate(e.history):
+        if ev.kind == "introduced":
+            if ev.parts:
+                out.append(f"{where} event {k}: introduced carries no part outcomes")
+            continue
+        before = derive_parts(e.parts, e.history[:k])
+        standing = [p.part_id for p in before if p.status != "dropped"]
+        outcomes = [(pe.part, pe.outcome, len(pe.evidence), pe.current) for pe in ev.parts]
+        out += _parts_problems(f"{where} event {k} ({ev.meeting})", ev.kind, outcomes, standing)
+    return out
+
+
+def quiet_problems(
+    record: SeriesRecord, update: Update, findings: Sequence[QuietFinding]
+) -> list[str]:
+    """The verifier's findings answer every quiet-check candidate of ``update`` exactly once,
+    and a ``quiet_change`` names standing parts of the entry, each with lines, and says what
+    the item now is. Line provenance is checked afterwards on the amended update."""
+    out = []
+    want = quiet_candidates(record, update)
+    by_id = {e.entry_id: e for e in record.entries}
+    seen: list[str] = []
+    for k, f in enumerate(findings):
+        where = f"finding {k} ({f.entry_id})"
+        if f.entry_id not in want:
+            out.append(f"{where}: not a candidate of this update")
+            continue
+        if f.entry_id in seen:
+            out.append(f"{where}: second finding for this entry")
+        seen.append(f.entry_id)
+        if f.verdict == "holds":
+            if f.parts or f.current:
+                out.append(f"{where}: holds carries no parts and no current")
+            continue
+        standing = standing_parts(by_id[f.entry_id])
+        if not f.parts:
+            out.append(f"{where}: quiet_change names no part")
+        for qp in f.parts:
+            if qp.part not in standing:
+                out.append(f"{where}: {qp.part} is not a standing part")
+            if not qp.current.strip():
+                out.append(f"{where}: {qp.part} has no current")
+        if not (f.current or "").strip():
+            out.append(f"{where}: quiet_change must say what the item now is (current)")
+        if len({qp.part for qp in f.parts}) != len(f.parts):
+            out.append(f"{where}: a part is named twice")
+    missing = [c for c in want if c not in seen]
+    if missing:
+        out.append(f"no finding for candidates: {', '.join(missing)}")
     return out
