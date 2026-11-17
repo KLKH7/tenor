@@ -37,7 +37,9 @@ SERIES = ["ES2005", "ES2006", "ES2012", "IS1006", "TS3007"]
 # IB4005, IB4010 and IB4011 were dropped before any answer: their transcripts are empty in the
 # AMI files held here, so they would be blank meetings.
 DISTRACTORS = [
-    *(f"IS1003{x}" for x in "abcd"), *(f"IS1008{x}" for x in "abcd"), *(f"TS3009{x}" for x in "abcd"),
+    *(f"IS1003{x}" for x in "abcd"),
+    *(f"IS1008{x}" for x in "abcd"),
+    *(f"TS3009{x}" for x in "abcd"),
     "IB4003",
 ]
 CONDITIONS = ("tools", "tools_record")
@@ -51,12 +53,20 @@ def all_meetings() -> list[str]:
     return [f"{s}{x}" for s in SERIES for x in "abcd"] + DISTRACTORS
 
 
+QSET = "cross"  # "cross": the 12 cross-meeting questions; "single": the 50 others; "all": 62
+SUFFIX = ""
+
+
 def questions() -> list[AmiQuestion]:
     rows = json.loads((REPO / "data/private/memory/qa/qa_v2_test/questions.json").read_text())[
         "questions"
     ]
     qs = [AmiQuestion.model_validate(r) for r in rows]
-    return sorted((q for q in qs if len(q.meetings) > 1), key=lambda q: q.id)
+    if QSET == "single":
+        qs = [q for q in qs if len(q.meetings) == 1]
+    elif QSET != "all":
+        qs = [q for q in qs if len(q.meetings) > 1]
+    return sorted(qs, key=lambda q: q.id)
 
 
 def tag(cond: str, qid: str, run: int) -> str:
@@ -120,6 +130,8 @@ def cmd_readers() -> None:
         key[cond] = {}
         for s in SERIES:
             qs = [q for q in questions() if q.meetings[0].startswith(s)]
+            if not qs:
+                continue
             parts = [prompt, "\n## Packet\n"]
             for mid in sorted({m for q in qs for m in q.meetings}):
                 parts.append(f"\n### Meeting {mid}: full human transcript\n")
@@ -136,15 +148,18 @@ def cmd_readers() -> None:
                 for lab, run in key[cond][q.id].items():
                     ans = (OUT / "answers" / f"{tag(cond, q.id, run)}.txt").read_text().strip()
                     parts.append(f"\nAnswer {lab}:\n{ans or '(abstained)'}\n")
-            (OUT / "readers" / f"packet_{cond}_{s}.md").write_text("\n".join(parts) + "\n")
-    (OUT / "readers" / "key.json").write_text(json.dumps(key, indent=1) + "\n")
+            (OUT / "readers" / f"packet_{cond}_{s}{SUFFIX}.md").write_text("\n".join(parts) + "\n")
+    (OUT / "readers" / f"key{SUFFIX}.json").write_text(json.dumps(key, indent=1) + "\n")
 
 
 def settled(cond: str) -> dict[tuple[str, int], str]:
-    key = json.loads((OUT / "readers/key.json").read_text())[cond]
+    key: dict[str, dict[str, int]] = {}
+    for kf in ("key.json", "key_single.json"):
+        if (OUT / "readers" / kf).is_file():
+            key |= json.loads((OUT / "readers" / kf).read_text())[cond]
     by: dict[tuple[str, int], list[str]] = {}
     # Exact names only: "verdicts_tools_*" would also match "verdicts_tools_record_*".
-    exact = re.compile(rf"^verdicts_{cond}_[A-Z]{{2}}\d{{4}}_[A-Z]\.jsonl$")
+    exact = re.compile(rf"^verdicts_{cond}_[A-Z]{{2}}\d{{4}}(_single)?_[A-Z]\.jsonl$")
     for f in sorted(p for p in (OUT / "readers").glob("verdicts_*.jsonl") if exact.match(p.name)):
         for line in f.read_text().splitlines():
             if line.strip():
@@ -200,7 +215,9 @@ def cmd_score() -> None:
                 t.model_dump() | {"passed": t.passed, "category": t.category} for t in trials
             ],
         }
-    (OUT / "score.json").write_text(json.dumps(out, indent=1) + "\n")
+    (OUT / f"score_{QSET}.json" if QSET != "cross" else OUT / "score.json").write_text(
+        json.dumps(out, indent=1) + "\n"
+    )
     for cond, c in out["conditions"].items():  # type: ignore[attr-defined]
         print(cond, json.dumps(c["summary"]))
 
@@ -208,9 +225,20 @@ def cmd_score() -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("cmd", choices=["notes-jobs", "setup", "readers", "score"])
-    {"notes-jobs": cmd_notes_jobs, "setup": cmd_setup, "readers": cmd_readers, "score": cmd_score}[
-        p.parse_args().cmd
-    ]()
+    p.add_argument(
+        "--set", default="cross", choices=["cross", "single", "all"], help="question set"
+    )
+    a = p.parse_args()
+    global QSET, SUFFIX
+    QSET = a.set
+    SUFFIX = "_single" if a.set == "single" else ""
+    cmds = {
+        "notes-jobs": cmd_notes_jobs,
+        "setup": cmd_setup,
+        "readers": cmd_readers,
+        "score": cmd_score,
+    }
+    cmds[a.cmd]()
 
 
 if __name__ == "__main__":
