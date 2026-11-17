@@ -105,3 +105,30 @@ ellipsis). Ellipsis quotes are failed, as in the post's strict rule.
 
 Next: the post's fix for reworded quotes ("paraphrase by default; quote only when asked") as a
 wording variant (step 4), on both conditions; then the record comparison on an unused series.
+
+## Step 4: the post's quote fix as wording (2026-11-17, IS1008 dev; not a result)
+
+One change from step 5: the server instructions gain "Paraphrase by default; quote words
+directly only when the person asks for a direct quote." (`WORDING["v2"]`). Same workspace,
+questions, runs, answer prompt and reader prompt; fresh agents. Readers agreed 21/22 and 19/22;
+a tie-break settled 4. Outputs `data/private/retrieval/record_dev_v2/`.
+
+| | v1 tools | v2 tools | v1 + record | v2 + record |
+|---|---|---|---|---|
+| Quotation marks in all 22 answers (per wording, both conditions) | 124 | 59 | (with v1) | (with v2) |
+| Unsupported quotes (hard fail) | 6 | 3 | 5 | 3 |
+| Trials passed, of 22 | 11 | 12 | 10 | 12 |
+| Reader verdicts correct / partial / incorrect | 13/8/1 | 13/8/1 | 13/8/1 | 13/8/1 |
+| Facts retrieved | 73% | 66% | 80% | 84% |
+| Characters read per trial | 16,500 | 15,900 | 32,700 | 29,700 |
+
+The same verdict totals hide movement: 6 of 22 verdicts changed between wordings in each
+condition, in both directions; question difficulty dominates the totals.
+
+What it says: the post's fix reproduces in direction. Halving the quoting halved the
+unsupported-quote failures and raised passes slightly, with no loss in reader-judged accuracy
+here (the post saw some give-back). The remaining flags are mostly the agent putting quote
+marks around its own paraphrase ("no display for now, pending cost"). With the fix, the record
+condition ties tools-only on passes (12 vs 12), gets more facts in front of the agent (84% vs
+66%) and reads about twice as much. n = 22 trials per cell on a development series: directions,
+not estimates.

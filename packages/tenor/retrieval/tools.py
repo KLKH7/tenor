@@ -32,6 +32,12 @@ WORDING: dict[str, dict[str, str]] = {
         "it (with chunk ids for get_transcript).",
     },
 }
+# v2: v1 plus the post's fix for reworded quotes, in the server instructions (one change only).
+WORDING["v2"] = {
+    **WORDING["v1"],
+    "server": WORDING["v1"]["server"] + " Paraphrase by default; quote words directly only when "
+    "the person asks for a direct quote.",
+}
 
 
 class Meeting(BaseModel):

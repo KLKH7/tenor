@@ -30,6 +30,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 from memory_breakdown import facts_of  # noqa: E402
 
+WORDING_VERSION = "v1"
 OUT = REPO / "data/private/retrieval/record_dev"
 PILOT_WS = REPO / "data/private/retrieval/pilot/workspace.json"
 RECORD = "data/private/memory/IS1008/v2/record_after_IS1008d.json"
@@ -61,7 +62,8 @@ def cmd_setup() -> None:
             tools.append("get_series_record")
         wpath = OUT / f"workspace_{cond}.json"
         wpath.write_text(json.dumps(ws, indent=1) + "\n")
-        tool_list = "\n".join(f"- {t}: {WORDING['v1'][t]}" for t in tools)
+        w = WORDING[WORDING_VERSION]
+        tool_list = "\n".join(f"- {t}: {w[t]}" for t in tools)
         for qid in questions():
             for run in range(RUNS):
                 t = tag(cond, qid, run)
@@ -70,7 +72,7 @@ def cmd_setup() -> None:
                     f"--log {OUT / 'logs' / (t + '.jsonl')}"
                 )
                 job = (
-                    f"{prompt}\n\n## Tools\n\n{WORDING['v1']['server']}\n\n{tool_list}\n\n"
+                    f"{prompt}\n\n## Tools\n\n{w['server']}\n\n{tool_list}\n\n"
                     f"## Your job\n\nQuestion: {qs[qid].question}\n\n"
                     f"Tool command (run from {REPO}):\n\n    {cmd} <tool> '<json args>'\n\n"
                     f"Example:\n\n    {cmd} search_meetings '{{}}'\n\n"
@@ -183,7 +185,15 @@ def cmd_score() -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("cmd", choices=["setup", "readers", "score"])
-    {"setup": cmd_setup, "readers": cmd_readers, "score": cmd_score}[p.parse_args().cmd]()
+    p.add_argument(
+        "--wording", default="v1", help="tool wording version (outputs go to a folder per version)"
+    )
+    a = p.parse_args()
+    global WORDING_VERSION, OUT
+    WORDING_VERSION = a.wording
+    if a.wording != "v1":
+        OUT = REPO / f"data/private/retrieval/record_dev_{a.wording}"
+    {"setup": cmd_setup, "readers": cmd_readers, "score": cmd_score}[a.cmd]()
 
 
 if __name__ == "__main__":
