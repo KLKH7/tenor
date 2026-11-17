@@ -6,6 +6,8 @@ Realism switches (defaults are the realistic choice where one exists):
   - "none" (default): no notes. Honest but harsher than Granola, whose agents read notes first.
   - "product": Granola's own notes for the meeting, captured earlier by playing the recording
     into Granola (data/private/reader/*/<id>__granola.md). Most realistic; only some meetings.
+  - "standin": AI-style notes an agent wrote from the anonymous transcript (standin_notes.v1),
+    saved in data/private/retrieval/notes/<id>.md; for meetings with no captured product notes.
   - "ami_summary": AMI's human summary. Debug only: the facts the harness scores ARE sentences
     of this summary, so reading these notes leaks the answer key.
 - speakers:
@@ -29,9 +31,10 @@ from tenor.evals.meeting_memory import transcript
 from tenor.memory.series_record import Line, SeriesRecord, render
 from tenor.retrieval.tools import Meeting, ToolBox
 
-NotesSource = Literal["none", "product", "ami_summary"]
+NotesSource = Literal["none", "product", "standin", "ami_summary"]
 Speakers = Literal["roles", "anonymous"]
 PACKETS = Path("data/private/reader")
+STANDIN = Path("data/private/retrieval/notes")
 _BULLET = re.compile(r"^B\d+ \[section: ([^\]]+)\] (?:\(sub-point of B\d+\) )?(.*)$")
 
 
@@ -71,6 +74,9 @@ def ami_meeting(
         lines = {k: Line(line_id=v.line_id, speaker="Them", text=v.text) for k, v in lines.items()}
     if notes == "product":
         text = product_notes(meeting_id) or ""
+    elif notes == "standin":
+        path = STANDIN / f"{meeting_id}.md"
+        text = path.read_text(encoding="utf-8") if path.is_file() else ""
     elif notes == "ami_summary":
         text = meeting_note(m).summary_markdown or ""
     else:
