@@ -266,3 +266,12 @@ Braintrust is an external evaluation tool; `tenor export braintrust` writes resu
 ## Fixture format
 
 `data/fixtures/<set>/notes/<note_id>.json` is the exact 200 body of `GET /v1/notes/{id}?include=transcript`. `folders.json` is the exact 200 body of `GET /v1/folders` (one page). `tests/test_contract.py` checks each file round-trips byte-for-byte (as JSON values) through the same models used for live parsing.
+
+
+## Retrieval lab (internal behaviour we model, not API fields)
+
+The local copy of Granola's MCP retrieval (docs/engineering/RETRIEVAL.md) relies on behaviour
+described in Granola's engineering post (VERIFIED from the post: BM25 per workspace, transcript
+chunks tagged with speakers and a version, retrieved/retained/accurate scoring with two hard
+fails, n = 10) and on values the post does not give (ASSUMED: chunk size 15 lines with 3 overlap,
+k = 5 results, BM25 k1 = 1.2 and b = 0.75, tokenisation). The full table is in RETRIEVAL.md.
