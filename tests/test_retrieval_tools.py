@@ -62,3 +62,14 @@ def test_get_meetings_and_seen_text():
         "Decided on a rubber case." in seen and "M9: no such meeting" in seen and "yellow" in seen
     )
     assert [c.tool for c in b.log] == ["get_meetings", "search_transcripts"]
+
+
+def test_series_record_tool_tags_pointers_with_chunks():
+    ms = [meeting("AB1000a", "notes", ["hello", "the battery cost"] + ["x"] * 10)]
+    rec = 'E001 decision open: rubber case\n  - AB1000a L0001 "the battery cost"; AB1000a L0009 "x"'
+    b = ToolBox(ms, chunk_size=5, overlap=1, k=2, records={"AB1000": rec})
+    out = b.get_series_record("AB1000")
+    assert 'AB1000a L0001 (chunk 0) "the battery cost"' in out
+    assert 'AB1000a L0009 (chunk 2) "x"' in out
+    assert b.get_series_record("X").startswith("No record for series X.")
+    assert b.log[0].tool == "get_series_record"

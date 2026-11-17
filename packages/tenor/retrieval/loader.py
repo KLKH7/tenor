@@ -19,14 +19,14 @@ Realism switches (defaults are the realistic choice where one exists):
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from typing import Literal
 
 from tenor.ami.corpus import load_meeting, meeting_note
 from tenor.evals.meeting_memory import transcript
-from tenor.memory.series_record import Line
+from tenor.memory.series_record import Line, SeriesRecord, render
 from tenor.retrieval.tools import Meeting, ToolBox
 
 NotesSource = Literal["none", "product", "ami_summary"]
@@ -78,13 +78,22 @@ def ami_meeting(
     return Meeting(meeting_id=meeting_id, title=title, notes=text, lines=lines)
 
 
+def series_record_text(path: Path) -> str:
+    """A saved series record (SeriesRecord JSON) in the compact view an agent reads."""
+    record = SeriesRecord.model_validate_json(path.read_text(encoding="utf-8"))
+    return render(record, compact=True)
+
+
 def ami_toolbox(
     meeting_ids: Sequence[str],
     notes: NotesSource = "none",
     speakers: Speakers = "roles",
     distractors: Sequence[str] = (),
     k: int = 5,
+    records: Mapping[str, Path] | None = None,
 ) -> ToolBox:
-    """A ToolBox over these meetings plus `distractors` (other meetings in the same workspace)."""
+    """A ToolBox over these meetings plus `distractors` (other meetings in the same workspace),
+    with an optional running record per series (series id -> record file)."""
     ids = list(dict.fromkeys([*meeting_ids, *distractors]))
-    return ToolBox([ami_meeting(i, notes, speakers) for i in ids], k=k)
+    texts = {s: series_record_text(p) for s, p in (records or {}).items()}
+    return ToolBox([ami_meeting(i, notes, speakers) for i in ids], k=k, records=texts)

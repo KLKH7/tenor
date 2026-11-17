@@ -40,10 +40,17 @@ _QUOTE = re.compile(r"[\"“]([^\"”]+)[\"”]")
 _WS = re.compile(r"[^a-z0-9]+")
 
 
+_REF = re.compile(r"\b([A-Z]{2}\d{4}[a-z]) (L\d{4})\b")
+
+
 def seen_lines(log: Sequence[ToolCall]) -> set[tuple[str, str]]:
-    """Every (meeting, line id) shown to the agent inside a transcript passage."""
+    """Every (meeting, line id) shown to the agent: lines inside transcript passages, and the
+    lines a series record points to (each pointer carries a verbatim quote of its line)."""
     seen: set[tuple[str, str]] = set()
     for call in log:
+        if call.tool == "get_series_record":
+            seen.update(_REF.findall(call.output))
+            continue
         for block in call.output.split("\n\n"):
             head = _PASSAGE.match(block)
             if head:
@@ -56,6 +63,8 @@ def opened_meetings(log: Sequence[ToolCall]) -> set[str]:
     opened: set[str] = set()
     for call in log:
         opened.update(_PASSAGE.findall(call.output))
+        if call.tool == "get_series_record":
+            opened.update(m for m, _ in _REF.findall(call.output))
         if call.tool == "get_meetings":
             opened.update(m for m in _NOTES.findall(call.output))
     return opened

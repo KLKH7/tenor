@@ -11,6 +11,7 @@ Tool and server wording live in ``WORDING`` under a version, because step 4 vari
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict
@@ -26,6 +27,9 @@ WORDING: dict[str, dict[str, str]] = {
         "search_transcripts": "Find transcript passages by keywords. Returns only matching chunks.",
         "get_transcript": "Read specific transcript chunks of one meeting by chunk id.",
         "get_meetings": "Read the notes of one or more meetings by id.",
+        "get_series_record": "Read the running record of a meeting series: every decision and "
+        "commitment, what happened to it in each later meeting, and the transcript lines behind "
+        "it (with chunk ids for get_transcript).",
     },
 }
 
@@ -55,7 +59,12 @@ class ToolBox:
     """The four tools over a fixed set of meetings, with a call log."""
 
     def __init__(
-        self, meetings: Sequence[Meeting], chunk_size: int = 15, overlap: int = 3, k: int = 5
+        self,
+        meetings: Sequence[Meeting],
+        chunk_size: int = 15,
+        overlap: int = 3,
+        k: int = 5,
+        records: Mapping[str, str] | None = None,
     ) -> None:
         self.meetings = {m.meeting_id: m for m in meetings}
         self.k = k
@@ -78,6 +87,7 @@ class ToolBox:
                 for m in meetings
             ]
         )
+        self.records = dict(records or {})
         self.log: list[ToolCall] = []
 
     def _record(self, tool: str, args: dict[str, object], output: str) -> str:
@@ -117,9 +127,34 @@ class ToolBox:
             parts.append(f"# {mid}: {m.title}\n{m.notes}" if m else f"# {mid}: no such meeting")
         return self._record("get_meetings", {"meeting_ids": list(meeting_ids)}, "\n\n".join(parts))
 
+    def chunk_of(self, meeting_id: str, line_id: str) -> int | None:
+        """The first chunk of a meeting that holds a line (chunks overlap)."""
+        for c in self.chunks:
+            if c.meeting == meeting_id and c.first_line <= line_id <= c.last_line:
+                return c.chunk_id
+        return None
+
+    def get_series_record(self, series: str) -> str:
+        """A series' running record, each `<meeting> <line>` pointer followed by its chunk id."""
+        text = self.records.get(series)
+        if text is None:
+            names = ", ".join(sorted(self.records)) or "none"
+            out = f"No record for series {series}. Records exist for: {names}."
+        else:
+
+            def tag(m: re.Match[str]) -> str:
+                cid = self.chunk_of(m.group(1), m.group(2))
+                return m.group(0) if cid is None else f"{m.group(0)} (chunk {cid})"
+
+            out = _POINTER.sub(tag, text)
+        return self._record("get_series_record", {"series": series}, out)
+
     def seen_text(self) -> str:
         """Everything the agent has been shown, joined: the input to the retrieved check."""
         return "\n".join(c.output for c in self.log)
+
+
+_POINTER = re.compile(r"\b([A-Z]{2}\d{4}[a-z]) (L\d{4})\b")
 
 
 def _passage(c: Chunk) -> str:

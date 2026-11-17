@@ -15,7 +15,13 @@ from pathlib import Path
 
 from tenor.retrieval.loader import ami_toolbox
 
-TOOLS = ("search_meetings", "search_transcripts", "get_transcript", "get_meetings")
+TOOLS = (
+    "search_meetings",
+    "search_transcripts",
+    "get_transcript",
+    "get_meetings",
+    "get_series_record",
+)
 
 
 def main() -> None:
@@ -33,6 +39,7 @@ def main() -> None:
             ws.get("notes", "none"),
             ws.get("speakers", "roles"),
             ws.get("distractors", []),
+            records={k: Path(v) for k, v in ws.get("records", {}).items()},
         )
     elif a.meetings:
         box = ami_toolbox(a.meetings.split(","))
