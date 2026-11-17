@@ -1,8 +1,8 @@
-# Meeting memory for agents (phase 1 design)
+# Meeting memory for agents
 
-Status: design and a one-series prototype. Not evaluated on test data. Phase-1 results are
-development results on one AMI series (IS1008); they are summarised in `DESIGN.md` ("Meeting
-memory, phase 1") and must not be read as a benchmark figure.
+Status: phase 1 (design, one development series) and phase 2 (record v2, tested on five AMI
+series not used for development). Phase-2 test results are in "Phase 2" at the end of this
+file and in `DESIGN.md`; they are agent-graded, on role-played meetings, and small.
 
 ## Problem
 
@@ -190,3 +190,93 @@ closed entries folded into one line each (phase 2).
   matching needs readers, not line proximity.
 - The record should be tested where it should help: questions spanning meetings, with no oracle
   meeting selection, on series not used for development.
+
+## Phase 2
+
+### What changed in v2 (frozen at `01baef8` before any test series was opened)
+
+Developed on IS1008 and its 13 development questions only (two rounds).
+
+- **Parts.** An entry may list its parts (`P1`, `P2`, ...: listed features, numbers, sub-tasks).
+  An event that brings a multi-part entry back (`reported`, `reaffirmed`, `changed_*`) gives
+  every standing part one outcome (`stands`, `changed_openly`, `changed_without_comment`,
+  `dropped`, `not_mentioned`), each backed by lines unless `not_mentioned`. The event's kind
+  must agree with its parts; part statuses are derived like entry statuses and checked.
+- **Quiet-change check.** A separate verifier (`memory_quiet_check.v1`) reads every `reported`
+  or `reaffirmed` event on an entry with at least two standing parts against the whole
+  transcript, searching for anyone raising a change. A `quiet_change` finding replaces the
+  event only through code (`apply_quiet`) and must pass the same provenance check.
+- **Compact view.** Closed entries, and open entries not mentioned for two meetings, render as
+  one line; other entries show one pointer per event, quotes cut to 12 words. An `entry`
+  lookup prints any entry's full history. The record file keeps everything.
+- **Issues.** A third entry kind for problems or open questions the group treats as needing an
+  answer.
+- **Writer prompt** (`memory_update.v2`): one owner per commitment; a delivered first version
+  is `reported`; decisions include what the next meeting takes up and a presented proposal
+  accepted as a whole.
+- **Answer prompt** (`memory_answer.v2`), three conditions: `record` (compact record plus
+  lookups), `search` (no transcript given; search and line lookups over the series), `named`
+  (full transcripts of the meetings the question is about).
+
+Code: `scripts/meeting_memory_v2.py`; models in `tenor.memory.series_record` and checks in
+`tenor.memory.series_check` (v1 records still load and check).
+
+### Test design
+
+- **Series:** ES2005, ES2006, ES2012, IS1006, TS3007. IS1003 was planned but one of its pairs
+  (a to b) is a development pair of the earlier writers, so it was replaced by ES2005, the next
+  series in the question set's seeded candidate order with no development use. ES2005's
+  questions were built with the same fixed templates and seed (42); the same build reproduces
+  the published questions of the other four series exactly.
+- **Questions:** 62 test-split questions: every cross-meeting ("what changed") question (12) and
+  two per series and single-meeting type, drawn with a seeded shuffle (50).
+- **Answering:** one agent per question and condition (186), same model in every condition.
+- **Grading:** two blind agent readers per series (`mcp_reading_reader.v1`, unchanged, three
+  shuffled answers per question), a third reader on disputed rows. Readers agreed on 180 of 186.
+- **Status check:** the record's event for each annotated item against the item-fates labels
+  (all 15 pairs of the five series were already labelled), items mapped to entries by two
+  blind readers (`memory_item_match.v1`); only mappings both readers agree on are scored.
+- Intervals: percentile bootstrap resampling questions, 2,000 draws, seed 42.
+
+Note on "no meeting named": the AMI question templates name the meeting in the question text.
+In `record` and `search` no transcript is pre-selected, but the agent can read which meeting
+to look in from the question.
+
+### Results (test)
+
+| Questions | Condition | Correct | Not wrong | Tokens read, mean (median) |
+|---|---|---|---|---|
+| All (62) | record | 40 (65%, 52–76) | 55 (89%) | 4,595 (4,272) |
+| | search | 39 (63%, 52–74) | 53 (85%) | 2,376 (2,050) |
+| | named | 48 (77%, 66–87) | 55 (89%) | 16,687 (16,114) |
+| Single-meeting (50) | record | 32 (64%) | 43 | 4,592 |
+| | search | 33 (66%) | 41 | 2,234 |
+| | named | 37 (74%) | 43 | 13,865 |
+| Cross-meeting (12) | record | 8 (67%) | 12 | 4,607 |
+| | search | 6 (50%) | 12 | 2,972 |
+| | named | 11 (92%) | 12 | 28,448 |
+
+Paired, correct: record vs named 1 to 9 (difference −13 points, interval −23 to −3, exact
+p = 0.02); record vs search 5 to 4 (p = 1.0). On not wrong the conditions are level (record vs
+named 2 to 2). Problem questions were weak everywhere (1, 1 and 3 of 10).
+
+Status against item fates: 89 labelled items; mapping readers agreed on 88; 71 had an agreed
+entry, of which 53 matched the label exactly and 55 on coarse classes; 18 had no entry.
+**Quiet changes: 4 labelled, 0 caught.** The writer never used `changed_without_comment` in
+the 15 test update steps; the verifier read 45 candidate events and confirmed every one. Three
+of the four labelled quiet changes were among the checked events: the verifier treated a part
+that is simply absent, with no complete version stated, as unchanged, which is stricter than
+the item-fates definition. No false alarms.
+
+Record size after the fourth meeting: 2,494 to 4,661 tokens compact (6,204 to 9,082 full),
+23 to 39 entries, against 43,000 to 65,000 tokens of transcript per series. Building the five
+records read about 597,000 tokens of update and verifier jobs, 2.3 times the transcripts.
+
+### Reading
+
+On these series an agent with search tools and no record reached the same accuracy at about
+half the record's tokens; reading the named transcripts in full was more accurate and about
+3.5 times dearer than the record (6 times on cross-meeting questions). The parts mechanism did
+not surface any quiet change on test. The record's one clear advantage over search was on
+cross-meeting questions (8 vs 6 of 12), too few to separate.
+

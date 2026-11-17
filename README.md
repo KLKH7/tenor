@@ -256,6 +256,10 @@ A confident error is a wrong answer that does not abstain or say the material do
 
 **Deletion costs a lot; the fact layer adds nothing; reading the transcript on demand recovers most of the loss.** Chat used Granola's own model and the other rows used our reader, so the first drop mixes deletion with a change of model. With the transcript read on demand, answers are as often correct or partly correct as Chat's (85% vs 90%, no significant difference), though fewer are fully correct (46% vs 60%). Answers over Granola's notes rarely give a confident wrong answer (1–2 per 68), so they hedge rather than bluff; answers over Wispr Flow's notes do so more often (9). Granola's and Wispr Flow's notes support about the same number of correct answers. Decision questions score low everywhere because the answer key is strict and several decision annotations are wrong. The first judge had reported a significant gap between Chat and the on-demand transcript and a point-estimate lead for Granola's notes; neither holds under the reference reading. Track: [`docs/tracks/RETENTION.md`](docs/tracks/RETENTION.md); judge numbers: [`evals/reports/ami/deletion_ami.json`](evals/reports/ami/deletion_ami.json).
 
+### Meeting memory for agents
+
+A running per-series record of decisions, commitments and open problems, each status backed by cited transcript lines, was tested as context for an agent on five AMI series not used for development (62 questions, agent-graded). Correct answers: record 65%, an agent searching the transcripts with no record 63%, the named transcripts read in full 77% (record vs full transcripts significant, record vs search not). Tokens read per question: about 4,600, 2,400 and 16,700. The record caught none of the four labelled changes that nobody announced. Details: [`docs/engineering/MEETING_MEMORY.md`](docs/engineering/MEETING_MEMORY.md).
+
 ### Earlier private study
 
 Before the AMI work, the same measures were run on the author's own 4 private Granola meetings (October–November 2026). These numbers are **not reproducible from public data**, cover Granola only, and are superseded wherever an AMI replication exists.
