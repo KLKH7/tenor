@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -142,7 +143,9 @@ def cmd_readers() -> None:
 def settled(cond: str) -> dict[tuple[str, int], str]:
     key = json.loads((OUT / "readers/key.json").read_text())[cond]
     by: dict[tuple[str, int], list[str]] = {}
-    for f in sorted((OUT / "readers").glob(f"verdicts_{cond}_*.jsonl")):
+    # Exact names only: "verdicts_tools_*" would also match "verdicts_tools_record_*".
+    exact = re.compile(rf"^verdicts_{cond}_[A-Z]{{2}}\d{{4}}_[A-Z]\.jsonl$")
+    for f in sorted(p for p in (OUT / "readers").glob("verdicts_*.jsonl") if exact.match(p.name)):
         for line in f.read_text().splitlines():
             if line.strip():
                 v = json.loads(line)

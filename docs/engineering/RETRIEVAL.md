@@ -132,3 +132,22 @@ marks around its own paraphrase ("no display for now, pending cost"). With the f
 condition ties tools-only on passes (12 vs 12), gets more facts in front of the agent (84% vs
 66%) and reads about twice as much. n = 22 trials per cell on a development series: directions,
 not estimates.
+
+## Correction (2026-11-17): steps 4 and 5 re-scored
+
+The scoring scripts collected reader verdicts with the file pattern `verdicts_<condition>_*`,
+and `verdicts_tools_*` also matched `verdicts_tools_record_*`. The tools-only condition was
+therefore scored with a mix of its own and the record condition's verdicts (the last file read
+won), which is why both conditions showed the same 13/8/1. The pattern now matches exact names;
+both runs were re-scored from the same saved verdicts. The step 4 and step 5 tables above are
+wrong for the tools-only column; the corrected figures:
+
+| | v1 tools | v1 + record | v2 tools | v2 + record |
+|---|---|---|---|---|
+| Reader verdicts correct / partial / incorrect | 15/7/0 | 13/8/1 | 17/5/0 | 13/8/1 |
+| Trials passed, of 22 | 12 | 10 | 15 | 12 |
+| Unsupported quotes (hard fail) | 6 | 5 | 3 | 3 |
+
+Corrected reading: on IS1008 the record made answers slightly worse, not equal (13 vs 15 and
+13 vs 17 correct), while reading twice as much. The quote fix helped the tools-only condition
+(passes 12 -> 15, correct 15 -> 17) and the record condition (passes 10 -> 12).
