@@ -668,3 +668,26 @@ These changes were made **after seeing the E3 v4 TEST results**, prompted by an 
 - **Trade-off.** The record did not beat a search-equipped agent on accuracy or tokens on these series; it was cheaper than reading transcripts and less accurate. Bad result reported as is; nothing was tuned on test.
 - **Open.** Align the verifier's absent-part rule with the item-fates definition (dev only, then a fresh test); a lighter record index plus tools; questions that do not name their meeting.
 
+
+## Meeting memory, phase 2 breakdown: retrieved, retained, accurate (2026-11-17)
+
+**Decision.** Traced every phase-2 test answer (62 questions, conditions record, search and named) to the step where it failed, the way Granola's engineering post on agent retrieval does it. For each fact a correct answer needs: did its passage reach the agent (retrieved), does the answer state it (retained), and is the answer right (accurate). Code: `tenor.evals.memory_breakdown`, with the rules frozen in its docstring before any verdict was joined to a fact. Script: `scripts/memory_breakdown.py`. Prompts: `memory_fact_reader.v1`, `memory_record_reader.v1`. Agent readers only, $0 API.
+
+- **Rules.**
+  - *Facts:* one per gold summary sentence, with the annotator's linked lines as evidence.
+  - *Retrieved:* any evidence line appears in what the agent saw. That means the job's record or transcripts plus every replayed lookup; all 454 replays matched the logs. Three facts with no linked lines use ROUGE-L recall of at least 0.5 over a 5-line window.
+  - *Retained:* ROUGE-L recall of the fact in the answer is at least 0.30, or the verdict is correct. The 0.30 threshold was calibrated on 84 dev (answer, fact) pairs labelled by two blind readers plus a tie-break. Agreement 86%, kappa 0.50. Every error was an over-credit.
+  - *Record misses:* also split by whether the final record holds the fact, judged by blind readers (95 of 98 agreed).
+- **Results.** Each condition's answers break down into correct, not retrieved, retrieved but not retained, and retained but not accurate:
+  - record: 40, 11, 6, 5;
+  - search: 39, 13, 5, 5;
+  - named: 48, 0, 10, 4.
+
+  The record's 22 misses split into 9 the writer never recorded (8 of them problem questions), 5 recorded wrongly (2 of them on doubtful golds) and 8 in the record but not used. The compact view shows 61 of the 63 facts the record holds.
+- **Reading.** Fix the writer's coverage of problems first. Presentation is not the bottleneck. Search fails at retrieval. Named never does: its misses are facts in front of the agent that the answer did not state, mostly problem questions.
+- **Trade-offs.**
+  - The id rule undercounts what a record shows. 12 correct record answers have a fact whose annotated line never reached the agent, because the record restates facts and cites other lines. So the record split uses readers, not ids.
+  - The id rule also needs only one evidence line, so a multi-part fact can count as retrieved from one part.
+  - ROUGE over-credits retention.
+  - A hand-check of 10 record misses agreed on class 6 of 10 and on the split 8 of 10. Counts are good to a few answers per cell.
+- **Open.** A writer prompt that records annotator-style problems (dev only, then a fresh test). Whether the problem golds are too loose to score.
