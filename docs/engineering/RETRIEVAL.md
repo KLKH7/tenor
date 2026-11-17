@@ -151,3 +151,34 @@ wrong for the tools-only column; the corrected figures:
 Corrected reading: on IS1008 the record made answers slightly worse, not equal (13 vs 15 and
 13 vs 17 correct), while reading twice as much. The quote fix helped the tools-only condition
 (passes 12 -> 15, correct 15 -> 17) and the record condition (passes 10 -> 12).
+
+## Test-series run: tools vs tools + record (2026-11-17; the record's first unseen series)
+
+Frozen at e84d829 (+3ec76df: three empty distractor meetings dropped before any answer).
+Workspace: ES2005, ES2006, ES2012, IS1006, TS3007 (20 meetings) + 13 distractors; stand-in AI
+notes for every meeting (`standin_notes.v1`, written from anonymous transcripts); anonymous
+speakers; wording v2. 12 cross-meeting questions x 3 runs per condition; sonnet answerers;
+two blind opus readers per (series, condition) packet with runs shuffled as X/Y/Z; agreement
+36/36 (record), 25/36 (tools), 11 settled by a third reader. Outputs `data/private/retrieval/test/`.
+
+| | tools | tools + record |
+|---|---|---|
+| Reader verdicts correct / partial / incorrect | 20 / 16 / 0 | 25 / 11 / 0 |
+| Trials passed (correct, no hard fail) | 18 of 36 | 21 of 36 |
+| Hard fails: unsupported quote / cited an unopened meeting | 4 / 0 | 4 / 3 |
+| Facts retrieved | 92% | 87% |
+| Characters read per trial | 14,300 | 24,400 |
+| Agents that opened the record | - | 36 of 36 |
+| Per question (correct runs): record ahead / behind / level | | 4 / 2 / 6 |
+
+Difference in share of runs correct, record minus tools: +14 points, 95% interval -11 to +39
+(bootstrap over the 12 questions, seed 42). Not distinguishable from zero.
+
+Notes:
+- The 3 "cited an unopened meeting" fails are record answers naming the meeting where an item
+  was first recorded (ES2005a, IS1006a): the record describes that meeting but the agent never
+  opened it. The frozen rule fails them; counting the record's description as "opened" would
+  give the record 24 passes.
+- Direction differs from the development series (IS1008), where the record was slightly worse
+  (13 vs 17 correct with wording v2). Two small samples pointing opposite ways: no claim either way.
+- Cost is consistent across both: the record condition reads 1.7-2x the characters.
