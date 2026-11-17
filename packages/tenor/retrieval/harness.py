@@ -3,14 +3,17 @@
 For every fact a correct answer needs (one per gold summary sentence, with the transcript lines
 the AMI annotator linked to it; see ``tenor.evals.memory_breakdown.Fact``):
 
-1. Retrieved: did one of the fact's evidence lines reach the agent in any tool response?
-   Deterministic, from the log (``seen``), never from what the agent says it read.
+1. Retrieved: did the fact reach the agent in any tool response, a transcript passage or a
+   note? Deterministic, from the log, never from what the agent says it read. Either one of the
+   fact's evidence lines was shown, or the fact's words are in some 5-line window of any output
+   (ROUGE-L recall >= TEXT_THRESHOLD, 0.5): notes carry no line ids, so they need the text rule.
 2. Retained: did the answer use it? ROUGE-L recall of the fact's content words in the answer
    >= RETAINED_THRESHOLD (0.30, calibrated against 84 blind reader labels in the breakdown run).
 3. Accurate: the answer's verdict from blind readers (passed in), plus two checks that do not
    trust any reader, each failing the trial outright (as in the post):
    - it cites a meeting the agent never opened (no notes or transcript of it in the log);
-   - it puts quotation marks around words not found in any tool response.
+   - it puts quotation marks around words not found in any tool response (or in the question
+     itself: quoting the person's own words back is not an invented quote).
 
 A trial passes only if the verdict is correct and neither hard check fails. Questions are run
 ``n`` times; a question's pass rate is the share of its trials that pass.
@@ -24,7 +27,7 @@ from statistics import mean
 
 from pydantic import BaseModel, ConfigDict
 
-from tenor.evals.memory_breakdown import Fact, rouge_l_recall
+from tenor.evals.memory_breakdown import TEXT_THRESHOLD, Fact, best_window_recall, rouge_l_recall
 from tenor.retrieval.tools import ToolCall
 
 RETAINED_THRESHOLD = 0.30
@@ -67,10 +70,10 @@ def _norm(text: str) -> str:
     return _WS.sub(" ", text.lower()).strip()
 
 
-def unsupported_quotes(answer: str, log: Sequence[ToolCall]) -> list[str]:
-    """Quoted spans of >= MIN_QUOTE_WORDS words that appear in no tool response (after
-    lowercasing and dropping punctuation)."""
-    seen = _norm("\n".join(c.output for c in log))
+def unsupported_quotes(answer: str, log: Sequence[ToolCall], question: str = "") -> list[str]:
+    """Quoted spans of >= MIN_QUOTE_WORDS words found in no tool response and not in the
+    question (after lowercasing and dropping punctuation)."""
+    seen = _norm("\n".join([question, *(c.output for c in log)]))
     bad = []
     for q in _QUOTE.findall(answer):
         if len(_norm(q).split()) >= MIN_QUOTE_WORDS and _norm(q) not in seen:
@@ -84,6 +87,7 @@ class FactCheck(BaseModel):
     fact_id: str
     retrieved: bool
     retained: bool
+    via: str  # "line", "text" or "none": how the fact was retrieved
     recall: float
 
 
@@ -126,17 +130,25 @@ def score_trial(
     log: Sequence[ToolCall],
     verdict_correct: bool,
     meeting_ids: Iterable[str],
+    question: str = "",
 ) -> Trial:
     """Score one answer against its facts and the log of what its agent was shown."""
     seen = seen_lines(log)
+    shown = [ln for c in log for ln in c.output.splitlines() if ln.strip()]
     checks = []
     for f in facts:
         r = rouge_l_recall(f.text, answer)
-        retrieved = any(k in seen for k in f.evidence) if f.evidence else r > 0
+        if any(k in seen for k in f.evidence):
+            via = "line"
+        elif best_window_recall(f.text, shown) >= TEXT_THRESHOLD:
+            via = "text"
+        else:
+            via = "none"
         checks.append(
             FactCheck(
                 fact_id=f.fact_id,
-                retrieved=retrieved,
+                retrieved=via != "none",
+                via=via,
                 retained=verdict_correct or r >= RETAINED_THRESHOLD,
                 recall=round(r, 4),
             )
@@ -148,7 +160,7 @@ def score_trial(
         facts=tuple(checks),
         verdict_correct=verdict_correct,
         cited_unopened=tuple(unopened),
-        unsupported=tuple(unsupported_quotes(answer, log)),
+        unsupported=tuple(unsupported_quotes(answer, log, question)),
         chars_read=sum(len(c.output) for c in log),
     )
 

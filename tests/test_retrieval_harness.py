@@ -28,7 +28,13 @@ FACT = Fact(
     evidence=(("M1", "L0040"),),
     rule="ids",
 )
-MISSING = Fact(qid="q1", fact_id="f2", text="Blue case.", evidence=(("M2", "L0001"),), rule="ids")
+MISSING = Fact(
+    qid="q1",
+    fact_id="f2",
+    text="The remote will be yellow and round.",
+    evidence=(("M2", "L0001"),),
+    rule="ids",
+)
 
 
 def test_seen_and_opened():
@@ -42,6 +48,8 @@ def test_unsupported_quotes():
         "the battery costs twelve euros"
     ]
     assert unsupported_quotes('A "short one" is ignored.', LOG) == []
+    asked = "How did the decision about recognition, function, locator change?"
+    assert unsupported_quotes('On "recognition, function, locator": nothing.', LOG, asked) == []
 
 
 def test_passing_trial():
@@ -72,3 +80,22 @@ def test_summary_pass_rate_is_mean_over_questions():
     s = summarize([ok, bad, other], groups={"q1": "single", "q2": "cross"})
     assert s["all"].pass_rate == 0.75  # q1 passes 1 of 2 runs, q2 1 of 1
     assert s["single"].trials == 2 and s["cross"].trials == 1
+
+
+def test_fact_read_in_notes_counts_as_retrieved():
+    notes = [
+        ToolCall(
+            tool="get_meetings",
+            args={},
+            output="# M3: Meeting M3\n- Blue case chosen for the remote.",
+        )
+    ]
+    blue = Fact(
+        qid="q1",
+        fact_id="f3",
+        text="They chose a blue case for the remote.",
+        evidence=(("M3", "L0009"),),
+        rule="ids",
+    )
+    t = score_trial("q1", 0, [blue], "A blue case.", notes, True, ["M3"])
+    assert t.facts[0].retrieved and t.facts[0].via == "text"

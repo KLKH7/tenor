@@ -51,3 +51,25 @@ switches), `harness.py` (step 3: retrieved / retained / accurate). CLI for agent
 
 The realistic default for a run is: `notes="product"` where available, `speakers="anonymous"`,
 and at least 20 distractor meetings from other series. Report every result with its switches.
+
+## Pilot (2026-11-17, development series IS1008 only; not a result)
+
+Setup: IS1008 a-d plus 20 distractor meetings (seed 42), Granola's real notes, anonymous
+speakers; 3 questions x 2 runs; Claude Code (sonnet) answer agents through the CLI tools
+(`retrieval_answer.v1`); two blind opus readers (`mcp_reading_reader.v1`), agreed 6 of 6.
+Code: `scripts/retrieval_pilot.py`; outputs in `data/private/retrieval/pilot/`.
+
+What the pilot changed in the harness (before any test run):
+- **Quotes from the question are allowed.** One answer quoted the question's own phrase
+  ("recognition, function, locator") and was failed as an unsupported quote; a false alarm.
+- **Notes count as retrieval.** "Retrieved" counted only transcript lines; facts the agent read
+  in Granola's notes were missed. Now a fact also counts if its words are in any 5-line window
+  of any tool output (ROUGE-L recall >= 0.5).
+
+Known limit, left visible: Granola's notes paraphrase, so the text rule still misses facts the
+notes do convey (recall 0.14-0.21 on IS1008d's two problem facts, both answered correctly).
+A blind reader label ("is this fact in what the agent was shown?") would fix it; not built yet.
+
+Pilot numbers (for the pipeline only): 3 of 6 trials passed; one not retrieved, one not
+retained, one not accurate; 17k characters read per trial on average (27k for the
+cross-meeting question). Agents read the notes first, then searched transcripts (4-7 calls).
