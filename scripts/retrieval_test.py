@@ -1,8 +1,8 @@
 """Test-series comparison: tools vs tools + running record, both with wording v2, on the five
 AMI series the record never saw in development (ES2005, ES2006, ES2012, IS1006, TS3007).
 
-Workspace (one, shared): the 20 test-series meetings plus 16 other AMI meetings as distractors
-(IS1003, IS1008, TS3009 a-d; IB4003/4005/4010/4011). Every meeting has stand-in AI notes written
+Workspace (one, shared): the 20 test-series meetings plus 13 other AMI meetings as distractors
+(IS1003, IS1008, TS3009 a-d; IB4003). Every meeting has stand-in AI notes written
 by an agent from its anonymous transcript (standin_notes.v1), so both conditions read notes
 first, as with Granola; speakers are anonymous. Questions: the 12 cross-meeting test questions
 of meeting-memory phase 2. Runs: 3 per question and condition. Readers: two blind readers per
@@ -33,14 +33,11 @@ from memory_breakdown import facts_of  # noqa: E402
 OUT = REPO / "data/private/retrieval/test"
 NOTES = REPO / "data/private/retrieval/notes"
 SERIES = ["ES2005", "ES2006", "ES2012", "IS1006", "TS3007"]
+# IB4005, IB4010 and IB4011 were dropped before any answer: their transcripts are empty in the
+# AMI files held here, so they would be blank meetings.
 DISTRACTORS = [
-    *(f"IS1003{x}" for x in "abcd"),
-    *(f"IS1008{x}" for x in "abcd"),
-    *(f"TS3009{x}" for x in "abcd"),
+    *(f"IS1003{x}" for x in "abcd"), *(f"IS1008{x}" for x in "abcd"), *(f"TS3009{x}" for x in "abcd"),
     "IB4003",
-    "IB4005",
-    "IB4010",
-    "IB4011",
 ]
 CONDITIONS = ("tools", "tools_record")
 RUNS = 3
