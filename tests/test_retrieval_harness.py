@@ -48,6 +48,7 @@ def test_unsupported_quotes():
         "the battery costs twelve euros"
     ]
     assert unsupported_quotes('A "short one" is ignored.', LOG) == []
+    assert unsupported_quotes('"cost twelve euros okay and we use"', LOG) == []  # spans two lines
     asked = "How did the decision about recognition, function, locator change?"
     assert unsupported_quotes('On "recognition, function, locator": nothing.', LOG, asked) == []
 

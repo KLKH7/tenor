@@ -13,7 +13,8 @@ the AMI annotator linked to it; see ``tenor.evals.memory_breakdown.Fact``):
    trust any reader, each failing the trial outright (as in the post):
    - it cites a meeting the agent never opened (no notes or transcript of it in the log);
    - it puts quotation marks around words not found in any tool response (or in the question
-     itself: quoting the person's own words back is not an invented quote).
+     itself: quoting the person's own words back is not an invented quote). Line labels and
+     passage headers are ignored, so a quote spanning two transcript lines still matches.
 
 A trial passes only if the verdict is correct and neither hard check fails. Questions are run
 ``n`` times; a question's pass rate is the share of its trials that pass.
@@ -36,6 +37,7 @@ MIN_QUOTE_WORDS = 3
 _PASSAGE = re.compile(r"^\[(\S+) chunk \d+ \|", re.M)
 _NOTES = re.compile(r"^# (\S+): ", re.M)
 _LINE = re.compile(r"^(L\d{4}) ", re.M)
+_LABEL = re.compile(r"(?m)^\[[^\]]*\]$|^L\d{4} [^:\n]{1,40}: ")
 _QUOTE = re.compile(r"[\"“]([^\"”]+)[\"”]")
 _WS = re.compile(r"[^a-z0-9]+")
 
@@ -82,7 +84,11 @@ def _norm(text: str) -> str:
 def unsupported_quotes(answer: str, log: Sequence[ToolCall], question: str = "") -> list[str]:
     """Quoted spans of >= MIN_QUOTE_WORDS words found in no tool response and not in the
     question (after lowercasing and dropping punctuation)."""
-    seen = _norm("\n".join([question, *(c.output for c in log)]))
+    text = "\n".join([question, *(c.output for c in log)])
+    # A sentence can run over several transcript lines; drop line labels so a quote that spans
+    # them is still found ("L0108 Them: " between two halves of one sentence).
+    text = _LABEL.sub(" ", text)
+    seen = _norm(text)
     bad = []
     for q in _QUOTE.findall(answer):
         if len(_norm(q).split()) >= MIN_QUOTE_WORDS and _norm(q) not in seen:

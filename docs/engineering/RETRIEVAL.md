@@ -73,3 +73,35 @@ A blind reader label ("is this fact in what the agent was shown?") would fix it;
 Pilot numbers (for the pipeline only): 3 of 6 trials passed; one not retrieved, one not
 retained, one not accurate; 17k characters read per trial on average (27k for the
 cross-meeting question). Agents read the notes first, then searched transcripts (4-7 calls).
+
+## Step 5: the running record as a tool (2026-11-17, IS1008 = the record's development series; not a result)
+
+Same workspace as the pilot (IS1008 a-d + 20 distractors, Granola's notes, anonymous speakers),
+all 11 IS1008 cross-meeting questions, 2 runs each, answer prompt `retrieval_answer.v2`; the only
+difference is a fifth tool, `get_series_record` (the v2 record after IS1008d, compact view, every
+pointer tagged with its chunk id). Readers: two blind opus readers per condition
+(`mcp_reading_reader.v1`), agreed 22/22 (tools) and 20/22 (record); one tie-break settled 2.
+Code: `scripts/retrieval_record.py`; outputs `data/private/retrieval/record_dev/`.
+
+| | tools | tools + record |
+|---|---|---|
+| Reader verdicts correct / partial / incorrect | 13 / 8 / 1 | 13 / 8 / 1 |
+| Trials passed (correct and no hard fail) | 11 of 22 | 10 of 22 |
+| Unsupported quotes (hard fail) | 6 | 5 |
+| Facts retrieved | 73% | 80% |
+| Characters read per trial | 16,500 | 32,700 |
+| Agents that opened the record | - | 22 of 22 |
+| search_transcripts / get_transcript calls | 42 / 16 | 19 / 62 |
+
+What it says: the record changed how agents worked (read the record, then followed its pointers
+into chunks instead of keyword search) but not how often they were right, and it doubled what
+they read. Per question the record won 1, lost 2, tied 8. The largest single failure in both
+conditions is the one Granola's post describes: lightly reworded quotes (5-6 of 22 trials).
+
+Harness fix found while checking the flags: a quote that runs over two transcript lines was
+failed because the next line's label sat between its halves; labels are now ignored. The other
+flags were read and are real rewordings (a dropped word, an invented phrase, gaps joined by an
+ellipsis). Ellipsis quotes are failed, as in the post's strict rule.
+
+Next: the post's fix for reworded quotes ("paraphrase by default; quote only when asked") as a
+wording variant (step 4), on both conditions; then the record comparison on an unused series.
