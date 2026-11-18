@@ -182,3 +182,40 @@ Notes:
 - Direction differs from the development series (IS1008), where the record was slightly worse
   (13 vs 17 correct with wording v2). Two small samples pointing opposite ways: no claim either way.
 - Cost is consistent across both: the record condition reads 1.7-2x the characters.
+
+## All 62 test questions (2026-11-17)
+
+Same frozen setup as the cross-meeting run, extended to the 50 single-meeting questions
+(c78603c). 62 questions x 3 runs x 2 conditions = 372 answers (3 reruns after network drops,
+partial logs deleted first). Readers agreed on 289 of 300 single-meeting answers; 11 settled by a
+third reader. Scores: `data/private/retrieval/test/score_all.json`.
+
+| | tools | tools + record |
+|---|---|---|
+| Reader verdicts correct / partial / incorrect (of 186) | 98 / 46 / 42 | 120 / 37 / 29 |
+| Trials passed | 87 | 111 |
+| Hard fails: unsupported quote / cited an unopened meeting | 18 / 0 | 5 / 11 |
+| Facts retrieved / retained | 79% / 81% | 83% / 87% |
+| Characters read per trial | 16,700 | 43,600 |
+
+Share of runs correct, record minus tools (bootstrap over questions, seed 42):
+
+| Questions | n | tools | record | difference [95% interval] |
+|---|---|---|---|---|
+| All | 62 | 98/186 | 120/186 | +11.8 [+3.2, +21.5] |
+| Cross-meeting | 12 | 20/36 | 25/36 | +13.9 [-11.1, +38.9] |
+| Single-meeting | 50 | 78/150 | 95/150 | +11.3 [+2.0, +22.0] |
+| Role-dependent (action_who, who_said) | 20 | 28/60 | 39/60 | +18.3 [+1.7, +38.3] |
+| Not role-dependent | 42 | 70/126 | 81/126 | +8.7 [-1.6, +19.8] |
+
+**Confound: the record knows speaker roles; the tools condition does not.** The records were
+written (phase 2) from AMI transcripts with role labels (`meeting_memory.transcript`,
+`speaker=role`), so entries carry owners like "Industrial Designer". In this workspace speakers
+are anonymous ("Them"). On questions that depend on who someone is, the record has information
+the other condition cannot reach; that is where its largest gain is. A fair version rebuilds the
+records from anonymous transcripts. Without the role-dependent questions the gain is +8.7 points
+and its interval includes zero.
+
+Also: the record condition reads 2.6x the characters (it is loaded even for single-meeting
+questions), and 11 of its runs fail the frozen "cited an unopened meeting" rule by naming a
+meeting the record describes but the agent never opened.
