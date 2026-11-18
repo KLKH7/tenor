@@ -219,3 +219,42 @@ and its interval includes zero.
 Also: the record condition reads 2.6x the characters (it is loaded even for single-meeting
 questions), and 11 of its runs fail the frozen "cited an unopened meeting" rule by naming a
 meeting the record describes but the agent never opened.
+
+## Fair rerun: records written from anonymous transcripts (2026-11-17)
+
+To remove the confound above, the five test-series records were rebuilt from transcripts where
+every speaker is "Them" (`memory_update.v3`: as v2, but an owner is recorded only when the words
+name them; `meeting_memory_v2.py --anon`, into `v2_anon/`). Same build as before: one writer and
+one quiet-check agent per meeting (opus), all 20 records pass the code checks with 0 problems.
+Owners named in the final records fell from 50 to 25, all taken from spoken words ("I'm the
+marketing expert", first names); role words in the records fell from 570 to 108.
+
+Only the record condition was rerun (`tools_record_anon`): same 62 questions x 3 runs, workspace,
+wording v2, answer prompt, blind readers (two per packet; 178 of 186 agreed, 8 settled by a third).
+The tools condition is unchanged, so its 186 runs are reused.
+
+| | tools | record (roles) | record (anonymous) |
+|---|---|---|---|
+| Correct / partial / incorrect | 98 / 46 / 42 | 120 / 37 / 29 | 109 / 46 / 31 |
+| Passed all checks | 87 | 111 | 98 |
+| Hard fails: unsupported quote / cited an unopened meeting | 18 / 0 | 5 / 11 | 10 / 3 |
+| Facts retrieved / retained | 79% / 81% | 83% / 87% | 81% / 85% |
+| Characters read per trial | 16,700 | 43,600 | 27,400 |
+
+Anonymous record minus tools, share of runs correct (bootstrap over questions, seed 42):
+
+| Questions | n | difference [95% interval] |
+|---|---|---|
+| All | 62 | +5.9 [-1.6, +14.0] |
+| Cross-meeting | 12 | +8.3 [-13.9, +33.3] |
+| Single-meeting | 50 | +5.3 [-2.7, +14.0] |
+| Role-dependent | 20 | +5.0 [-1.7, +13.3] |
+| Not role-dependent | 42 | +6.3 [-4.0, +18.3] |
+
+**Result: with the role advantage removed, the record's gain halves (+11.8 to +5.9 points) and
+is no longer distinguishable from zero.** The gain on role-dependent questions mostly
+disappears (+18.3 to +5.0), which confirms most of the earlier gain there came from role labels
+the agents could not see. The direction is still positive in every group, and the record still
+cuts unsupported quotes (18 to 10) at 1.6x the reading. What this supports: a running record
+built from what a product actually has (anonymous "Them" speech) may help a little; this
+sample of 62 questions on five series cannot show that it does.
