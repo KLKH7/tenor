@@ -58,7 +58,6 @@ REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO / "data/private/memory"
 UPDATE_PROMPT = "memory_update.v2"
 QUIET_PROMPT = "memory_quiet_check.v1"
-FINAL_METHOD = f"{UPDATE_PROMPT}+{QUIET_PROMPT}"
 FATES_RUNS = tuple(
     REPO / "data/private/reader/fates_runs" / r
     for r in (
@@ -72,6 +71,9 @@ VERDICTS = ("correct", "partially_correct", "incorrect")
 SEARCH_MAX = 20
 SEED = 42
 CMD = f"cd {REPO} && uv run --no-sync python scripts/meeting_memory_v2.py"
+# --anon: the record is written from transcripts with every speaker shown as "Them" (as in a
+# channel-attributed product transcript), into v2_anon/, with memory_update.v3. Set in __main__.
+ANON = False
 
 
 def meetings(series: str) -> list[str]:
@@ -79,7 +81,19 @@ def meetings(series: str) -> list[str]:
 
 
 def chain_dir(series: str) -> Path:
-    return ROOT / series / "v2"
+    return ROOT / series / ("v2_anon" if ANON else "v2")
+
+
+def update_prompt() -> str:
+    return "memory_update.v3" if ANON else UPDATE_PROMPT
+
+
+def final_method() -> str:
+    return f"{update_prompt()}+{QUIET_PROMPT}"
+
+
+def cmd() -> str:
+    return CMD + (" --anon" if ANON else "")
 
 
 def record_path(series: str, after: str | None, writer: bool = False) -> Path:
@@ -128,6 +142,12 @@ def prompt_text(name: str) -> str:
 
 def transcript_block(mid: str) -> str:
     m = meeting(mid)
+    if ANON:
+        body = "\n".join(
+            f"{ln.line_id} [{K._clock(m.dialogue_acts[i].start)}] Them: {ln.text}"
+            for i, ln in enumerate(MM.transcript(m).values())
+        )
+        return f"## Meeting {mid}: full transcript (speakers not identified)\n\n```\n{body}\n```"
     return (
         f"## Meeting {mid}: full human transcript\n\nRoster: {MM.roster_line(m)}\n\n```\n"
         + MM.transcript_text(m)
@@ -151,13 +171,13 @@ def cmd_update_job(series: str, mid: str) -> None:
     for sub in ("jobs", "updates", "quiet"):
         (base / sub).mkdir(parents=True, exist_ok=True)
     update = base / "updates" / f"{mid}.json"
-    check = f"{CMD} check-update --series {series} --meeting {mid}"
+    check = f"{cmd()} check-update --series {series} --meeting {mid}"
     text = "\n\n".join(
         [
             f"# Record update job: {series}, fold in {mid}",
-            f"Prompt `{UPDATE_PROMPT}`. Write the update to `{update}`. Then run, from the "
+            f"Prompt `{update_prompt()}`. Write the update to `{update}`. Then run, from the "
             f"repository root, `{check}` and fix the update until it passes.",
-            prompt_text(UPDATE_PROMPT),
+            prompt_text(update_prompt()),
             "---",
             "## The record before this meeting\n\n" + R.render(prev, compact=True),
             transcript_block(mid),
@@ -192,7 +212,7 @@ def cmd_check_update(series: str, mid: str) -> None:
         raise SystemExit(f"PROBLEM: update.meeting is {update.meeting!r}, expected {mid!r}")
     if any(ev.checked_by for ev in update.events):
         raise SystemExit("PROBLEM: checked_by is set by the quiet check, not by the update")
-    _fold(series, mid, update, UPDATE_PROMPT, record_path(series, mid, writer=True))
+    _fold(series, mid, update, update_prompt(), record_path(series, mid, writer=True))
     prev = load_record(record_path(series, previous(series, mid)))
     cands = R.quiet_candidates(prev, update)
     (base / "quiet" / f"{mid}.candidates.json").write_text(json.dumps(cands) + "\n")
@@ -200,7 +220,7 @@ def cmd_check_update(series: str, mid: str) -> None:
     print(f"OK: {len(update.events)} events {dict(kinds)}, {len(update.new_entries)} new")
     if not cands:
         (base / "updates" / f"{mid}.final.json").write_text(update.model_dump_json(indent=1))
-        _fold(series, mid, update, FINAL_METHOD, record_path(series, mid))
+        _fold(series, mid, update, final_method(), record_path(series, mid))
         print(f"no quiet-check candidates; final record -> {record_path(series, mid)}")
     else:
         print(f"quiet check needed for {len(cands)} entries: {', '.join(cands)}")
@@ -238,7 +258,7 @@ def cmd_quiet_job(series: str, mid: str) -> None:
         for c in cands
     ]
     answer = base / "quiet" / f"{mid}.jsonl"
-    check = f"{CMD} check-quiet --series {series} --meeting {mid}"
+    check = f"{cmd()} check-quiet --series {series} --meeting {mid}"
     text = "\n\n".join(
         [
             f"# Quiet-change check job: {series}, meeting {mid}",
@@ -271,7 +291,7 @@ def cmd_check_quiet(series: str, mid: str) -> None:
     if problems:
         raise SystemExit("\n".join(f"PROBLEM: {p}" for p in problems))
     final = R.apply_quiet(update, findings, QUIET_PROMPT)
-    _fold(series, mid, final, FINAL_METHOD, record_path(series, mid))
+    _fold(series, mid, final, final_method(), record_path(series, mid))
     (base / "updates" / f"{mid}.final.json").write_text(final.model_dump_json(indent=1))
     verdicts = Counter(f.verdict for f in findings)
     print(f"OK: {dict(verdicts)} -> {record_path(series, mid)}")
@@ -826,6 +846,7 @@ def cmd_fates(series: str, readers: list[str]) -> None:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
+    ap.add_argument("--anon", dest="anon_top", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("start", "check", "costs", "match-job"):
         sub.add_parser(name).add_argument("--series", required=True)
@@ -861,7 +882,10 @@ if __name__ == "__main__":
     p.add_argument("--role", required=True)
     p.add_argument("--model", required=True)
     p.add_argument("jobs", nargs="+")
+    for p in sub.choices.values():
+        p.add_argument("--anon", action="store_true", help="anonymous speakers, into v2_anon/")
     a = ap.parse_args()
+    ANON = a.anon or a.anon_top
     if a.cmd == "log-agents":
         cmd_log_agents(Path(a.run_json), a.role, a.model, a.jobs)
     elif a.cmd == "start":

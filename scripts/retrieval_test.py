@@ -42,7 +42,11 @@ DISTRACTORS = [
     *(f"TS3009{x}" for x in "abcd"),
     "IB4003",
 ]
-CONDITIONS = ("tools", "tools_record")
+# tools_record_anon: the same record built from anonymous transcripts (memory_update.v3), so it
+# knows no more about who spoke than the agents do; tools_record's records knew speaker roles.
+CONDITIONS = ("tools", "tools_record", "tools_record_anon")
+RECORD_DIRS = {"tools_record": "v2", "tools_record_anon": "v2_anon"}
+ACTIVE = CONDITIONS  # --conds narrows setup/readers/score
 RUNS = 3
 SEED = 42
 WORDING_VERSION = "v2"
@@ -94,7 +98,7 @@ def cmd_setup() -> None:
     w = WORDING[WORDING_VERSION]
     for d in ("jobs", "logs", "answers", "readers"):
         (OUT / d).mkdir(parents=True, exist_ok=True)
-    for cond in CONDITIONS:
+    for cond in ACTIVE:
         ws: dict[str, object] = {
             "meetings": [f"{s}{x}" for s in SERIES for x in "abcd"],
             "notes": "standin",
@@ -102,9 +106,10 @@ def cmd_setup() -> None:
             "distractors": DISTRACTORS,
         }
         tools = list(TOOLS)
-        if cond == "tools_record":
+        if cond in RECORD_DIRS:
+            d = RECORD_DIRS[cond]
             ws["records"] = {
-                s: str(REPO / f"data/private/memory/{s}/v2/record_after_{s}d.json") for s in SERIES
+                s: str(REPO / f"data/private/memory/{s}/{d}/record_after_{s}d.json") for s in SERIES
             }
             tools.append("get_series_record")
         wpath = OUT / f"workspace_{cond}.json"
@@ -113,11 +118,14 @@ def cmd_setup() -> None:
         for q in questions():
             for run in range(RUNS):
                 t = tag(cond, q.id, run)
-                cmd = f"uv run python scripts/retrieval_tools.py --workspace {wpath} --log {OUT / 'logs' / (t + '.jsonl')}"
+                log = OUT / "logs" / f"{t}.jsonl"
+                answer = OUT / "answers" / f"{t}.txt"
+                cmd = f"uv run python scripts/retrieval_tools.py --workspace {wpath} --log {log}"
                 (OUT / "jobs" / f"{t}.md").write_text(
                     f"{prompt}\n\n## Tools\n\n{w['server']}\n\n{tool_list}\n\n## Your job\n\n"
-                    f"Question: {q.question}\n\nTool command (run from {REPO}):\n\n    {cmd} <tool> '<json args>'\n\n"
-                    f"Example:\n\n    {cmd} search_meetings '{{}}'\n\nAnswer file: {OUT / 'answers' / (t + '.txt')}\n"
+                    f"Question: {q.question}\n\nTool command (run from {REPO}):\n\n"
+                    f"    {cmd} <tool> '<json args>'\n\n"
+                    f"Example:\n\n    {cmd} search_meetings '{{}}'\n\nAnswer file: {answer}\n"
                 )
     print(len(list((OUT / "jobs").glob("*.md"))), "answer jobs")
 
@@ -125,8 +133,11 @@ def cmd_setup() -> None:
 def cmd_readers() -> None:
     prompt = (REPO / "prompts/mcp_reading_reader.v1.md").read_text().split("\n## Changelog")[0]
     rng = random.Random(SEED)
-    key: dict[str, dict[str, dict[str, int]]] = {}
-    for cond in CONDITIONS:
+    kpath = OUT / "readers" / f"key{SUFFIX}.json"
+    key: dict[str, dict[str, dict[str, int]]] = (
+        json.loads(kpath.read_text()) if kpath.is_file() else {}
+    )
+    for cond in ACTIVE:
         key[cond] = {}
         for s in SERIES:
             qs = [q for q in questions() if q.meetings[0].startswith(s)]
@@ -149,14 +160,14 @@ def cmd_readers() -> None:
                     ans = (OUT / "answers" / f"{tag(cond, q.id, run)}.txt").read_text().strip()
                     parts.append(f"\nAnswer {lab}:\n{ans or '(abstained)'}\n")
             (OUT / "readers" / f"packet_{cond}_{s}{SUFFIX}.md").write_text("\n".join(parts) + "\n")
-    (OUT / "readers" / f"key{SUFFIX}.json").write_text(json.dumps(key, indent=1) + "\n")
+    kpath.write_text(json.dumps(key, indent=1) + "\n")
 
 
 def settled(cond: str) -> dict[tuple[str, int], str]:
     key: dict[str, dict[str, int]] = {}
     for kf in ("key.json", "key_single.json"):
         if (OUT / "readers" / kf).is_file():
-            key |= json.loads((OUT / "readers" / kf).read_text())[cond]
+            key |= json.loads((OUT / "readers" / kf).read_text()).get(cond, {})
     by: dict[tuple[str, int], list[str]] = {}
     # Exact names only: "verdicts_tools_*" would also match "verdicts_tools_record_*".
     exact = re.compile(rf"^verdicts_{cond}_[A-Z]{{2}}\d{{4}}(_single)?_[A-Z]\.jsonl$")
@@ -183,7 +194,7 @@ def cmd_score() -> None:
         "wording": WORDING_VERSION,
         "conditions": {},
     }
-    for cond in CONDITIONS:
+    for cond in ACTIVE:
         ws = json.loads((OUT / f"workspace_{cond}.json").read_text())
         known = [*ws["meetings"], *ws["distractors"]]
         v = settled(cond)
@@ -228,8 +239,12 @@ def main() -> None:
     p.add_argument(
         "--set", default="cross", choices=["cross", "single", "all"], help="question set"
     )
+    p.add_argument("--conds", default=",".join(CONDITIONS), help="conditions, comma-separated")
     a = p.parse_args()
-    global QSET, SUFFIX
+    global QSET, SUFFIX, ACTIVE
+    ACTIVE = tuple(c for c in a.conds.split(",") if c)
+    if bad := set(ACTIVE) - set(CONDITIONS):
+        raise SystemExit(f"unknown conditions {bad}")
     QSET = a.set
     SUFFIX = "_single" if a.set == "single" else ""
     cmds = {
